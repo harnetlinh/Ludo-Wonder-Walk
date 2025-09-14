@@ -16,7 +16,7 @@ public class GeminiApi : MonoBehaviour
     [SerializeField] private string modelId = "gemini-2.5-flash-image-preview";
     [SerializeField] private string userPrompt = "INSERT_INPUT_HERE";
 
-    private string baseUrl = "https://generativelanguage.googleapis.com/v1beta/models/";
+    private string baseUrl = "";
 
     public void CallGeminiAPI()
     {
