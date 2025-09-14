@@ -14,7 +14,7 @@ public class GeminiAIClient : MonoBehaviour
     [SerializeField] private string apiKey = "YOUR_API_KEY_HERE"; // Thay bằng API key của bạn
     [SerializeField] private string modelId = "gemini-2.5-flash-image-preview";
     [SerializeField] private string liteModelId = "gemini-2.5-flash-lite";
-    [SerializeField] private string baseUrl = "https://generativelanguage.googleapis.com/v1beta/models/";
+    [SerializeField] private string baseUrl = "";
 
     // Rate limiting variables
     private float lastRequestTime = 0f;
