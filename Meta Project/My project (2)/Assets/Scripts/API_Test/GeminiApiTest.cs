@@ -11,7 +11,7 @@ public class GeminiApiTest : MonoBehaviour
     [Header("API Settings")]
     [SerializeField] private string apiKey = "YOUR_API_KEY_HERE";
     [SerializeField] private string modelId = "gemini-2.5-flash-lite";
-    private string apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/";
+    private string apiUrl = "";
 
     [Header("UI Display")]
     public TMP_InputField inputField;
