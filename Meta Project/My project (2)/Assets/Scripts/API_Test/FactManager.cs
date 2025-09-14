@@ -19,7 +19,7 @@ public class FactManager : MonoBehaviour
     public TextMeshProUGUI descriptionText;
     public Image factImage;
 
-    private string apiUrl = "https://ludo-mr.sapca.ai.vn/api/fact";
+    private string apiUrl = "";
 
     private FactResponse factVi;
     private FactResponse factEn;
