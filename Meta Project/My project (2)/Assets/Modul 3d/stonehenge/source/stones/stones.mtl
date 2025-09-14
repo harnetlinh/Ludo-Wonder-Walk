@@ -1,0 +1,109 @@
+newmtl stone_lime_01_l_0003
+Ka 0.2 0.2 0.2
+Kd 1 1 1
+Ks 1 1 1
+Tr 0
+illum 1
+d 1
+Ns 1
+map_Kd stone_lime_01_l_0003.jpg
+map_normal stone_lime_01_l_n.jpg
+newmtl stone_lime_01_l_0001
+Ka 0.2 0.2 0.2
+Kd 1 1 1
+Ks 1 1 1
+Tr 0
+illum 1
+d 1
+Ns 1
+map_Kd stone_lime_01_l_0001.jpg
+map_normal stone_lime_01_l_n.jpg
+newmtl stone_lime_01_l_0004
+Ka 0.2 0.2 0.2
+Kd 1 1 1
+Ks 1 1 1
+Tr 0
+illum 1
+d 1
+Ns 1
+map_Kd stone_lime_01_l_0004.jpg
+map_normal stone_lime_01_l_n.jpg
+newmtl stone_lime_01_l_0010
+Ka 0.2 0.2 0.2
+Kd 1 1 1
+Ks 1 1 1
+Tr 0
+illum 1
+d 1
+Ns 1
+map_Kd stone_lime_01_l_0010.jpg
+map_normal stone_lime_01_l_n.jpg
+newmtl stone_lime_01_l_0002
+Ka 0.2 0.2 0.2
+Kd 1 1 1
+Ks 1 1 1
+Tr 0
+illum 1
+d 1
+Ns 1
+map_Kd stone_lime_01_l_0002.jpg
+map_normal stone_lime_01_l_n.jpg
+newmtl stone_lime_01_l_0006
+Ka 0.2 0.2 0.2
+Kd 1 1 1
+Ks 1 1 1
+Tr 0
+illum 1
+d 1
+Ns 1
+map_Kd stone_lime_01_l_0006.jpg
+map_normal stone_lime_01_l_n.jpg
+newmtl stone_lime_01_l_0007
+Ka 0.2 0.2 0.2
+Kd 1 1 1
+Ks 1 1 1
+Tr 0
+illum 1
+d 1
+Ns 1
+map_Kd stone_lime_01_l_0007.jpg
+map_normal stone_lime_01_l_n.jpg
+newmtl stone_lime_01_l_0009
+Ka 0.2 0.2 0.2
+Kd 1 1 1
+Ks 1 1 1
+Tr 0
+illum 1
+d 1
+Ns 1
+map_Kd stone_lime_01_l_0009.jpg
+map_normal stone_lime_01_l_n.jpg
+newmtl stone_lime_01_l_0005
+Ka 0.2 0.2 0.2
+Kd 1 1 1
+Ks 1 1 1
+Tr 0
+illum 1
+d 1
+Ns 1
+map_Kd stone_lime_01_l_0005.jpg
+map_normal stone_lime_01_l_n.jpg
+newmtl stone_lime_01_l_0008
+Ka 0.2 0.2 0.2
+Kd 1 1 1
+Ks 1 1 1
+Tr 0
+illum 1
+d 1
+Ns 1
+map_Kd stone_lime_01_l_0008.jpg
+map_normal stone_lime_01_l_n.jpg
+newmtl nature_grass_green_01_l_0001
+Ka 0.2 0.2 0.2
+Kd 1 1 1
+Ks 1 1 1
+Tr 0
+illum 1
+d 1
+Ns 1
+map_Kd nature_grass_green_01_l_0001.jpg
