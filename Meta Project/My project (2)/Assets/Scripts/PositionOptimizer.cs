@@ -64,8 +64,16 @@ public class PositionOptimizer : MonoBehaviour
     // Trong PositionOptimizer.cs, sửa phương thức CheckAndResetPosition
     public void CheckAndResetPosition()
     {
-        // Bỏ qua nếu đang di chuyển, ở trong chuồng hoặc đang được xử lý
-        if (pieceController.isMoving || pieceController.currentPathIndex == -1 || isBeingHandled)
+        // Bỏ qua nếu đang di chuyển, ở trong chuồng, đã về đích, hoặc đang được xử lý
+        if (pieceController.isMoving || pieceController.currentPathIndex == -1 || pieceController.currentPathIndex == -2 || isBeingHandled)
+            return;
+
+        // THÊM: Bỏ qua nếu không phải lượt của người chơi này
+        if (GameTurnManager.Instance != null && !GameTurnManager.Instance.IsCurrentPlayer(pieceController.playerColor))
+            return;
+
+        // THÊM: Bỏ qua nếu người chơi chưa xúc xắc hoặc đang có thể di chuyển
+        if (DiceController.Instance != null && !DiceController.Instance.hasRolledThisTurn)
             return;
 
         // Kiểm tra xem có đang trong quá trình sắp xếp không
@@ -73,6 +81,14 @@ public class PositionOptimizer : MonoBehaviour
         if (arranger != null && arranger.IsBeingArranged())
         {
             return; // Bỏ qua nếu đang sắp xếp
+        }
+
+        // THÊM: Kiểm tra xem có đang được grab không
+        GrapPiece grabPiece = GetComponent<GrapPiece>();
+        if (grabPiece != null)
+        {
+            // Nếu có GrapPiece component, có thể đang được cầm
+            return;
         }
 
         // Lấy vị trí chính xác từ PathManager
@@ -89,8 +105,18 @@ public class PositionOptimizer : MonoBehaviour
         // Tính khoảng cách từ vị trí hiện tại đến vị trí đúng
         float distance = Vector3.Distance(transform.position, correctPosition.position);
 
+        // TĂNG ngưỡng reset để tránh can thiệp khi người chơi đang di chuyển quân
+        float dynamicThreshold = resetDistanceThreshold;
+        
+        // Nếu quân cờ vừa được xuất (ở vị trí xuất phát), cho phép khoảng cách lớn hơn
+        Transform startPoint = HorseRacePathManager.Instance.GetStartPoint(pieceController.playerColor);
+        if (correctPosition == startPoint)
+        {
+            dynamicThreshold = resetDistanceThreshold * 2f; // Tăng gấp đôi ngưỡng cho điểm xuất phát
+        }
+
         // Nếu vượt quá ngưỡng cho phép, reset vị trí
-        if (distance > resetDistanceThreshold)
+        if (distance > dynamicThreshold)
         {
             Debug.Log($"Resetting position for {pieceController.playerColor} piece at index {pieceController.currentPathIndex} (distance: {distance})");
             StartCoroutine(ResetToCorrectPosition(correctPosition));
@@ -216,11 +242,14 @@ public class PositionOptimizer : MonoBehaviour
         {
             yield return new WaitForSeconds(checkInterval);
 
+            // TĂNG thời gian chờ để tránh can thiệp quá sớm
+            float extendedDelay = STABLE_CHECK_DELAY * 2f; // Tăng gấp đôi thời gian chờ
+
             // Nếu vừa được thả và đã qua thời gian chờ
-            if (wasReleased && Time.time - releaseTime > STABLE_CHECK_DELAY)
+            if (wasReleased && Time.time - releaseTime > extendedDelay)
             {
                 // Kiểm tra nếu quân cờ đã ổn định (không di chuyển)
-                if (rb != null && rb.linearVelocity.magnitude < 0.1f)
+                if (rb != null && rb.linearVelocity.magnitude < 0.05f) // Giảm ngưỡng velocity
                 {
                     wasReleased = false;
                     if (!isBeingHandled)
@@ -231,7 +260,13 @@ public class PositionOptimizer : MonoBehaviour
             }
             else if (!wasReleased && !isBeingHandled)
             {
-                CheckAndResetPosition();
+                // CHỈ kiểm tra nếu không phải lượt hiện tại hoặc đã di chuyển xong
+                if (GameTurnManager.Instance != null && 
+                    (!GameTurnManager.Instance.IsCurrentPlayer(pieceController.playerColor) ||
+                     DiceController.Instance.hasRolledThisTurn))
+                {
+                    CheckAndResetPosition();
+                }
             }
         }
     }
