@@ -386,7 +386,6 @@ public class PieceController : MonoBehaviourPun, IPunObservable
                 return;
             }
 
-
             // Kiểm tra nếu đặt vào vị trí hợp lệ
             // Trong OnCollisionEnter, sửa phần xuất quân
             if (currentPathIndex == -1 &&
@@ -400,8 +399,18 @@ public class PieceController : MonoBehaviourPun, IPunObservable
                 if (isNearStable)
                 {
                     Transform startPoint = HorseRacePathManager.Instance.GetStartPoint(playerColor);
+                    
+                    // TẠM THỜI vô hiệu hóa PositionOptimizer để tránh can thiệp
+                    PositionOptimizer optimizer = GetComponent<PositionOptimizer>();
+                    if (optimizer != null)
+                    {
+                        optimizer.SetIsBeingHandled(true);
+                    }
+
                     transform.position = startPoint.position;
                     currentPathIndex = HorseRacePathManager.Instance.commonPathPoints.IndexOf(startPoint);
+
+                    Debug.Log($"{playerColor} piece moved to start point at index {currentPathIndex}");
 
                     // Sắp xếp ngay sau khi xuất quân
                     PieceArranger arranger = GetComponent<PieceArranger>();
@@ -410,9 +419,25 @@ public class PieceController : MonoBehaviourPun, IPunObservable
                         arranger.ForceArrangeCheck(true); // Sắp xếp ngay lập tức
                     }
 
+                    // Kích hoạt lại PositionOptimizer sau một khoảng thời gian ngắn
+                    if (optimizer != null)
+                    {
+                        StartCoroutine(ReEnableOptimizerAfterDelay(optimizer, 1f));
+                    }
+
                     GameTurnManager.Instance.PieceMoved();
                 }
             }
+        }
+    }
+
+    // Thêm coroutine để kích hoạt lại PositionOptimizer
+    private IEnumerator ReEnableOptimizerAfterDelay(PositionOptimizer optimizer, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        if (optimizer != null)
+        {
+            optimizer.SetIsBeingHandled(false);
         }
     }
 

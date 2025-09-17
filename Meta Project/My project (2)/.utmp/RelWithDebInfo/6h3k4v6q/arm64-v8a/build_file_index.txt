@@ -1,0 +1,2 @@
+D:\GIT\Ludo-Wonder-Walk\Meta Project\My project (2)\Library\Bee\Android\Prj\IL2CPP\Gradle\unityLibrary\src\main\cpp\CMakeLists.txt
+D:\GIT\Ludo-Wonder-Walk\Meta Project\My project (2)\Library\Bee\Android\Prj\IL2CPP\Gradle\unityLibrary\src\main\cpp\GameActivity\CMakeLists.txt

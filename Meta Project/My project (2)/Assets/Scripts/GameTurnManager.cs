@@ -134,32 +134,66 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
     }
     public bool HasValidMoves(PlayerColor playerColor, int diceValue)
     {
+        Debug.Log($"HasValidMoves checking for {playerColor} with dice value {diceValue}");
+
         // Kiểm tra nếu có thể xuất quân (xúc xắc = 6)
         if (diceValue == 6 && HasPiecesInStable(playerColor))
         {
+            Debug.Log($"Can deploy piece from stable for {playerColor}");
             return true;
         }
 
         // Kiểm tra các quân đang trên bàn có thể di chuyển
         PieceController[] pieces = FindObjectsOfType<PieceController>();
+        int piecesOnBoard = 0;
+        int movablePieces = 0;
+
         foreach (PieceController piece in pieces)
         {
-            if (piece.playerColor == playerColor && piece.currentPathIndex >= 0)
+            if (piece.playerColor == playerColor && piece.currentPathIndex >= 0 && piece.currentPathIndex != -2)
             {
-                bool isPrivatePath;
-                Transform nextPoint = HorseRacePathManager.Instance.GetNextPoint(
-                    piece.currentPathIndex,
-                    playerColor,
-                    out isPrivatePath);
+                piecesOnBoard++;
+                
+                // Kiểm tra có thể di chuyển diceValue bước không
+                int tempIndex = piece.currentPathIndex;
+                bool canMoveSteps = true;
 
-                if (nextPoint != null) // Có thể di chuyển
+                for (int step = 0; step < diceValue; step++)
                 {
-                    return true;
+                    bool isPrivatePath;
+                    Transform nextPoint = HorseRacePathManager.Instance.GetNextPoint(
+                        tempIndex,
+                        playerColor,
+                        out isPrivatePath);
+
+                    if (nextPoint == null)
+                    {
+                        canMoveSteps = false;
+                        break;
+                    }
+
+                    // Cập nhật tempIndex cho bước tiếp theo
+                    if (isPrivatePath)
+                    {
+                        tempIndex = HorseRacePathManager.Instance.commonPathPoints.Count +
+                                   HorseRacePathManager.Instance.GetPrivatePath(playerColor).IndexOf(nextPoint);
+                    }
+                    else
+                    {
+                        tempIndex = HorseRacePathManager.Instance.commonPathPoints.IndexOf(nextPoint);
+                    }
+                }
+
+                if (canMoveSteps)
+                {
+                    movablePieces++;
+                    Debug.Log($"Piece at index {piece.currentPathIndex} can move {diceValue} steps");
                 }
             }
         }
 
-        return false;
+        Debug.Log($"Found {piecesOnBoard} pieces on board, {movablePieces} can move");
+        return movablePieces > 0;
     }
 
     //private void HighlightMovablePieces()
@@ -234,19 +268,30 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
         int diceValue = DiceController.Instance.LastDiceValue;
         PlayerColor currentPlayer = CurrentPlayer;
 
+        Debug.Log($"CheckForPossibleMoves: Player {currentPlayer}, Dice value: {diceValue}");
+
         // Kiểm tra xem có quân cờ nào có thể di chuyển với số xúc xắc hiện tại không
         bool canMove = HasValidMoves(currentPlayer, diceValue);
 
+        Debug.Log($"Can move: {canMove}");
+
         if (!canMove)
         {
-            // Nếu không thể di chuyển, chuyển lượt sau 1 giây
-            Invoke("EndTurn", 1f);
+            // Nếu không thể di chuyển, chuyển lượt sau 2 giây (tăng thời gian để người chơi thấy)
+            Debug.Log("No valid moves available, ending turn in 2 seconds");
+            Invoke("EndTurn", 2f);
         }
         else
         {
             // Nếu có thể di chuyển, khóa nút xúc xắc
             DiceController.Instance.canRollAgain = false;
             DiceController.Instance.diceButton.interactable = false;
+            
+            // Cập nhật status text để thông báo cho người chơi
+            if (DiceController.Instance.statusText != null)
+            {
+                DiceController.Instance.statusText.text = $"Lượt của {currentPlayer}\nHãy di chuyển quân cờ!";
+            }
         }
     }
 
