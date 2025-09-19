@@ -11,6 +11,19 @@ public class PieceController : MonoBehaviourPun, IPunObservable
     public bool isMoving = false;
     public float moveSpeed = 5f;
 
+    [Header("Online/Offline Settings")]
+    public bool isOnlineMode = true;
+
+    [Header("Network Drag Settings")]
+    public float dragSensitivity = 1f;
+    public float dragHeight = 0.5f;
+    public LayerMask groundLayer = 1;
+
+    [Header("Visual Feedback")]
+    public GameObject highlightEffect;
+    public Color dragColor = Color.yellow;
+    public Color hoverColor = Color.cyan;
+
     // Thêm biến để lưu vị trí chuồng ban đầu
     private Vector3 initialStablePosition;
     private int stablePointIndex = -1;
@@ -24,6 +37,15 @@ public class PieceController : MonoBehaviourPun, IPunObservable
 
     public int lastCountryPointIndex = -1;
 
+    // Network drag variables
+    private bool isBeingDragged = false;
+    private bool isHovered = false;
+    private Vector3 dragOffset;
+    private Vector3 lastValidPosition;
+    private Camera playerCamera;
+    private Rigidbody pieceRigidbody;
+    private Collider pieceCollider;
+
     // PUN Network Variables
     private Vector3 networkPosition;
     private Quaternion networkRotation;
@@ -31,22 +53,242 @@ public class PieceController : MonoBehaviourPun, IPunObservable
     private int networkPathIndex;
     protected bool isNetworked = false;
 
+    // Network synchronization
+    private Vector3 networkDragPosition;
+    private bool networkIsDragged;
+    private bool networkIsHovered;
+
     protected virtual void Start()
     {
         gameObject.tag = "Piece";
         pieceRenderer = GetComponent<Renderer>();
+        originalColor = pieceRenderer.material.color;
 
         // Lưu vị trí chuồng ban đầu
         SaveInitialStablePosition();
 
         // Khởi tạo PUN
-        if (photonView != null)
+        if (isOnlineMode && photonView != null)
         {
             isNetworked = true;
             networkPosition = transform.position;
             networkRotation = transform.rotation;
             networkPathIndex = currentPathIndex;
             networkIsMoving = isMoving;
+        }
+
+        // Lấy các component cần thiết cho drag
+        pieceRigidbody = GetComponent<Rigidbody>();
+        pieceCollider = GetComponent<Collider>();
+
+        // Tìm camera
+        playerCamera = Camera.main;
+        if (playerCamera == null)
+        {
+            playerCamera = FindFirstObjectByType<Camera>();
+        }
+
+        // Khởi tạo network variables
+        if (isNetworked)
+        {
+            networkDragPosition = transform.position;
+            networkIsDragged = false;
+            networkIsHovered = false;
+        }
+    }
+
+    protected virtual void Update()
+    {
+        // Chỉ xử lý input nếu là quân cờ của mình hoặc offline mode
+        if (isNetworked && !photonView.IsMine) return;
+
+        HandleInput();
+        UpdateVisualFeedback();
+    }
+
+    private void HandleInput()
+    {
+        // Kiểm tra click chuột
+        if (Input.GetMouseButtonDown(0))
+        {
+            if (IsMouseOverPiece())
+            {
+                StartDrag();
+            }
+        }
+
+        // Xử lý drag
+        if (isBeingDragged && Input.GetMouseButton(0))
+        {
+            UpdateDrag();
+        }
+        else if (isBeingDragged && Input.GetMouseButtonUp(0))
+        {
+            EndDrag();
+        }
+
+        // Kiểm tra hover
+        bool currentlyHovered = IsMouseOverPiece();
+        if (currentlyHovered != isHovered)
+        {
+            isHovered = currentlyHovered;
+            if (isNetworked && photonView.IsMine)
+            {
+                photonView.RPC("NetworkSetHovered", RpcTarget.All, isHovered);
+            }
+        }
+    }
+
+    private bool IsMouseOverPiece()
+    {
+        if (playerCamera == null) return false;
+
+        Ray ray = playerCamera.ScreenPointToRay(Input.mousePosition);
+        RaycastHit hit;
+
+        if (Physics.Raycast(ray, out hit))
+        {
+            return hit.collider == pieceCollider;
+        }
+
+        return false;
+    }
+
+    private void StartDrag()
+    {
+        if (isMoving) return; // Không thể drag khi đang di chuyển
+
+        // Chỉ cho phép drag nếu là quân cờ của mình hoặc không phải multiplayer
+        if (isNetworked && !photonView.IsMine) return;
+
+        isBeingDragged = true;
+        lastValidPosition = transform.position;
+
+        // Tắt physics khi drag
+        if (pieceRigidbody != null)
+        {
+            pieceRigidbody.isKinematic = true;
+        }
+
+        // Tính toán offset
+        Vector3 mouseWorldPos = GetMouseWorldPosition();
+        dragOffset = transform.position - mouseWorldPos;
+
+        // Gửi RPC để thông báo bắt đầu drag
+        if (isNetworked && photonView.IsMine)
+        {
+            photonView.RPC("NetworkStartDrag", RpcTarget.All, transform.position);
+        }
+
+        Debug.Log($"Bắt đầu drag quân cờ {playerColor}");
+    }
+
+    private void UpdateDrag()
+    {
+        Vector3 mouseWorldPos = GetMouseWorldPosition();
+        Vector3 targetPosition = mouseWorldPos + dragOffset;
+
+        // Giới hạn chiều cao drag
+        targetPosition.y = Mathf.Max(targetPosition.y, dragHeight);
+
+        transform.position = targetPosition;
+
+        // Gửi RPC để đồng bộ vị trí drag
+        if (isNetworked && photonView.IsMine)
+        {
+            photonView.RPC("NetworkUpdateDragPosition", RpcTarget.All, targetPosition);
+        }
+    }
+
+    private void EndDrag()
+    {
+        isBeingDragged = false;
+
+        // Kiểm tra vị trí hợp lệ
+        if (IsValidDropPosition())
+        {
+            // Vị trí hợp lệ - giữ nguyên vị trí
+            lastValidPosition = transform.position;
+
+            // Gửi RPC để thông báo kết thúc drag thành công
+            if (isNetworked && photonView.IsMine)
+            {
+                photonView.RPC("NetworkEndDrag", RpcTarget.All, transform.position, true);
+            }
+
+            Debug.Log($"Kết thúc drag quân cờ {playerColor} tại vị trí hợp lệ");
+        }
+        else
+        {
+            // Vị trí không hợp lệ - trở về vị trí cũ
+            transform.position = lastValidPosition;
+
+            // Gửi RPC để thông báo kết thúc drag thất bại
+            if (isNetworked && photonView.IsMine)
+            {
+                photonView.RPC("NetworkEndDrag", RpcTarget.All, lastValidPosition, false);
+            }
+
+            Debug.Log($"Kết thúc drag quân cờ {playerColor} - trở về vị trí cũ");
+        }
+
+        // Bật lại physics
+        if (pieceRigidbody != null)
+        {
+            pieceRigidbody.isKinematic = false;
+        }
+        pieceRigidbody.isKinematic = false;
+    }
+
+    private bool IsValidDropPosition()
+    {
+        // Kiểm tra xem có thể đặt quân cờ tại vị trí này không
+        // Có thể thêm logic kiểm tra theo luật Ludo ở đây
+
+        // Kiểm tra có chạm đất không
+        RaycastHit hit;
+        if (Physics.Raycast(transform.position, Vector3.down, out hit, 10f, groundLayer))
+        {
+            // Kiểm tra có phải là bàn cờ không
+            if (hit.collider.CompareTag("Table"))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private Vector3 GetMouseWorldPosition()
+    {
+        if (playerCamera == null) return Vector3.zero;
+
+        Vector3 mousePos = Input.mousePosition;
+        mousePos.z = playerCamera.WorldToScreenPoint(transform.position).z;
+        return playerCamera.ScreenToWorldPoint(mousePos);
+    }
+
+    private void UpdateVisualFeedback()
+    {
+        if (pieceRenderer == null) return;
+
+        if (isBeingDragged)
+        {
+            pieceRenderer.material.color = dragColor;
+        }
+        else if (isHovered)
+        {
+            pieceRenderer.material.color = hoverColor;
+        }
+        else
+        {
+            pieceRenderer.material.color = originalColor;
+        }
+
+        // Hiển thị/ẩn highlight effect
+        if (highlightEffect != null)
+        {
+            highlightEffect.SetActive(isHovered || isBeingDragged);
         }
     }
 
@@ -59,7 +301,7 @@ public class PieceController : MonoBehaviourPun, IPunObservable
             Debug.LogWarning("HorseRacePathManager.Instance is null. Cannot save initial stable position.");
             return;
         }
-        
+
         // Tìm vị trí chuồng gần nhất khi khởi tạo
         List<Transform> stablePoints = HorseRacePathManager.Instance.GetStablePoints(playerColor);
         if (stablePoints.Count > 0)
@@ -85,6 +327,7 @@ public class PieceController : MonoBehaviourPun, IPunObservable
             }
         }
     }
+
     public void Move(int steps)
     {
         if (isMoving) return;
@@ -100,24 +343,40 @@ public class PieceController : MonoBehaviourPun, IPunObservable
             MoveLocal(steps);
         }
     }
-    
+
+    // Override để xử lý sắp xếp trong môi trường network
     protected virtual void MoveLocal(int steps)
     {
+        Debug.Log($"[NETWORK] MoveLocal called for {playerColor} piece, steps: {steps}");
+
         if (isMoving) return;
 
-        // Kiểm tra và sắp xếp các quân cờ trên ô hiện tại trước khi di chuyển
-        PieceArranger arranger = GetComponent<PieceArranger>();
-        if (arranger != null)
+        // Nếu đang drag thì kết thúc drag trước
+        if (isBeingDragged)
         {
-            arranger.ForceArrangeCheck();
-
-            // Đợi một frame để sắp xếp hoàn tất trước khi di chuyển
-            StartCoroutine(DelayedMove(steps, 0.1f));
-            return;
+            EndDrag();
         }
 
-        // Nếu không có arranger, di chuyển ngay
-        StartCoroutine(MoveStepByStep(steps));
+        // VÔ HIỆU HÓA TẠM THỜI PositionOptimizer và PieceArranger trong khi di chuyển
+        PositionOptimizer optimizer = GetComponent<PositionOptimizer>();
+        PieceArranger arranger = GetComponent<PieceArranger>();
+
+        if (optimizer != null)
+            optimizer.enabled = false;
+
+        if (arranger != null)
+            arranger.enabled = false;
+
+        // Nếu có PUN và là quân cờ của mình, gửi RPC
+        if (isNetworked && photonView.IsMine)
+        {
+            photonView.RPC("NetworkMove", RpcTarget.All, steps);
+        }
+        else
+        {
+            // Chạy local nếu không có PUN
+            StartCoroutine(MoveStepByStep(steps));
+        }
     }
 
     private IEnumerator DelayedMove(int steps, float delay)
@@ -126,7 +385,7 @@ public class PieceController : MonoBehaviourPun, IPunObservable
         StartCoroutine(MoveStepByStep(steps));
     }
 
-    private IEnumerator MoveStepByStep(int totalSteps)
+    protected IEnumerator MoveStepByStep(int totalSteps)
     {
         isMoving = true;
         hasValidMove = true;
@@ -166,14 +425,16 @@ public class PieceController : MonoBehaviourPun, IPunObservable
             yield break;
         }
 
+        // KIỂM TRA VÀ SẮP XẾP TRƯỚC TẠI ĐIỂM ĐẾN CUỐI CÙNG
+        int finalIndex = pathIndices[pathIndices.Count - 1];
+        yield return StartCoroutine(CheckAndArrangeAtDestination(finalIndex));
+
         // Di chuyển qua các điểm và kiểm tra đá quân tại mỗi điểm
         for (int i = 0; i < pathPoints.Count; i++)
         {
             Vector3 startPos = transform.position;
             Vector3 endPos = pathPoints[i];
             currentPathIndex = pathIndices[i];
-
-
 
             float duration = 0.3f;
             float elapsed = 0f;
@@ -197,6 +458,7 @@ public class PieceController : MonoBehaviourPun, IPunObservable
 
             // Kiểm tra và đá quân đối thủ tại điểm hiện tại
             CheckAndKickOpponentPieces(currentPathIndex);
+
             // Kiểm tra nếu quân cờ đã về đích
             if (WinConditionManager.Instance.IsPieceFinished(currentPathIndex, playerColor))
             {
@@ -204,6 +466,7 @@ public class PieceController : MonoBehaviourPun, IPunObservable
                 // Đánh dấu quân cờ đã hoàn thành
                 currentPathIndex = -2; // -2 = đã về đích
             }
+
             CheckAndShowCountryInfo(currentPathIndex);
         }
 
@@ -219,8 +482,23 @@ public class PieceController : MonoBehaviourPun, IPunObservable
             rb.linearVelocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;
         }
+
         isMoving = false;
+
+        // KÍCH HOẠT LẠI PositionOptimizer và PieceArranger sau khi di chuyển
+        PositionOptimizer optimizer = GetComponent<PositionOptimizer>();
+        PieceArranger arranger = GetComponent<PieceArranger>();
+
+        yield return new WaitForSeconds(0.1f); // Đợi một chút để ổn định
+
+        if (optimizer != null)
+            optimizer.enabled = true;
+
+        if (arranger != null)
+            arranger.enabled = true;
+
         CheckAndShowCountryInfo(currentPathIndex);
+
         if (hasValidMove)
         {
             GameTurnManager.Instance.PieceMoved();
@@ -259,7 +537,6 @@ public class PieceController : MonoBehaviourPun, IPunObservable
         }
     }
 
-    // Phương thức đá quân về chuồng
     // Phương thức đá quân về chuồng
     private void KickPieceToStable(PieceController piece)
     {
@@ -368,9 +645,6 @@ public class PieceController : MonoBehaviourPun, IPunObservable
         Debug.Log($"{piece.playerColor} bị đá về chuồng tại vị trí ban đầu");
     }
 
-
-
-
     public void ResetColor()
     {
         pieceRenderer.material.color = originalColor;
@@ -380,14 +654,15 @@ public class PieceController : MonoBehaviourPun, IPunObservable
     {
         if (collision.gameObject.CompareTag("Table"))
         {
+            // THÊM: Bỏ qua nếu đang di chuyển
+            if (isMoving) return;
+
             if (GameTurnManager.Instance == null || !GameTurnManager.Instance.isInitialized)
             {
-                //Debug.LogWarning("GameTurnManager is not ready!");
                 return;
             }
 
             // Kiểm tra nếu đặt vào vị trí hợp lệ
-            // Trong OnCollisionEnter, sửa phần xuất quân
             if (currentPathIndex == -1 &&
                 GameTurnManager.Instance.IsCurrentPlayer(playerColor) &&
                 DiceController.Instance.LastDiceValue == 6)
@@ -399,8 +674,7 @@ public class PieceController : MonoBehaviourPun, IPunObservable
                 if (isNearStable)
                 {
                     Transform startPoint = HorseRacePathManager.Instance.GetStartPoint(playerColor);
-                    
-                    // TẠM THỜI vô hiệu hóa PositionOptimizer để tránh can thiệp
+
                     PositionOptimizer optimizer = GetComponent<PositionOptimizer>();
                     if (optimizer != null)
                     {
@@ -412,21 +686,33 @@ public class PieceController : MonoBehaviourPun, IPunObservable
 
                     Debug.Log($"{playerColor} piece moved to start point at index {currentPathIndex}");
 
-                    // Sắp xếp ngay sau khi xuất quân
                     PieceArranger arranger = GetComponent<PieceArranger>();
                     if (arranger != null)
                     {
-                        arranger.ForceArrangeCheck(true); // Sắp xếp ngay lập tức
+                        arranger.ForceArrangeCheck(true);
                     }
 
-                    // Kích hoạt lại PositionOptimizer sau một khoảng thời gian ngắn
                     if (optimizer != null)
                     {
                         StartCoroutine(ReEnableOptimizerAfterDelay(optimizer, 1f));
                     }
 
-                    GameTurnManager.Instance.PieceMoved();
+                    // QUAN TRỌNG: XÓA dòng này để không kết thúc lượt ngay
+                    // GameTurnManager.Instance.PieceMoved();
+
+                    // Thay vào đó, chỉ cập nhật trạng thái của xúc xắc
+                    if (DiceController.Instance != null)
+                    {
+                        DiceController.Instance.hasRolledThisTurn = false; // Cho phép roll lại nếu có quân 6
+                        DiceController.Instance.diceButton.interactable = true; // Mở nút xúc xắc
+                    }
                 }
+            }
+            else if (currentPathIndex >= 0 &&
+                    GameTurnManager.Instance.IsCurrentPlayer(playerColor))
+            {
+                // Di chuyển quân theo số xúc xắc
+                Move(DiceController.Instance.LastDiceValue);
             }
         }
     }
@@ -456,6 +742,7 @@ public class PieceController : MonoBehaviourPun, IPunObservable
             }
         }
     }
+
     public Vector3 GetInitialStablePosition()
     {
         return initialStablePosition;
@@ -472,6 +759,10 @@ public class PieceController : MonoBehaviourPun, IPunObservable
             stream.SendNext(isMoving);
             stream.SendNext(currentPathIndex);
             stream.SendNext(playerColor);
+
+            // Gửi thêm dữ liệu drag
+            stream.SendNext(isBeingDragged);
+            stream.SendNext(isHovered);
         }
         else
         {
@@ -481,7 +772,11 @@ public class PieceController : MonoBehaviourPun, IPunObservable
             networkIsMoving = (bool)stream.ReceiveNext();
             networkPathIndex = (int)stream.ReceiveNext();
             PlayerColor networkPlayerColor = (PlayerColor)stream.ReceiveNext();
-            
+
+            // Nhận thêm dữ liệu drag
+            networkIsDragged = (bool)stream.ReceiveNext();
+            networkIsHovered = (bool)stream.ReceiveNext();
+
             // Cập nhật nếu không phải là quân cờ của mình
             if (!photonView.IsMine)
             {
@@ -497,7 +792,7 @@ public class PieceController : MonoBehaviourPun, IPunObservable
         {
             transform.position = Vector3.Lerp(transform.position, networkPosition, Time.deltaTime * 10f);
         }
-        
+
         if (Quaternion.Angle(transform.rotation, networkRotation) > 1f)
         {
             transform.rotation = Quaternion.Lerp(transform.rotation, networkRotation, Time.deltaTime * 10f);
@@ -513,6 +808,17 @@ public class PieceController : MonoBehaviourPun, IPunObservable
         if (currentPathIndex != networkPathIndex)
         {
             currentPathIndex = networkPathIndex;
+        }
+
+        // Cập nhật drag state
+        if (networkIsDragged != isBeingDragged)
+        {
+            isBeingDragged = networkIsDragged;
+        }
+
+        if (networkIsHovered != isHovered)
+        {
+            isHovered = networkIsHovered;
         }
     }
 
@@ -549,9 +855,56 @@ public class PieceController : MonoBehaviourPun, IPunObservable
         }
     }
 
+    // Network RPC Methods
+    [PunRPC]
+    public void NetworkStartDrag(Vector3 position)
+    {
+        if (!photonView.IsMine)
+        {
+            isBeingDragged = true;
+            transform.position = position;
+        }
+    }
 
+    [PunRPC]
+    public void NetworkUpdateDragPosition(Vector3 position)
+    {
+        if (!photonView.IsMine)
+        {
+            transform.position = position;
+        }
+    }
 
-    // Kiểm tra và hiển thị thông tin quốc gia
+    [PunRPC]
+    public void NetworkEndDrag(Vector3 position, bool isValid)
+    {
+        if (!photonView.IsMine)
+        {
+            isBeingDragged = false;
+            transform.position = position;
+        }
+    }
+
+    [PunRPC]
+    public void NetworkSetHovered(bool hovered)
+    {
+        if (!photonView.IsMine)
+        {
+            isHovered = hovered;
+        }
+    }
+
+    // Public methods để kiểm tra trạng thái
+    public bool IsBeingDragged()
+    {
+        return isBeingDragged;
+    }
+
+    public bool IsHovered()
+    {
+        return isHovered;
+    }
+
     // Kiểm tra và hiển thị thông tin quốc gia
     private void CheckAndShowCountryInfo(int pointIndex)
     {
@@ -590,6 +943,48 @@ public class PieceController : MonoBehaviourPun, IPunObservable
         {
             Debug.Log($"[DEBUG] Point {pointIndex} is NOT a country point for {playerColor}");
             lastCountryPointIndex = -1;
+        }
+    }
+
+    // Thêm phương thức mới để kiểm tra và sắp xếp các quân cờ cùng màu tại điểm đến
+    private IEnumerator CheckAndArrangeAtDestination(int targetIndex)
+    {
+        // Tìm tất cả quân cờ cùng màu tại điểm đến
+        List<PieceController> piecesAtDestination = new List<PieceController>();
+
+        PieceController[] allPieces = FindObjectsByType<PieceController>(FindObjectsSortMode.None);
+        foreach (PieceController piece in allPieces)
+        {
+            if (piece.playerColor == playerColor &&
+                piece.currentPathIndex == targetIndex &&
+                piece != this)
+            {
+                piecesAtDestination.Add(piece);
+            }
+        }
+
+        // Nếu có quân cờ cùng màu tại điểm đến, sắp xếp chúng trước
+        if (piecesAtDestination.Count > 0)
+        {
+            // Tìm tất cả PieceArranger tại điểm đến và sắp xếp
+            List<PieceArranger> arrangers = new List<PieceArranger>();
+            foreach (PieceController piece in piecesAtDestination)
+            {
+                PieceArranger arranger = piece.GetComponent<PieceArranger>();
+                if (arranger != null)
+                {
+                    arrangers.Add(arranger);
+                }
+            }
+
+            // Sắp xếp ngay lập tức
+            foreach (PieceArranger arranger in arrangers)
+            {
+                arranger.ForceArrangeCheck(true); // Sắp xếp ngay lập tức
+            }
+
+            // Đợi một chút để hoàn thành sắp xếp
+            yield return new WaitForSeconds(0.2f);
         }
     }
 }

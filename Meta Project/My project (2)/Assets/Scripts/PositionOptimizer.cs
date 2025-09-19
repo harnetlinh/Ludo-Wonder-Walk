@@ -68,6 +68,17 @@ public class PositionOptimizer : MonoBehaviour
         if (pieceController.isMoving || pieceController.currentPathIndex == -1 || pieceController.currentPathIndex == -2 || isBeingHandled)
             return;
 
+        // THÊM: Bỏ qua nếu đang trong quá trình sắp xếp
+        if (PieceArranger.IsAnyPieceBeingArranged())
+            return;
+
+        // THÊM: Bỏ qua nếu đang trong quá trình sắp xếp
+        PieceArranger arranger = GetComponent<PieceArranger>();
+        if (arranger != null && arranger.enabled && arranger.IsBeingArranged())
+        {
+            return;
+        }
+
         // THÊM: Bỏ qua nếu không phải lượt của người chơi này
         if (GameTurnManager.Instance != null && !GameTurnManager.Instance.IsCurrentPlayer(pieceController.playerColor))
             return;
@@ -77,7 +88,7 @@ public class PositionOptimizer : MonoBehaviour
             return;
 
         // Kiểm tra xem có đang trong quá trình sắp xếp không
-        PieceArranger arranger = GetComponent<PieceArranger>();
+        //PieceArranger arranger = GetComponent<PieceArranger>();
         if (arranger != null && arranger.IsBeingArranged())
         {
             return; // Bỏ qua nếu đang sắp xếp

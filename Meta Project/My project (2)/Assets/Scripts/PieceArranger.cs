@@ -101,9 +101,14 @@ public class PieceArranger : MonoBehaviour
     // Sắp xếp các quân cờ
     // Thêm property để kiểm tra trạng thái sắp xếp từ bên ngoài
     public bool IsBeingArranged()
-    {
-        return isBeingArranged;
-    }
+{
+    // Thêm điều kiện kiểm tra nếu quân cờ đang di chuyển
+    PieceController pc = GetComponent<PieceController>();
+    if (pc != null && pc.isMoving)
+        return true;
+        
+    return isBeingArranged;
+}
 
     // Sửa phương thức ArrangePieces để phối hợp với Optimizer
     private IEnumerator ArrangePieces(List<PieceController> pieces)
@@ -372,5 +377,20 @@ public class PieceArranger : MonoBehaviour
                 CheckAndArrangePieces();
             }
         }
+    }
+
+
+    // Thêm phương thức kiểm tra xem có bất kỳ quân cờ nào đang được sắp xếp không
+    public static bool IsAnyPieceBeingArranged()
+    {
+        PieceArranger[] allArrangers = FindObjectsByType<PieceArranger>(FindObjectsSortMode.None);
+        foreach (PieceArranger arranger in allArrangers)
+        {
+            if (arranger.IsBeingArranged())
+            {
+                return true;
+            }
+        }
+        return false;
     }
 }

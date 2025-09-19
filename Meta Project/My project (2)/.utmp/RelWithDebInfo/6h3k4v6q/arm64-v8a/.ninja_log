@@ -1,10 +1,10 @@
 # ninja log v5
-24	2388	7796945453176287	GameActivity/CMakeFiles/game.dir/UGAInputKeyEvent.cpp.o	ad9bba38b9caf86e
-10	2410	7796945453470371	GameActivity/CMakeFiles/game.dir/UGAConfiguration.cpp.o	26fd5e6ddf307028
-34	2414	7796945453551580	GameActivity/CMakeFiles/game.dir/UGAEntry.cpp.o	fade53e3477e2da6
-49	2460	7796945454039047	GameActivity/CMakeFiles/game.dir/UGAInputMotionEvent.cpp.o	d58d0e0c17eaba17
-1	2516	7796945454579630	GameActivity/CMakeFiles/game.dir/UGADebug.cpp.o	7a70a0da083f8f9
-40	2661	7796945456006415	GameActivity/CMakeFiles/game.dir/UGASoftKeyboard.cpp.o	9d918871600dd9a4
-29	2860	7796945458126913	GameActivity/CMakeFiles/game.dir/UGAInput.cpp.o	291e41fec15bf76b
-18	2958	7796945459064441	GameActivity/CMakeFiles/game.dir/UGAApplication.cpp.o	b00a37fa910d81e4
-2959	3078	7796945460250269	D:/GIT/Ludo-Wonder-Walk/Meta Project/My project (2)/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/RelWithDebInfo/6h3k4v6q/obj/arm64-v8a/libgame.so	24c3979150589561
+22	2586	7798530875990266	GameActivity/CMakeFiles/game.dir/UGAInputKeyEvent.cpp.o	ad9bba38b9caf86e
+9	2604	7798530876055962	GameActivity/CMakeFiles/game.dir/UGAConfiguration.cpp.o	26fd5e6ddf307028
+13	2619	7798530876242548	GameActivity/CMakeFiles/game.dir/UGAEntry.cpp.o	fade53e3477e2da6
+5	2761	7798530877740366	GameActivity/CMakeFiles/game.dir/UGADebug.cpp.o	7a70a0da083f8f9
+32	2768	7798530877851610	GameActivity/CMakeFiles/game.dir/UGAInputMotionEvent.cpp.o	d58d0e0c17eaba17
+27	2948	7798530879622365	GameActivity/CMakeFiles/game.dir/UGASoftKeyboard.cpp.o	9d918871600dd9a4
+17	3135	7798530881537910	GameActivity/CMakeFiles/game.dir/UGAInput.cpp.o	291e41fec15bf76b
+1	3294	7798530883079471	GameActivity/CMakeFiles/game.dir/UGAApplication.cpp.o	b00a37fa910d81e4
+3295	3430	7798530884467086	D:/GIT/Ludo-Wonder-Walk/Meta Project/My project (2)/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/RelWithDebInfo/6h3k4v6q/obj/arm64-v8a/libgame.so	24c3979150589561
