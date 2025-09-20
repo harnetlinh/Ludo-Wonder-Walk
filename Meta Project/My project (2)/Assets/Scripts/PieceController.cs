@@ -53,10 +53,19 @@ public class PieceController : MonoBehaviourPun, IPunObservable
     private int networkPathIndex;
     protected bool isNetworked = false;
 
+    [Header("Network Sync Settings")]
+    public float positionLerpSpeed = 10f;
+    public float rotationLerpSpeed = 10f;
+
+    
     // Network synchronization
     private Vector3 networkDragPosition;
     private bool networkIsDragged;
     private bool networkIsHovered;
+
+    // Thêm biến để xử lý đồng bộ mượt mà
+    private Vector3 networkVelocity;
+    private bool isBeingHeld = false;
 
     protected virtual void Start()
     {
@@ -75,6 +84,13 @@ public class PieceController : MonoBehaviourPun, IPunObservable
             networkRotation = transform.rotation;
             networkPathIndex = currentPathIndex;
             networkIsMoving = isMoving;
+
+            // Cải thiện cài đặt vật lý để đồng bộ mượt mà hơn
+            if (pieceRigidbody != null)
+            {
+                pieceRigidbody.interpolation = RigidbodyInterpolation.Interpolate;
+                pieceRigidbody.collisionDetectionMode = CollisionDetectionMode.Continuous;
+            }
         }
 
         // Lấy các component cần thiết cho drag
@@ -100,10 +116,58 @@ public class PieceController : MonoBehaviourPun, IPunObservable
     protected virtual void Update()
     {
         // Chỉ xử lý input nếu là quân cờ của mình hoặc offline mode
-        if (isNetworked && !photonView.IsMine) return;
+        if (isNetworked && !photonView.IsMine)
+        {
+            SmoothSync();
+            return;
+        }
 
         HandleInput();
         UpdateVisualFeedback();
+    }
+
+    // Thêm phương thức SmoothSync tương tự như trong NetworkDiceSync
+    private void SmoothSync()
+    {
+        // Nếu đang được cầm/drag, sử dụng interpolation vị trí thông thường
+        if (isBeingHeld || networkIsDragged)
+        {
+            transform.position = Vector3.Lerp(transform.position, networkPosition, Time.deltaTime * positionLerpSpeed);
+            transform.rotation = Quaternion.Lerp(transform.rotation, networkRotation, Time.deltaTime * rotationLerpSpeed);
+        }
+        else
+        {
+            // Đối với vật thể vật lý không được cầm, sử dụng interpolation vật lý
+            if (pieceRigidbody != null && !pieceRigidbody.isKinematic)
+            {
+                // Sử dụng Velocity-based interpolation để mượt mà hơn
+                Vector3 targetVelocity = (networkPosition - transform.position) * positionLerpSpeed;
+                pieceRigidbody.linearVelocity = Vector3.Lerp(pieceRigidbody.linearVelocity, targetVelocity, Time.deltaTime * 5f);
+
+                // Đồng bộ xoay thông qua angular velocity
+                Quaternion rotationDiff = networkRotation * Quaternion.Inverse(transform.rotation);
+                rotationDiff.ToAngleAxis(out float angle, out Vector3 axis);
+
+                if (angle > 180f) angle -= 360f;
+                if (Mathf.Abs(angle) > 0.5f)
+                {
+                    Vector3 angularVelocity = (axis * angle * Mathf.Deg2Rad) * rotationLerpSpeed;
+                    pieceRigidbody.angularVelocity = Vector3.Lerp(pieceRigidbody.angularVelocity, angularVelocity, Time.deltaTime * 5f);
+                }
+            }
+            else
+            {
+                // Fallback: interpolation thông thường
+                transform.position = Vector3.Lerp(transform.position, networkPosition, Time.deltaTime * positionLerpSpeed);
+                transform.rotation = Quaternion.Lerp(transform.rotation, networkRotation, Time.deltaTime * rotationLerpSpeed);
+            }
+        }
+
+        // Cập nhật các trạng thái khác từ network
+        isMoving = networkIsMoving;
+        currentPathIndex = networkPathIndex;
+        isBeingDragged = networkIsDragged;
+        isHovered = networkIsHovered;
     }
 
     private void HandleInput()
@@ -511,6 +575,8 @@ public class PieceController : MonoBehaviourPun, IPunObservable
         }
     }
 
+
+
     // Phương thức kiểm tra và đá quân đối thủ
     private void CheckAndKickOpponentPieces(int pathIndex)
     {
@@ -763,6 +829,14 @@ public class PieceController : MonoBehaviourPun, IPunObservable
             // Gửi thêm dữ liệu drag
             stream.SendNext(isBeingDragged);
             stream.SendNext(isHovered);
+
+            // Gửi thông tin vật lý
+            if (pieceRigidbody != null)
+            {
+                stream.SendNext(pieceRigidbody.linearVelocity);
+                stream.SendNext(pieceRigidbody.angularVelocity);
+                stream.SendNext(isBeingHeld);
+            }
         }
         else
         {
@@ -777,12 +851,47 @@ public class PieceController : MonoBehaviourPun, IPunObservable
             networkIsDragged = (bool)stream.ReceiveNext();
             networkIsHovered = (bool)stream.ReceiveNext();
 
+            // Nhận thông tin vật lý
+            if (pieceRigidbody != null)
+            {
+                networkVelocity = (Vector3)stream.ReceiveNext();
+                Vector3 networkAngularVelocity = (Vector3)stream.ReceiveNext();
+                isBeingHeld = (bool)stream.ReceiveNext();
+
+                // Nếu đang được cầm, tắt vật lý tạm thời
+                if (isBeingHeld)
+                {
+                    pieceRigidbody.isKinematic = true;
+                }
+                else
+                {
+                    pieceRigidbody.isKinematic = false;
+                }
+            }
+
             // Cập nhật nếu không phải là quân cờ của mình
             if (!photonView.IsMine)
             {
-                UpdateFromNetwork();
+                // Không cần gọi UpdateFromNetwork() nữa vì đã có SmoothSync()
             }
         }
+    }
+
+    [PunRPC]
+    public void NetworkMove(int steps)
+    {
+        // Thêm kiểm tra để đảm bảo chỉ xử lý khi không phải là quân cờ của mình
+        if (!photonView.IsMine)
+        {
+            // Tạm thời vô hiệu hóa vật lý khi di chuyển từ network
+            if (pieceRigidbody != null)
+            {
+                pieceRigidbody.isKinematic = true;
+                pieceRigidbody.useGravity = false;
+            }
+        }
+
+        MoveLocal(steps);
     }
 
     private void UpdateFromNetwork()
@@ -823,11 +932,7 @@ public class PieceController : MonoBehaviourPun, IPunObservable
     }
 
     // RPC để di chuyển quân cờ
-    [PunRPC]
-    public void NetworkMove(int steps)
-    {
-        MoveLocal(steps);
-    }
+    
 
     // RPC để đặt quân cờ về chuồng
     [PunRPC]
@@ -891,6 +996,23 @@ public class PieceController : MonoBehaviourPun, IPunObservable
         if (!photonView.IsMine)
         {
             isHovered = hovered;
+        }
+    }
+
+    [PunRPC]
+    private void RPC_SetHeldState(bool heldState)
+    {
+        isBeingHeld = heldState;
+
+        if (pieceRigidbody != null)
+        {
+            pieceRigidbody.isKinematic = heldState;
+
+            // Nếu vừa được thả ra, áp dụng velocity từ network
+            if (!heldState)
+            {
+                pieceRigidbody.linearVelocity = networkVelocity;
+            }
         }
     }
 
