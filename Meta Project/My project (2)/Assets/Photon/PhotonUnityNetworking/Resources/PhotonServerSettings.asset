@@ -58,6 +58,18 @@ MonoBehaviour:
   - SetGrabbed
   - SetHighlighted
   - SpinObject
+  - NetworkResetDice
+  - RPC_ForceSync
+  - RPC_SetHeldState
+  - RPC_SetColor
+  - RPC_SetFontSize
+  - RPC_SetText
+  - RPC_SetVisible
+  - RPC_SetPhysicsState
+  - RPC_UpdatePhysics
+  - NetworkRealtimeSync
+  - NetworkUpdateDragPositionRealtime
+  - RPC_ForceSyncPiece
   DisableAutoOpenWizard: 1
   ShowSettings: 1
   DevRegionSetOnce: 1

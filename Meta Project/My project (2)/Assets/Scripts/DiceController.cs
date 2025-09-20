@@ -10,7 +10,7 @@ public class DiceController : MonoBehaviourPun, IPunObservable
     public static DiceController Instance { get; private set; }
 
     public Button diceButton;
-    public TextMeshPro diceResultText;
+    public TextMeshProUGUI diceResultText;
     public int LastDiceValue { get; private set; }
     public float autoRollDelay = 1f;
     public DiceFaceDetector diceFaceDetector;
@@ -43,7 +43,7 @@ public class DiceController : MonoBehaviourPun, IPunObservable
     public bool hasRolledThisTurn = false; // Thêm biến này để theo dõi đã xúc xắc trong lượt này chưa
 
 
-    public TextMeshPro statusText; // Tham chiếu đến UI Text để hiển thị trạng thái
+    public TextMeshProUGUI statusText; // Tham chiếu đến UI Text để hiển thị trạng thái
 
 
     [Header("Dice Movement Settings")]
@@ -124,7 +124,7 @@ public class DiceController : MonoBehaviourPun, IPunObservable
         }
     }
 
-    
+
 
 
     private PlayerColor GetCurrentPlayer()
@@ -389,6 +389,13 @@ public class DiceController : MonoBehaviourPun, IPunObservable
         diceFaceDetector.hasLanded = false;
 
         isMovingToPlayer = false; // <-- TẮT CỜ: đã di chuyển xong
+
+
+        NetworkDiceSync diceSync = diceFaceDetector.GetComponent<NetworkDiceSync>();
+        if (diceSync != null)
+        {
+            diceSync.ForceNetworkSync();
+        }
     }
 
     // Sửa phương thức EnableDiceForCurrentPlayer
@@ -425,7 +432,7 @@ public class DiceController : MonoBehaviourPun, IPunObservable
             networkIsRolling = (bool)stream.ReceiveNext();
             networkCurrentPlayer = (PlayerColor)stream.ReceiveNext();
             bool networkHasRolled = (bool)stream.ReceiveNext();
-            
+
             // Cập nhật nếu không phải là master client
             if (!photonView.IsMine)
             {
