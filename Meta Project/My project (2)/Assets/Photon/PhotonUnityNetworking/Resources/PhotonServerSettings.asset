@@ -70,6 +70,40 @@ MonoBehaviour:
   - NetworkRealtimeSync
   - NetworkUpdateDragPositionRealtime
   - RPC_ForceSyncPiece
+  - RequestOwnershipRPC
+  - RPC_SetDiceHeldState
+  - RPC_SetPieceGrabbedState
+  - TransferOwnershipRPC
+  - BroadcastToAll
+  - ReceiveFromClient
+  - BroadcastEventToAll
+  - ReceiveClientEvent
+  - SyncDiceResult
+  - NetworkSyncDiceResult
+  - RPC_RequestOwnership
+  - RPC_SetDiceHeld
+  - RPC_SetPieceGrabbed
+  - TestRPC
+  - RPC_ForceDiceSync
+  - RPC_RequestDiceSync
+  - NetworkSetHeldState
+  - RPC_EnableGlobalControl
+  - RPC_MakeObjectPublic
+  - RPC_SyncGameState
+  - NetworkStartDragFromClient
+  - RequestDiceOwnership
+  - RequestPieceOwnership
+  - NetworkPlayerAction
+  - RequestObjectOwnership
+  - SyncPlayerAction
+  - RPC_ChangeTurn
+  - NetworkSyncCriticalState
+  - RPC_ApproveOwnershipTransfer
+  - RPC_RequestEndTurn
+  - RPC_RequestMoveFromClient
+  - RPC_RequestOwnershipTransfer
+  - RPC_RequestRollDice
+  - RPC_SyncPlayerColors
   DisableAutoOpenWizard: 1
   ShowSettings: 1
   DevRegionSetOnce: 1

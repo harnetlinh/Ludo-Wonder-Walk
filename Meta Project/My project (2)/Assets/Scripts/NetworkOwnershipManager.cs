@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class eye : MonoBehaviour
+public class NetworkOwnershipManager : MonoBehaviour
 {
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
