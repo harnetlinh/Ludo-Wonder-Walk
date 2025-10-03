@@ -2,265 +2,174 @@
 using Photon.Pun;
 using Photon.Realtime;
 
-[RequireComponent(typeof(PhotonView), typeof(Rigidbody))]
-public class NetworkDiceSync : MonoBehaviourPun, IPunObservable
+[RequireComponent(typeof(PhotonView), typeof(Rigidbody), typeof(PhotonTransformView))]
+public class NetworkDiceSync : MonoBehaviourPun, IPunOwnershipCallbacks
 {
-    [Header("Network Sync Settings")]
-    public float positionLerpSpeed = 10f;
-    public float rotationLerpSpeed = 10f;
-    public float velocityThreshold = 0.1f;
+    [Header("Ownership & Global Rates")]
+    public bool useOwnershipTransfer = true;
+    public int desiredSendRate = 60;
+    public int desiredSerializationRate = 60;
 
     private Rigidbody rb;
-    private Vector3 networkPosition;
-    private Quaternion networkRotation;
-    private Vector3 networkVelocity;
-    private Vector3 networkAngularVelocity;
-    private bool isBeingHeld = false;
-
-    // Tham chiếu đến GrabDice để kiểm tra trạng thái cầm xúc xắc
-    private GrabDice grabDice;
+    private PhotonTransformViewClassic transformView;
+    private bool isKinematicOverride = false;
 
     void Start()
     {
         rb = GetComponent<Rigidbody>();
-        grabDice = GetComponent<GrabDice>();
+        transformView = GetComponent<PhotonTransformViewClassic>();
+        PhotonNetwork.AddCallbackTarget(this);
 
-        // Khởi tạo network variables
-        networkPosition = transform.position;
-        networkRotation = transform.rotation;
-        networkVelocity = Vector3.zero;
-        networkAngularVelocity = Vector3.zero;
-
-        // Cải thiện cài đặt vật lý để đồng bộ mượt mà hơn
+        // Cấu hình Rigidbody để đồng bộ tốt hơn
         if (rb != null)
         {
             rb.interpolation = RigidbodyInterpolation.Interpolate;
-            rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
+            rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+
+            // Đảm bảo Rigidbody không kinematic mặc định
+            if (photonView.IsMine)
+            {
+                rb.isKinematic = false;
+            }
+            else
+            {
+                // Client khác: tạm thời kinematic để tránh vật lý không đồng bộ
+                rb.isKinematic = true;
+            }
         }
 
-        // Đặt tốc độ đồng bộ cao hơn trong Photon
-        if (photonView != null)
+        // Nâng tick rates để gần FPS
+        if (desiredSendRate > 0)
         {
-            photonView.Synchronization = ViewSynchronization.UnreliableOnChange;
-            photonView.ObservedComponents.Clear();
-            photonView.ObservedComponents.Add(this);
+            PhotonNetwork.SendRate = desiredSendRate;
+        }
+        if (desiredSerializationRate > 0)
+        {
+            PhotonNetwork.SerializationRate = desiredSerializationRate;
+        }
+
+        // Master client sở hữu tất cả objects ban đầu
+        if (PhotonNetwork.IsMasterClient && !photonView.IsMine)
+        {
+            photonView.TransferOwnership(PhotonNetwork.LocalPlayer);
         }
     }
 
-    void Update()
+    void OnDestroy()
     {
-        // Chỉ xử lý đồng bộ nếu không phải là client điều khiển object này
-        if (!photonView.IsMine)
-        {
-            SmoothSync();
-        }
+        PhotonNetwork.RemoveCallbackTarget(this);
     }
 
     void FixedUpdate()
     {
-        // Nếu là client điều khiển, gửi thông tin vật lý
-        if (photonView.IsMine)
+        // Chỉ request ownership khi cần thiết, không phải mọi frame
+        if (useOwnershipTransfer && !photonView.IsMine && ShouldRequestOwnership())
         {
-            UpdateNetworkPhysics();
+            photonView.RequestOwnership();
         }
     }
 
-    //private void UpdateNetworkPhysics()
-    //{
-    //    // Kiểm tra nếu xúc xắc đang được cầm
-    //    bool currentlyHeld = (grabDice != null && grabDice.IsBeingHeld());
-
-    //    // Nếu trạng thái thay đổi, gửi RPC
-    //    if (currentlyHeld != isBeingHeld)
-    //    {
-    //        isBeingHeld = currentlyHeld;
-    //        photonView.RPC("RPC_SetHeldState", RpcTarget.Others, isBeingHeld);
-    //    }
-    //}
-
-    // Trong phương thức SmoothSync()
-    private void SmoothSync()
+    private bool ShouldRequestOwnership()
     {
-        // Nếu đang được cầm, sử dụng interpolation vị trí thông thường
-        if (isBeingHeld)
+        // Chỉ request ownership khi người chơi tương tác với xúc xắc
+        GrabDice grabDice = GetComponent<GrabDice>();
+        if (grabDice != null && grabDice.IsBeingHeld())
         {
-            transform.position = Vector3.Lerp(transform.position, networkPosition, Time.deltaTime * positionLerpSpeed);
-            transform.rotation = Quaternion.Lerp(transform.rotation, networkRotation, Time.deltaTime * rotationLerpSpeed);
+            return true;
         }
-        else
+
+        // Hoặc khi xúc xắc đang di chuyển mạnh
+        if (rb != null && rb.linearVelocity.magnitude > 0.1f)
         {
-            // Đối với vật thể vật lý không được cầm, sử dụng interpolation vật lý
-            if (rb != null && !rb.isKinematic)
-            {
-                // Sử dụng Velocity-based interpolation để mượt mà hơn
-                Vector3 targetVelocity = (networkPosition - transform.position) * positionLerpSpeed;
-                rb.linearVelocity = Vector3.Lerp(rb.linearVelocity, targetVelocity, Time.deltaTime * 5f);
+            return true;
+        }
 
-                // Đồng bộ xoay thông qua angular velocity
-                Quaternion rotationDiff = networkRotation * Quaternion.Inverse(transform.rotation);
-                rotationDiff.ToAngleAxis(out float angle, out Vector3 axis);
+        return false;
+    }
 
-                if (angle > 180f) angle -= 360f;
-                if (Mathf.Abs(angle) > 0.5f)
-                {
-                    Vector3 angularVelocity = (axis * angle * Mathf.Deg2Rad) * rotationLerpSpeed;
-                    rb.angularVelocity = Vector3.Lerp(rb.angularVelocity, angularVelocity, Time.deltaTime * 5f);
-                }
-            }
-            else
-            {
-                // Fallback: interpolation thông thường
-                transform.position = Vector3.Lerp(transform.position, networkPosition, Time.deltaTime * positionLerpSpeed);
-                transform.rotation = Quaternion.Lerp(transform.rotation, networkRotation, Time.deltaTime * rotationLerpSpeed);
-            }
+    // Ownership callbacks
+    public void OnOwnershipRequest(PhotonView targetView, Player requestingPlayer)
+    {
+        if (targetView == photonView && useOwnershipTransfer)
+        {
+            // Luôn chấp nhận yêu cầu ownership
+            photonView.TransferOwnership(requestingPlayer);
         }
     }
 
-    // Thêm phương thức để cập nhật vật lý mượt mà hơn
-    private void UpdateNetworkPhysics()
+    public void OnOwnershipTransfered(PhotonView targetView, Player previousOwner)
     {
-        // Kiểm tra nếu xúc xắc đang được cầm
-        bool currentlyHeld = (grabDice != null && grabDice.IsBeingHeld());
-
-        // Nếu trạng thái thay đổi, gửi RPC
-        if (currentlyHeld != isBeingHeld)
+        if (targetView == photonView)
         {
-            isBeingHeld = currentlyHeld;
-            photonView.RPC("RPC_SetHeldState", RpcTarget.Others, isBeingHeld);
+            Debug.Log($"Dice ownership transferred to: {targetView.Owner?.NickName}");
 
-            // Đồng bộ ngay lập tức khi thay đổi trạng thái
-            if (photonView.IsMine)
-            {
-                photonView.RPC("RPC_ForceSync", RpcTarget.Others,
-                    transform.position,
-                    transform.rotation,
-                    rb != null ? rb.linearVelocity : Vector3.zero,
-                    rb != null ? rb.angularVelocity : Vector3.zero);
-            }
-        }
-
-        // Gửi update thường xuyên hơn cho vật thể đang di chuyển
-        if (photonView.IsMine && rb != null && rb.linearVelocity.magnitude > 0.1f)
-        {
-            // Gửi update vật lý mỗi 0.1s cho vật thể đang di chuyển nhanh
-            if (Time.frameCount % 6 == 0) // ~10 lần/giây
-            {
-                photonView.RPC("RPC_UpdatePhysics", RpcTarget.Others,
-                    transform.position,
-                    transform.rotation,
-                    rb.linearVelocity,
-                    rb.angularVelocity);
-            }
-        }
-    }
-
-    [PunRPC]
-    private void RPC_UpdatePhysics(Vector3 position, Quaternion rotation, Vector3 velocity, Vector3 angularVelocity)
-    {
-        if (!photonView.IsMine)
-        {
-            networkPosition = position;
-            networkRotation = rotation;
-            networkVelocity = velocity;
-            networkAngularVelocity = angularVelocity;
-
-            // Áp dụng ngay lập tức cho vật thể vật lý
-            if (rb != null && !isBeingHeld)
-            {
-                rb.linearVelocity = velocity;
-                rb.angularVelocity = angularVelocity;
-            }
-        }
-    }
-
-    public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
-    {
-        if (stream.IsWriting)
-        {
-            // Gửi dữ liệu đến các client khác
-            stream.SendNext(transform.position);
-            stream.SendNext(transform.rotation);
-
-            // Gửi thông tin vật lý
+            // Cập nhật trạng thái Rigidbody khi ownership thay đổi
             if (rb != null)
             {
-                stream.SendNext(rb.linearVelocity);
-                stream.SendNext(rb.angularVelocity);
-                stream.SendNext(isBeingHeld);
-            }
-        }
-        else
-        {
-            // Nhận dữ liệu từ master client
-            networkPosition = (Vector3)stream.ReceiveNext();
-            networkRotation = (Quaternion)stream.ReceiveNext();
-
-            if (rb != null)
-            {
-                networkVelocity = (Vector3)stream.ReceiveNext();
-                networkAngularVelocity = (Vector3)stream.ReceiveNext();
-                isBeingHeld = (bool)stream.ReceiveNext();
-
-                // Nếu đang được cầm, tắt vật lý tạm thời
-                if (isBeingHeld)
+                if (photonView.IsMine)
                 {
-                    rb.isKinematic = true;
+                    rb.isKinematic = isKinematicOverride;
                 }
                 else
                 {
-                    rb.isKinematic = false;
+                    rb.isKinematic = true;
                 }
             }
         }
     }
 
-    [PunRPC]
-    private void RPC_SetHeldState(bool heldState)
+    public void OnOwnershipTransferFailed(PhotonView targetView, Player senderOfFailedRequest)
     {
-        isBeingHeld = heldState;
+        Debug.LogWarning($"Dice ownership transfer failed for: {senderOfFailedRequest.NickName}");
+    }
 
+    // Phương thức để chuyển ownership ngay lập tức
+    public void RequestOwnership()
+    {
+        if (!photonView.IsMine && useOwnershipTransfer)
+        {
+            photonView.RequestOwnership();
+        }
+    }
+
+    // Phương thức để tạm thời override kinematic state
+    public void SetKinematic(bool kinematic, bool isOverride = false)
+    {
         if (rb != null)
         {
-            rb.isKinematic = heldState;
-
-            // Nếu vừa được thả ra, áp dụng velocity từ network
-            if (!heldState)
+            if (isOverride)
             {
-                rb.linearVelocity = networkVelocity;
-                rb.angularVelocity = networkAngularVelocity;
+                isKinematicOverride = kinematic;
+            }
+
+            if (photonView.IsMine)
+            {
+                rb.isKinematic = kinematic;
             }
         }
     }
 
-    // Phương thức để force sync khi cần thiết (ví dụ khi di chuyển xúc xắc đến người chơi)
-    [PunRPC]
-    public void RPC_ForceSync(Vector3 position, Quaternion rotation, Vector3 velocity, Vector3 angularVelocity)
+    // Gọi khi bắt đầu tương tác với xúc xắc
+    public void OnStartInteraction()
     {
-        networkPosition = position;
-        networkRotation = rotation;
-        networkVelocity = velocity;
-        networkAngularVelocity = angularVelocity;
-
-        transform.position = position;
-        transform.rotation = rotation;
-
-        if (rb != null)
-        {
-            rb.linearVelocity = velocity;
-            rb.angularVelocity = angularVelocity;
-        }
+        RequestOwnership();
+        SetKinematic(false);
     }
 
-    // Gọi phương thức này khi di chuyển xúc xắc đến người chơi
-    public void ForceNetworkSync()
+    // Gọi khi kết thúc tương tác với xúc xắc
+    public void OnEndInteraction()
     {
-        if (photonView.IsMine)
+        // Giữ ownership một lúc sau khi thả để đồng bộ vật lý
+        Invoke("ReleaseOwnershipIfNeeded", 2f);
+    }
+
+    private void ReleaseOwnershipIfNeeded()
+    {
+        // Chỉ master client mới nên giữ ownership khi không có ai tương tác
+        if (photonView.IsMine && !PhotonNetwork.IsMasterClient)
         {
-            photonView.RPC("RPC_ForceSync", RpcTarget.Others,
-                transform.position,
-                transform.rotation,
-                Vector3.zero,
-                Vector3.zero);
+            // Chuyển ownership về master client
+            photonView.TransferOwnership(PhotonNetwork.MasterClient);
         }
     }
 }

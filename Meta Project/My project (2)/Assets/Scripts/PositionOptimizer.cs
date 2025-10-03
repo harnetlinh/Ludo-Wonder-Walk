@@ -95,10 +95,16 @@ public class PositionOptimizer : MonoBehaviour
         }
 
         // THÊM: Kiểm tra xem có đang được grab không
-        GrapPiece grabPiece = GetComponent<GrapPiece>();
+        GrabPiece grabPiece = GetComponent<GrabPiece>();
         if (grabPiece != null)
         {
             // Nếu có GrapPiece component, có thể đang được cầm
+            return;
+        }
+
+        // THÊM: Bỏ qua nếu vừa được thả và chưa qua thời gian chờ
+        if (wasReleased && Time.time - releaseTime < STABLE_CHECK_DELAY * 2f)
+        {
             return;
         }
 
@@ -118,7 +124,7 @@ public class PositionOptimizer : MonoBehaviour
 
         // TĂNG ngưỡng reset để tránh can thiệp khi người chơi đang di chuyển quân
         float dynamicThreshold = resetDistanceThreshold;
-        
+
         // Nếu quân cờ vừa được xuất (ở vị trí xuất phát), cho phép khoảng cách lớn hơn
         Transform startPoint = HorseRacePathManager.Instance.GetStartPoint(pieceController.playerColor);
         if (correctPosition == startPoint)
@@ -146,45 +152,54 @@ public class PositionOptimizer : MonoBehaviour
 
         isBeingHandled = true;
 
-        // Tạm thời vô hiệu hóa vật lý để đặt vị trí
+        Rigidbody rb = GetComponent<Rigidbody>();
         if (rb != null)
         {
+            // CHỈ tắt vật lý trong thời gian di chuyển
             rb.isKinematic = true;
             rb.linearVelocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;
         }
 
-        // Tăng thời gian di chuyển để chậm hơn
-        float duration = 1f; // Tăng từ 0.3f lên   1f
+        // Di chuyển đến vị trí đúng
+        float duration = 0.5f; // Giảm thời gian di chuyển
         float elapsed = 0f;
         Vector3 startPos = transform.position;
+
+        // QUAN TRỌNG: KHÔNG reset rotation, giữ rotation hiện tại
         Quaternion startRot = transform.rotation;
-        Quaternion targetRot = Quaternion.identity; // Góc đứng
+        Quaternion targetRot = transform.rotation; // Giữ rotation hiện tại thay vì identity
 
         while (elapsed < duration)
         {
             elapsed += Time.deltaTime;
             float t = elapsed / duration;
 
-            // Di chuyển mượt mà cả vị trí và góc xoay
             transform.position = Vector3.Lerp(startPos, targetPosition.position, t);
-            transform.rotation = Quaternion.Slerp(startRot, targetRot, t);
+            // KHÔNG can thiệp vào rotation để giữ vật lý tự nhiên
             yield return null;
         }
 
-        // Đảm bảo chính xác vị trí và góc xoay cuối cùng
+        // Đảm bảo vị trí chính xác
         transform.position = targetPosition.position;
-        transform.rotation = targetRot;
 
-        // Bật lại vật lý nếu có
+        // BẬT LẠI vật lý NGAY LẬP TỨC
         if (rb != null)
         {
             rb.isKinematic = false;
+            rb.useGravity = true;
+
+            // Đảm bảo không có velocity
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+
+            // Wake up để kích hoạt vật lý
+            rb.WakeUp();
         }
 
         isBeingHandled = false;
 
-        // Gọi sắp xếp sau khi reset vị trí
+        // Gọi sắp xếp sau khi reset
         PieceArranger arranger = GetComponent<PieceArranger>();
         if (arranger != null)
         {
@@ -252,6 +267,25 @@ public class PositionOptimizer : MonoBehaviour
         while (true)
         {
             yield return new WaitForSeconds(checkInterval);
+            // KIỂM TRA VÀ ĐẢM BẢO VẬT LÝ LUÔN ĐƯỢC KÍCH HOẠT
+            EnsurePhysicsActivation();
+            // THÊM: Kiểm tra nếu vật lý đang bị tắt
+            Rigidbody rb = GetComponent<Rigidbody>();
+            if (rb != null && rb.isKinematic && !isBeingHandled && !wasReleased)
+            {
+                // Nếu vật lý bị tắt nhưng không phải do đang được xử lý, bật lại
+                rb.isKinematic = false;
+                rb.useGravity = true;
+            }
+
+
+            // THÊM: Kiểm tra nếu quân cờ đang lơ lửng (y position bất thường)
+            if (transform.position.y > 1.0f && !isBeingHandled && !wasReleased)
+            {
+                Debug.LogWarning($"Piece is floating at height {transform.position.y}, forcing reset");
+                CheckAndResetPosition();
+                continue;
+            }
 
             // TĂNG thời gian chờ để tránh can thiệp quá sớm
             float extendedDelay = STABLE_CHECK_DELAY * 2f; // Tăng gấp đôi thời gian chờ
@@ -272,7 +306,7 @@ public class PositionOptimizer : MonoBehaviour
             else if (!wasReleased && !isBeingHandled)
             {
                 // CHỈ kiểm tra nếu không phải lượt hiện tại hoặc đã di chuyển xong
-                if (GameTurnManager.Instance != null && 
+                if (GameTurnManager.Instance != null &&
                     (!GameTurnManager.Instance.IsCurrentPlayer(pieceController.playerColor) ||
                      DiceController.Instance.hasRolledThisTurn))
                 {
@@ -325,7 +359,7 @@ public class PositionOptimizer : MonoBehaviour
     }
 
     // Sửa phương thức CheckAndResetPosition để gọi CheckAndArrangeFirst
-    
+
 
     // Thêm phương thức tìm quân trên cùng ô
     private List<PieceController> FindPiecesOnSameCell()
@@ -357,4 +391,21 @@ public class PositionOptimizer : MonoBehaviour
         piecesOnSameCell.Add(pieceController);
         return piecesOnSameCell;
     }
+
+    public void EnsurePhysicsActivation()
+    {
+        Rigidbody rb = GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            // ĐẢM BẢO vật lý luôn được bật khi không được xử lý
+            if (!isBeingHandled && rb.isKinematic)
+            {
+                rb.isKinematic = false;
+                rb.useGravity = true;
+                rb.WakeUp();
+            }
+        }
+    }
+
+    
 }

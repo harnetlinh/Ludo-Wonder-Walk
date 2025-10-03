@@ -104,6 +104,11 @@ MonoBehaviour:
   - RPC_RequestOwnershipTransfer
   - RPC_RequestRollDice
   - RPC_SyncPlayerColors
+  - ReceiveDiceState
+  - RequestStateSync
+  - RPC_SetGrabbedState
+  - RPC_UpdateGrabbedPosition
+  - SyncGrabState
   DisableAutoOpenWizard: 1
   ShowSettings: 1
   DevRegionSetOnce: 1

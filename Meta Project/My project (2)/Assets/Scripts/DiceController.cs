@@ -4,8 +4,9 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Photon.Pun;
+using Photon.Realtime;
 
-public class DiceController : MonoBehaviourPun, IPunObservable
+public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
 {
     public static DiceController Instance { get; private set; }
 
@@ -57,6 +58,45 @@ public class DiceController : MonoBehaviourPun, IPunObservable
     private PlayerColor networkCurrentPlayer;
     private bool isNetworked = false;
 
+
+    private DiceFaceDetector diceDetector;
+    private NetworkDiceSync networkDiceSync;
+
+    private void Start()
+    {
+        diceDetector = GetComponent<DiceFaceDetector>();
+        networkDiceSync = GetComponent<NetworkDiceSync>();
+
+        // Đăng ký callback với Photon
+        if (photonView != null)
+        {
+            PhotonNetwork.AddCallbackTarget(this);
+
+            // Request sync nếu là client mới
+            if (!photonView.IsMine)
+            {
+                Invoke("RequestInitialSync", 1f);
+            }
+        }
+    }
+
+    private void RequestInitialSync()
+    {
+        if (photonView != null && !photonView.IsMine)
+        {
+            photonView.RPC("RequestStateSync", photonView.Owner);
+        }
+    }
+
+    [PunRPC]
+    private void RequestStateSync()
+    {
+        // Master client gửi trạng thái hiện tại
+        if (photonView.IsMine)
+        {
+            RequestStateSync();
+        }
+    }
     private void Awake()
     {
         if (Instance == null)
@@ -107,6 +147,12 @@ public class DiceController : MonoBehaviourPun, IPunObservable
     {
         if (playerDicePositions.ContainsKey(color) && diceFaceDetector != null)
         {
+            // Đảm bảo sở hữu trước khi đặt lại vị trí để mọi client có thể cập nhật
+            NetworkDiceSync diceSync = diceFaceDetector.GetComponent<NetworkDiceSync>();
+            if (diceSync != null)
+            {
+                diceSync.RequestOwnership();
+            }
             diceFaceDetector.transform.position = playerDicePositions[color];
             diceFaceDetector.transform.rotation = Quaternion.identity;
 
@@ -343,60 +389,60 @@ public class DiceController : MonoBehaviourPun, IPunObservable
         }
     }
 
-    private IEnumerator MoveDiceToPosition(Vector3 targetPosition)
-    {
-        isMovingToPlayer = true; // <-- BẬT CỜ: đang di chuyển xúc xắc
+    //private IEnumerator MoveDiceToPosition(Vector3 targetPosition)
+    //{
+    //    isMovingToPlayer = true; // <-- BẬT CỜ: đang di chuyển xúc xắc
 
-        if (diceFaceDetector == null)
-        {
-            isMovingToPlayer = false;
-            yield break;
-        }
+    //    if (diceFaceDetector == null)
+    //    {
+    //        isMovingToPlayer = false;
+    //        yield break;
+    //    }
 
-        Rigidbody rb = diceFaceDetector.GetComponent<Rigidbody>();
-        if (rb != null)
-        {
-            rb.isKinematic = true;
-            rb.linearVelocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
-        }
+    //    Rigidbody rb = diceFaceDetector.GetComponent<Rigidbody>();
+    //    if (rb != null)
+    //    {
+    //        rb.isKinematic = true;
+    //        rb.linearVelocity = Vector3.zero;
+    //        rb.angularVelocity = Vector3.zero;
+    //    }
 
-        Vector3 startPosition = diceFaceDetector.transform.position;
-        Quaternion startRotation = diceFaceDetector.transform.rotation;
-        float elapsed = 0f;
+    //    Vector3 startPosition = diceFaceDetector.transform.position;
+    //    Quaternion startRotation = diceFaceDetector.transform.rotation;
+    //    float elapsed = 0f;
 
-        while (elapsed < diceMoveDuration)
-        {
-            elapsed += Time.deltaTime;
-            float t = diceMoveCurve.Evaluate(elapsed / diceMoveDuration);
+    //    while (elapsed < diceMoveDuration)
+    //    {
+    //        elapsed += Time.deltaTime;
+    //        float t = diceMoveCurve.Evaluate(elapsed / diceMoveDuration);
 
-            diceFaceDetector.transform.position = Vector3.Lerp(startPosition, targetPosition, t);
-            diceFaceDetector.transform.rotation = Quaternion.Slerp(startRotation, Quaternion.identity, t);
+    //        diceFaceDetector.transform.position = Vector3.Lerp(startPosition, targetPosition, t);
+    //        diceFaceDetector.transform.rotation = Quaternion.Slerp(startRotation, Quaternion.identity, t);
 
-            yield return null;
-        }
+    //        yield return null;
+    //    }
 
-        diceFaceDetector.transform.position = targetPosition;
-        diceFaceDetector.transform.rotation = Quaternion.identity;
+    //    diceFaceDetector.transform.position = targetPosition;
+    //    diceFaceDetector.transform.rotation = Quaternion.identity;
 
-        if (rb != null)
-        {
-            rb.isKinematic = false;
-        }
+    //    if (rb != null)
+    //    {
+    //        rb.isKinematic = false;
+    //    }
 
-        // Reset trạng thái xúc xắc
-        diceFaceDetector.isFirstPickup = true;
-        diceFaceDetector.hasLanded = false;
+    //    // Reset trạng thái xúc xắc
+    //    diceFaceDetector.isFirstPickup = true;
+    //    diceFaceDetector.hasLanded = false;
 
-        isMovingToPlayer = false; // <-- TẮT CỜ: đã di chuyển xong
+    //    isMovingToPlayer = false; // <-- TẮT CỜ: đã di chuyển xong
 
 
-        NetworkDiceSync diceSync = diceFaceDetector.GetComponent<NetworkDiceSync>();
-        if (diceSync != null)
-        {
-            diceSync.ForceNetworkSync();
-        }
-    }
+    //    NetworkDiceSync diceSync = diceFaceDetector.GetComponent<NetworkDiceSync>();
+    //    if (diceSync != null)
+    //    {
+    //        diceSync.ForceNetworkSync();
+    //    }
+    //}
 
     // Sửa phương thức EnableDiceForCurrentPlayer
     public void EnableDiceForCurrentPlayer()
@@ -457,6 +503,10 @@ public class DiceController : MonoBehaviourPun, IPunObservable
         if (isDiceRolling != networkIsRolling)
         {
             isDiceRolling = networkIsRolling;
+            if (diceResultText != null && isDiceRolling)
+            {
+                diceResultText.text = "Đang xúc xắc...";
+            }
         }
 
         // Cập nhật người chơi hiện tại
@@ -469,6 +519,21 @@ public class DiceController : MonoBehaviourPun, IPunObservable
         if (hasRolledThisTurn != networkHasRolled)
         {
             hasRolledThisTurn = networkHasRolled;
+        }
+
+        // Đồng bộ UI cơ bản cho client mới/không phải chủ
+        if (statusText != null)
+        {
+            statusText.text = isDiceRolling
+                ? $"{currentRollingPlayer} đang xúc xắc..."
+                : (hasRolledThisTurn
+                    ? $"{currentRollingPlayer} đã xúc xắc"
+                    : $"Lượt của {currentRollingPlayer}\nChưa xúc xắc");
+        }
+
+        if (diceButton != null)
+        {
+            diceButton.interactable = !hasRolledThisTurn && !isDiceRolling && photonView.IsMine;
         }
     }
 
@@ -537,6 +602,114 @@ public class DiceController : MonoBehaviourPun, IPunObservable
             {
                 GameTurnManager.Instance.CheckForPossibleMoves();
             }
+        }
+    }
+
+    // Trong DiceController.cs, thêm các phương thức sau:
+
+    // Khi dùng PhotonTransformViewClassic, không cần sync thủ công
+    public void ForceDiceSync() { }
+    public void SyncDiceForNewTurn() { }
+
+    // Sửa phương thức MoveDiceToCurrentPlayer để đồng bộ tốt hơn
+    private IEnumerator MoveDiceToPosition(Vector3 targetPosition)
+    {
+        isMovingToPlayer = true;
+
+        if (diceFaceDetector == null)
+        {
+            isMovingToPlayer = false;
+            yield break;
+        }
+
+        NetworkDiceSync diceSync = diceFaceDetector.GetComponent<NetworkDiceSync>();
+        if (diceSync != null)
+        {
+            diceSync.RequestOwnership();
+            diceSync.SetKinematic(true, true); // Tạm thời kinematic để di chuyển
+        }
+
+        Rigidbody rb = diceFaceDetector.GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            rb.isKinematic = true;
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+        }
+
+        Vector3 startPosition = diceFaceDetector.transform.position;
+        Quaternion startRotation = diceFaceDetector.transform.rotation;
+        float elapsed = 0f;
+
+        while (elapsed < diceMoveDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = diceMoveCurve.Evaluate(elapsed / diceMoveDuration);
+
+            diceFaceDetector.transform.position = Vector3.Lerp(startPosition, targetPosition, t);
+            diceFaceDetector.transform.rotation = Quaternion.Slerp(startRotation, Quaternion.identity, t);
+
+            yield return null;
+        }
+
+        diceFaceDetector.transform.position = targetPosition;
+        diceFaceDetector.transform.rotation = Quaternion.identity;
+
+        // Khôi phục trạng thái vật lý sau khi di chuyển
+        if (diceSync != null)
+        {
+            diceSync.SetKinematic(false, true); // Khôi phục vật lý
+        }
+
+        // Reset trạng thái
+        diceFaceDetector.isFirstPickup = true;
+        diceFaceDetector.hasLanded = false;
+        isMovingToPlayer = false;
+    }
+
+    // Late-join synchronization: gửi trạng thái xúc xắc cho người chơi mới
+    public override void OnPlayerEnteredRoom(Player newPlayer)
+    {
+        if (!isNetworked) return;
+        if (!PhotonNetwork.IsMasterClient) return;
+
+        photonView.RPC(
+            nameof(ReceiveDiceState),
+            newPlayer,
+            LastDiceValue,
+            isDiceRolling,
+            currentRollingPlayer,
+            hasRolledThisTurn
+        );
+    }
+
+    [PunRPC]
+    private void ReceiveDiceState(int value, bool rolling, PlayerColor currentPlayer, bool hasRolled)
+    {
+        LastDiceValue = value;
+        isDiceRolling = rolling;
+        currentRollingPlayer = currentPlayer;
+        hasRolledThisTurn = hasRolled;
+
+        if (diceResultText != null)
+        {
+            diceResultText.text = isDiceRolling
+                ? "Đang xúc xắc..."
+                : $"{currentRollingPlayer}: {LastDiceValue}";
+        }
+
+        if (statusText != null)
+        {
+            statusText.text = isDiceRolling
+                ? $"{currentRollingPlayer} đang xúc xắc..."
+                : (hasRolledThisTurn
+                    ? $"{currentRollingPlayer} đã xúc xắc"
+                    : $"Lượt của {currentRollingPlayer}\nChưa xúc xắc");
+        }
+
+        if (diceButton != null)
+        {
+            diceButton.interactable = !hasRolledThisTurn && !isDiceRolling && photonView.IsMine;
         }
     }
 }
