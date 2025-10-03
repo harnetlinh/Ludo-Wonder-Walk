@@ -21,6 +21,9 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
     private bool networkIsInitialized = false;
     private bool isNetworked = false;
 
+        // Thêm vào class GameTurnManager
+private bool pieceMovedThisTurn = false;
+
     void Start()
     {
         // Gọi khởi tạo game
@@ -69,11 +72,11 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
     {
         isDeterminingOrder = true; // Bật flag khi bắt đầu xác định thứ tự
         Dictionary<PlayerColor, int> playerRolls = new Dictionary<PlayerColor, int>();
-        
+
         // Kiểm tra null trước khi truy cập diceButton
         if (diceController != null && diceController.diceButton != null)
         {
-        diceController.diceButton.interactable = false;
+            diceController.diceButton.interactable = false;
         }
 
         foreach (PlayerColor color in System.Enum.GetValues(typeof(PlayerColor)))
@@ -82,10 +85,10 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
             if (color == PlayerColor.None) continue;
             if (diceController != null)
             {
-            diceController.RollDiceForPlayer(color);
-            yield return new WaitUntil(() => diceController.LastDiceValue > 0);
-            playerRolls[color] = diceController.LastDiceValue;
-            diceController.ResetDiceValue();
+                diceController.RollDiceForPlayer(color);
+                yield return new WaitUntil(() => diceController.LastDiceValue > 0);
+                playerRolls[color] = diceController.LastDiceValue;
+                diceController.ResetDiceValue();
             }
             yield return null;
         }
@@ -102,15 +105,15 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
         {
             if (DiceController.Instance != null)
             {
-            DiceController.Instance.AutoRollForCurrentPlayer();
-        }
+                DiceController.Instance.AutoRollForCurrentPlayer();
+            }
         }
         else
         {
             if (diceController != null)
             {
-            diceController.EnableDiceForCurrentPlayer();
-        }
+                diceController.EnableDiceForCurrentPlayer();
+            }
         }
         isInitialized = true; // Thêm dòng này sau khi khởi tạo xong
         isDeterminingOrder = false;
@@ -153,7 +156,7 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
             if (piece.playerColor == playerColor && piece.currentPathIndex >= 0 && piece.currentPathIndex != -2)
             {
                 piecesOnBoard++;
-                
+
                 // Kiểm tra có thể di chuyển diceValue bước không
                 int tempIndex = piece.currentPathIndex;
                 bool canMoveSteps = true;
@@ -241,6 +244,7 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
 
     public void EndTurn()
     {
+        pieceMovedThisTurn = false;
         // Nếu có PUN và là master client, gửi RPC
         if (isNetworked && photonView.IsMine)
         {
@@ -286,7 +290,7 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
             // Nếu có thể di chuyển, khóa nút xúc xắc
             DiceController.Instance.canRollAgain = false;
             DiceController.Instance.diceButton.interactable = false;
-            
+
             // Cập nhật status text để thông báo cho người chơi
             if (DiceController.Instance.statusText != null)
             {
@@ -370,6 +374,7 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
 
     public void PieceMoved()
     {
+        pieceMovedThisTurn = true;
         // Gọi khi người chơi đã di chuyển quân cờ xong
         Invoke("EndTurn", 1f);
     }
@@ -417,7 +422,7 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
             }
             networkIsInitialized = (bool)stream.ReceiveNext();
             bool networkIsDeterminingOrder = (bool)stream.ReceiveNext();
-            
+
             // Cập nhật nếu không phải là master client
             if (!photonView.IsMine)
             {
@@ -529,4 +534,11 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
             }
         }
     }
+
+
+
+public bool HasPieceMovedThisTurn()
+{
+    return pieceMovedThisTurn;
+}
 }
