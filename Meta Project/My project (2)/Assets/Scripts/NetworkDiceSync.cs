@@ -13,6 +13,11 @@ public class NetworkDiceSync : MonoBehaviourPun, IPunOwnershipCallbacks
     private Rigidbody rb;
     private PhotonTransformViewClassic transformView;
     private bool isKinematicOverride = false;
+    
+    // THÊM VÀO NetworkDiceSync.cs
+    [Header("Sync Optimization")]
+    public float positionSyncThreshold = 0.01f;
+    public float rotationSyncThreshold = 1f;
 
     void Start()
     {
@@ -170,6 +175,16 @@ public class NetworkDiceSync : MonoBehaviourPun, IPunOwnershipCallbacks
         {
             // Chuyển ownership về master client
             photonView.TransferOwnership(PhotonNetwork.MasterClient);
+        }
+    }
+    
+    [PunRPC]
+    private void RPC_ForceSync(Vector3 position, Quaternion rotation)
+    {
+        if (!photonView.IsMine)
+        {
+            transform.position = position;
+            transform.rotation = rotation;
         }
     }
 }
