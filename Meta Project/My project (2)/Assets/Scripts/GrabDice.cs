@@ -16,6 +16,14 @@ public class GrabDice : MonoBehaviourPun
 
     // Thêm biến để đồng bộ trạng thái cầm
     private bool networkIsBeingHeld = false;
+    
+    
+    // THÊM VÀO GrabDice.cs
+    [Header("Network Sync Settings")]
+    public float networkLerpSpeed = 10f;
+    private Vector3 targetNetworkPosition;
+    private Quaternion targetNetworkRotation;
+    private bool isNetworkSyncing = false;
 
     private void Start()
     {
@@ -26,6 +34,17 @@ public class GrabDice : MonoBehaviourPun
         if (photonView != null)
         {
             PhotonNetwork.AddCallbackTarget(this);
+        }
+    }
+
+    private void Update()
+    {
+        // Đồng bộ mượt cho non-owner
+        if (!photonView.IsMine && isNetworkSyncing)
+        {
+            float lerpFactor = Time.deltaTime * networkLerpSpeed;
+            transform.position = Vector3.Lerp(transform.position, targetNetworkPosition, lerpFactor);
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetNetworkRotation, lerpFactor);
         }
     }
 
@@ -76,14 +95,31 @@ public class GrabDice : MonoBehaviourPun
     [PunRPC]
     private void RPC_SetHeldState(bool heldState)
     {
-        // Cập nhật trạng thái từ network
         networkIsBeingHeld = heldState;
-
-        // Nếu không phải client local, cập nhật trạng thái
+    
+        // Reset interpolation khi bắt đầu/tạm dừng đồng bộ
         if (!photonView.IsMine)
         {
+            if (heldState)
+            {
+                // Bắt đầu cầm - chuẩn bị interpolation
+                targetNetworkPosition = transform.position;
+                targetNetworkRotation = transform.rotation;
+                isNetworkSyncing = true;
+            }
+            else
+            {
+                // Kết thúc cầm - giữ interpolation một lúc rồi tắt
+                Invoke("StopNetworkSync", 0.5f);
+            }
+        
             SetHeldState(heldState);
         }
+    }
+
+    private void StopNetworkSync()
+    {
+        isNetworkSyncing = false;
     }
 
     private void SetHeldState(bool heldState)
@@ -171,6 +207,17 @@ public class GrabDice : MonoBehaviourPun
         {
             photonView.RPC("SyncGrabState", RpcTarget.Others, isBeingHeld,
                 diceDetector != null ? diceDetector.isFirstPickup : true);
+        }
+    }
+    
+    [PunRPC]
+    private void RPC_UpdateGrabbedPosition(Vector3 position, Quaternion rotation)
+    {
+        if (!photonView.IsMine)
+        {
+            targetNetworkPosition = position;
+            targetNetworkRotation = rotation;
+            isNetworkSyncing = true;
         }
     }
 }
