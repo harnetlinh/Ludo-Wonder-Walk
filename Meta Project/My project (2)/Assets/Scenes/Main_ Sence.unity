@@ -3354,119 +3354,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_Padding: {x: -8, y: -5, z: -8, w: -5}
   m_Softness: {x: 0, y: 0}
---- !u!1 &285178855
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 285178857}
-  - component: {fileID: 285178856}
-  - component: {fileID: 285178858}
-  - component: {fileID: 285178859}
-  - component: {fileID: 285178860}
-  m_Layer: 0
-  m_Name: Left_Hand
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 0
---- !u!114 &285178856
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 285178855}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c8a0474287db49e4b8ac4b10364b0c94, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  handGrabInteractor: {fileID: 1202476609}
-  networkLerpSpeed: 10
---- !u!4 &285178857
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 285178855}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0.7071068, y: -0, z: -0, w: 0.7071068}
-  m_LocalPosition: {x: -0.34697774, y: 0.5352389, z: -0.076083384}
-  m_LocalScale: {x: 0.5555556, y: 0.55555546, z: 0.55555546}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1065683496822744044}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &285178858
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 285178855}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 24968eb033aa9bd4aabed09357aa1f08, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  leftHand: {fileID: 0}
-  rightHand: {fileID: 0}
-  networkSendRate: 30
---- !u!54 &285178859
-Rigidbody:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 285178855}
-  serializedVersion: 5
-  m_Mass: 1
-  m_LinearDamping: 0
-  m_AngularDamping: 0.05
-  m_CenterOfMass: {x: 0, y: 0, z: 0}
-  m_InertiaTensor: {x: 1, y: 1, z: 1}
-  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ImplicitCom: 1
-  m_ImplicitTensor: 1
-  m_UseGravity: 1
-  m_IsKinematic: 0
-  m_Interpolate: 0
-  m_Constraints: 0
-  m_CollisionDetection: 0
---- !u!114 &285178860
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 285178855}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: aa584fbee541324448dd18d8409c7a41, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  ObservedComponentsFoldoutOpen: 1
-  Group: 0
-  prefixField: -1
-  Synchronization: 3
-  OwnershipTransfer: 0
-  observableSearch: 2
-  ObservedComponents: []
-  sceneViewId: 38
-  InstantiationId: 0
-  isRuntimeInstantiated: 0
 --- !u!1 &290736413 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 4337692834178454721, guid: 7d52fee3bbc9d6d44a676fa370d1f4dc, type: 3}
@@ -10145,119 +10032,6 @@ MonoBehaviour:
   _rigidbody: {fileID: 805888138}
   _kinematicWhileSelected: 1
   _throwWhenUnselected: 1
---- !u!1 &807280125
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 807280126}
-  - component: {fileID: 807280127}
-  - component: {fileID: 807280128}
-  - component: {fileID: 807280129}
-  - component: {fileID: 807280130}
-  m_Layer: 0
-  m_Name: Right_Hand
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 0
---- !u!4 &807280126
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 807280125}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0.7071068, y: -0, z: -0, w: 0.7071068}
-  m_LocalPosition: {x: -0.34697774, y: 0.5352389, z: -0.076083384}
-  m_LocalScale: {x: 0.5555556, y: 0.55555546, z: 0.55555546}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1065683496822744044}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &807280127
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 807280125}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c8a0474287db49e4b8ac4b10364b0c94, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  handGrabInteractor: {fileID: 539542823}
-  networkLerpSpeed: 10
---- !u!114 &807280128
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 807280125}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 24968eb033aa9bd4aabed09357aa1f08, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  leftHand: {fileID: 0}
-  rightHand: {fileID: 0}
-  networkSendRate: 30
---- !u!54 &807280129
-Rigidbody:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 807280125}
-  serializedVersion: 5
-  m_Mass: 1
-  m_LinearDamping: 0
-  m_AngularDamping: 0.05
-  m_CenterOfMass: {x: 0, y: 0, z: 0}
-  m_InertiaTensor: {x: 1, y: 1, z: 1}
-  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ImplicitCom: 1
-  m_ImplicitTensor: 1
-  m_UseGravity: 1
-  m_IsKinematic: 0
-  m_Interpolate: 0
-  m_Constraints: 0
-  m_CollisionDetection: 0
---- !u!114 &807280130
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 807280125}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: aa584fbee541324448dd18d8409c7a41, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  ObservedComponentsFoldoutOpen: 1
-  Group: 0
-  prefixField: -1
-  Synchronization: 3
-  OwnershipTransfer: 0
-  observableSearch: 2
-  ObservedComponents: []
-  sceneViewId: 36
-  InstantiationId: 0
-  isRuntimeInstantiated: 0
 --- !u!1 &827330579
 GameObject:
   m_ObjectHideFlags: 0
@@ -23459,8 +23233,6 @@ Transform:
   - {fileID: 1441575524}
   - {fileID: 495847303}
   - {fileID: 1686871427}
-  - {fileID: 285178857}
-  - {fileID: 807280126}
   m_Father: {fileID: 386075235421718879}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!4 &1100859717961976869
@@ -24473,7 +24245,6 @@ GameObject:
   - component: {fileID: 8332235010527911191}
   - component: {fileID: 8332235010527911190}
   - component: {fileID: 8332235010527911193}
-  - component: {fileID: 8332235010527911192}
   m_Layer: 0
   m_Name: pCube3
   m_TagString: Dice
@@ -24982,7 +24753,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   leftHand: {fileID: 1202476609}
   rightHand: {fileID: 539542823}
-  networkSendRate: 30
+  networkSendRate: 60
 --- !u!65 &4650029164626696545
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -25271,7 +25042,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   leftHand: {fileID: 1202476609}
   rightHand: {fileID: 539542823}
-  networkSendRate: 30
+  networkSendRate: 60
 --- !u!65 &4782539904376434394
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -25849,7 +25620,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   leftHand: {fileID: 1202476609}
   rightHand: {fileID: 539542823}
-  networkSendRate: 30
+  networkSendRate: 60
 --- !u!65 &5758171155776306883
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -26095,7 +25866,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   leftHand: {fileID: 1202476609}
   rightHand: {fileID: 539542823}
-  networkSendRate: 30
+  networkSendRate: 60
 --- !u!65 &5858360054003467413
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -26412,7 +26183,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   leftHand: {fileID: 1202476609}
   rightHand: {fileID: 539542823}
-  networkSendRate: 30
+  networkSendRate: 60
 --- !u!65 &6160162709266475407
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -26808,7 +26579,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   leftHand: {fileID: 1202476609}
   rightHand: {fileID: 539542823}
-  networkSendRate: 30
+  networkSendRate: 60
 --- !u!65 &6521457730931803026
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -27334,7 +27105,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   leftHand: {fileID: 1202476609}
   rightHand: {fileID: 539542823}
-  networkSendRate: 30
+  networkSendRate: 60
 --- !u!65 &7333939985493748771
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -27569,7 +27340,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   leftHand: {fileID: 1202476609}
   rightHand: {fileID: 539542823}
-  networkSendRate: 30
+  networkSendRate: 60
 --- !u!65 &7354607958728248699
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -28179,7 +27950,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   leftHand: {fileID: 1202476609}
   rightHand: {fileID: 539542823}
-  networkSendRate: 30
+  networkSendRate: 60
 --- !u!114 &7951315558867690193
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -28411,7 +28182,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   leftHand: {fileID: 1202476609}
   rightHand: {fileID: 539542823}
-  networkSendRate: 30
+  networkSendRate: 60
 --- !u!65 &7999427890517697501
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -28646,7 +28417,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   leftHand: {fileID: 1202476609}
   rightHand: {fileID: 539542823}
-  networkSendRate: 30
+  networkSendRate: 60
 --- !u!65 &8078641480870432980
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -28954,7 +28725,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   leftHand: {fileID: 1202476609}
   rightHand: {fileID: 539542823}
-  networkSendRate: 30
+  networkSendRate: 60
 --- !u!65 &8324729097169338572
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -29286,20 +29057,6 @@ MonoBehaviour:
   _movementProvider: {fileID: 0}
   _handAligment: 0
   _handGrabPoses: []
---- !u!114 &8332235010527911192
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3437283957807378621}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c8a0474287db49e4b8ac4b10364b0c94, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  handGrabInteractor: {fileID: 539542823}
-  networkLerpSpeed: 30
 --- !u!114 &8332235010527911193
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -29312,8 +29069,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c8a0474287db49e4b8ac4b10364b0c94, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  handGrabInteractor: {fileID: 1202476609}
-  networkLerpSpeed: 30
+  leftHand: {fileID: 1202476609}
+  rightHand: {fileID: 539542823}
+  networkSendRate: 60
+  networkLerpSpeed: 60
 --- !u!4 &8498618804016125303
 Transform:
   m_ObjectHideFlags: 0
@@ -29361,7 +29120,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   leftHand: {fileID: 1202476609}
   rightHand: {fileID: 539542823}
-  networkSendRate: 30
+  networkSendRate: 60
 --- !u!65 &8498618804016125306
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -29760,7 +29519,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   leftHand: {fileID: 1202476609}
   rightHand: {fileID: 539542823}
-  networkSendRate: 30
+  networkSendRate: 60
 --- !u!65 &8942463294188585337
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -29993,7 +29752,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   leftHand: {fileID: 1202476609}
   rightHand: {fileID: 539542823}
-  networkSendRate: 30
+  networkSendRate: 60
 --- !u!65 &9103715935501672599
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -30248,7 +30007,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   leftHand: {fileID: 1202476609}
   rightHand: {fileID: 539542823}
-  networkSendRate: 30
+  networkSendRate: 60
 --- !u!65 &9219426776787266714
 BoxCollider:
   m_ObjectHideFlags: 0

@@ -613,59 +613,91 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
 
     // Sửa phương thức MoveDiceToCurrentPlayer để đồng bộ tốt hơn
     private IEnumerator MoveDiceToPosition(Vector3 targetPosition)
+{
+    isMovingToPlayer = true;
+
+    if (diceFaceDetector == null)
     {
-        isMovingToPlayer = true;
+        isMovingToPlayer = false;
+        yield break;
+    }
 
-        if (diceFaceDetector == null)
-        {
-            isMovingToPlayer = false;
-            yield break;
-        }
+    NetworkDiceSync diceSync = diceFaceDetector.GetComponent<NetworkDiceSync>();
+    if (diceSync != null)
+    {
+        diceSync.RequestOwnership();
+        diceSync.SetKinematic(true, true); // Tạm thời kinematic để di chuyển
+    }
 
+    Rigidbody rb = diceFaceDetector.GetComponent<Rigidbody>();
+    if (rb != null)
+    {
+        rb.isKinematic = true;
+        rb.useGravity = false; // Tắt gravity khi di chuyển
+        rb.linearVelocity = Vector3.zero;
+        rb.angularVelocity = Vector3.zero;
+    }
+
+    Vector3 startPosition = diceFaceDetector.transform.position;
+    Quaternion startRotation = diceFaceDetector.transform.rotation;
+    float elapsed = 0f;
+
+    while (elapsed < diceMoveDuration)
+    {
+        elapsed += Time.deltaTime;
+        float t = diceMoveCurve.Evaluate(elapsed / diceMoveDuration);
+
+        diceFaceDetector.transform.position = Vector3.Lerp(startPosition, targetPosition, t);
+        diceFaceDetector.transform.rotation = Quaternion.Slerp(startRotation, Quaternion.identity, t);
+
+        yield return null;
+    }
+
+    diceFaceDetector.transform.position = targetPosition;
+    diceFaceDetector.transform.rotation = Quaternion.identity;
+
+    // QUAN TRỌNG: KHÔI PHỤC VẬT LÝ SAU KHI DI CHUYỂN
+    if (diceSync != null)
+    {
+        diceSync.SetKinematic(false, true); // Khôi phục vật lý
+        diceSync.EnsurePhysicsActivation();
+    }
+
+    if (rb != null)
+    {
+        rb.isKinematic = false;
+        rb.useGravity = true; // Bật gravity lại
+        rb.WakeUp();
+    }
+
+    // Reset trạng thái
+    diceFaceDetector.isFirstPickup = true;
+    diceFaceDetector.hasLanded = false;
+    isMovingToPlayer = false;
+    
+    Debug.Log("Di chuyển xúc xắc hoàn tất - Vật lý đã được kích hoạt");
+}
+
+// THÊM: Phương thức đảm bảo vật lý được kích hoạt khi bắt đầu lượt mới
+public void EnsurePhysicsForNewTurn()
+{
+    if (diceFaceDetector != null)
+    {
         NetworkDiceSync diceSync = diceFaceDetector.GetComponent<NetworkDiceSync>();
         if (diceSync != null)
         {
-            diceSync.RequestOwnership();
-            diceSync.SetKinematic(true, true); // Tạm thời kinematic để di chuyển
+            diceSync.EnsurePhysicsActivation();
         }
-
+        
         Rigidbody rb = diceFaceDetector.GetComponent<Rigidbody>();
         if (rb != null)
         {
-            rb.isKinematic = true;
-            rb.linearVelocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
+            rb.isKinematic = false;
+            rb.useGravity = true;
+            rb.WakeUp();
         }
-
-        Vector3 startPosition = diceFaceDetector.transform.position;
-        Quaternion startRotation = diceFaceDetector.transform.rotation;
-        float elapsed = 0f;
-
-        while (elapsed < diceMoveDuration)
-        {
-            elapsed += Time.deltaTime;
-            float t = diceMoveCurve.Evaluate(elapsed / diceMoveDuration);
-
-            diceFaceDetector.transform.position = Vector3.Lerp(startPosition, targetPosition, t);
-            diceFaceDetector.transform.rotation = Quaternion.Slerp(startRotation, Quaternion.identity, t);
-
-            yield return null;
-        }
-
-        diceFaceDetector.transform.position = targetPosition;
-        diceFaceDetector.transform.rotation = Quaternion.identity;
-
-        // Khôi phục trạng thái vật lý sau khi di chuyển
-        if (diceSync != null)
-        {
-            diceSync.SetKinematic(false, true); // Khôi phục vật lý
-        }
-
-        // Reset trạng thái
-        diceFaceDetector.isFirstPickup = true;
-        diceFaceDetector.hasLanded = false;
-        isMovingToPlayer = false;
     }
+}
 
     // Late-join synchronization: gửi trạng thái xúc xắc cho người chơi mới
     public override void OnPlayerEnteredRoom(Player newPlayer)

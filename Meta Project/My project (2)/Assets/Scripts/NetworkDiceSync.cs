@@ -138,6 +138,8 @@ public class NetworkDiceSync : MonoBehaviourPun, IPunOwnershipCallbacks
     }
 
     // Phương thức để tạm thời override kinematic state
+    
+// Sửa phương thức SetKinematic để đồng bộ tốt hơn
     public void SetKinematic(bool kinematic, bool isOverride = false)
     {
         if (rb != null)
@@ -150,6 +152,13 @@ public class NetworkDiceSync : MonoBehaviourPun, IPunOwnershipCallbacks
             if (photonView.IsMine)
             {
                 rb.isKinematic = kinematic;
+                // THÊM: Đồng bộ useGravity với kinematic
+                rb.useGravity = !kinematic;
+            
+                if (!kinematic)
+                {
+                    rb.WakeUp();
+                }
             }
         }
     }
@@ -200,6 +209,21 @@ public class NetworkDiceSync : MonoBehaviourPun, IPunOwnershipCallbacks
         {
             transform.position = position;
             transform.rotation = rotation;
+        }
+    }
+    
+    // THÊM VÀO NetworkDiceSync.cs
+    public void EnsurePhysicsActivation()
+    {
+        if (rb != null && photonView.IsMine)
+        {
+            rb.isKinematic = false;
+            rb.useGravity = true;
+            rb.WakeUp();
+        
+            // Đảm bảo không có velocity cũ
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
         }
     }
 }

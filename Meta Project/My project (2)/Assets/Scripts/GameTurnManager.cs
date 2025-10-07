@@ -500,6 +500,11 @@ private bool pieceMovedThisTurn = false;
 
         DiceController.Instance.hasRolledThisTurn = false;
         DiceController.Instance.ResetDiceValue();
+        // THÊM: Đảm bảo vật lý xúc xắc được kích hoạt
+        if (DiceController.Instance != null)
+        {
+            DiceController.Instance.EnsurePhysicsForNewTurn();
+        }
 
         if (autoPlayAllPlayers)
         {

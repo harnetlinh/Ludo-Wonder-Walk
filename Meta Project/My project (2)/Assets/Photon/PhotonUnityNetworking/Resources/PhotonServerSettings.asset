@@ -111,6 +111,7 @@ MonoBehaviour:
   - SyncGrabState
   - RPC_SetDiceKinematic
   - SyncKinematicState
+  - RPC_SyncPhysicsState
   DisableAutoOpenWizard: 1
   ShowSettings: 1
   DevRegionSetOnce: 1

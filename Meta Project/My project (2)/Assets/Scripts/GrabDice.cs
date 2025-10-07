@@ -1,36 +1,47 @@
-﻿// Thêm vào file GrabDice.cs
-using Oculus.Interaction;
+﻿using Oculus.Interaction;
 using Oculus.Interaction.HandGrab;
 using Photon.Pun;
 using UnityEngine;
+using System.Collections;
 
 [RequireComponent(typeof(PhotonView))]
 public class GrabDice : MonoBehaviourPun
 {
-    [Header("Kéo HandGrabInteractor từ RealHand vào đây")]
-    public HandGrabInteractor handGrabInteractor;
+    [Header("Hand Grab Interactors")]
+    public HandGrabInteractor leftHand;
+    public HandGrabInteractor rightHand;
 
     private bool isBeingHeld = false;
     private DiceFaceDetector diceDetector;
     private NetworkDiceSync networkDiceSync;
     private HandGrabInteractable diceInteractable;
-    private Rigidbody rb; // Thêm reference đến Rigidbody
+    private Rigidbody rb;
 
-    // Thêm biến để đồng bộ trạng thái cầm
+    // Biến để đồng bộ vị trí với độ chính xác cao
+    private Vector3 lastSentPosition;
+    private Quaternion lastSentRotation;
+    private float lastSendTime;
+    public float networkSendRate = 30f;
+
+    // Biến network
     private bool networkIsBeingHeld = false;
     
     [Header("Network Sync Settings")]
-    public float networkLerpSpeed = 10f;
+    public float networkLerpSpeed = 15f; // Tăng tốc độ lerp
     private Vector3 targetNetworkPosition;
     private Quaternion targetNetworkRotation;
     private bool isNetworkSyncing = false;
+
+    // Biến để quản lý vật lý
+    private bool wasKinematicBeforeGrab = false;
+    private bool useGravityBeforeGrab = false;
 
     private void Start()
     {
         diceDetector = GetComponent<DiceFaceDetector>();
         networkDiceSync = GetComponent<NetworkDiceSync>();
         diceInteractable = GetComponent<HandGrabInteractable>();
-        rb = GetComponent<Rigidbody>(); // Lấy Rigidbody
+        rb = GetComponent<Rigidbody>();
 
         // Đăng ký callback với Photon
         if (photonView != null)
@@ -39,38 +50,35 @@ public class GrabDice : MonoBehaviourPun
         }
     }
 
-    private void Update()
-    {
-        // Đồng bộ mượt cho non-owner
-        if (!photonView.IsMine && isNetworkSyncing)
-        {
-            float lerpFactor = Time.deltaTime * networkLerpSpeed;
-            transform.position = Vector3.Lerp(transform.position, targetNetworkPosition, lerpFactor);
-            transform.rotation = Quaternion.Slerp(transform.rotation, targetNetworkRotation, lerpFactor);
-        }
-    }
-
-    private void OnDestroy()
-    {
-        if (photonView != null)
-        {
-            PhotonNetwork.RemoveCallbackTarget(this);
-        }
-    }
-
     private void OnEnable()
     {
-        if (handGrabInteractor != null)
-            handGrabInteractor.WhenStateChanged += OnGrabStateChanged;
+        if (leftHand != null)
+            leftHand.WhenStateChanged += OnLeftHandStateChanged;
+
+        if (rightHand != null)
+            rightHand.WhenStateChanged += OnRightHandStateChanged;
     }
 
     private void OnDisable()
     {
-        if (handGrabInteractor != null)
-            handGrabInteractor.WhenStateChanged -= OnGrabStateChanged;
+        if (leftHand != null)
+            leftHand.WhenStateChanged -= OnLeftHandStateChanged;
+
+        if (rightHand != null)
+            rightHand.WhenStateChanged -= OnRightHandStateChanged;
     }
 
-    private void OnGrabStateChanged(InteractorStateChangeArgs args)
+    private void OnLeftHandStateChanged(InteractorStateChangeArgs args)
+    {
+        HandleHandStateChange(args.NewState, "left");
+    }
+
+    private void OnRightHandStateChanged(InteractorStateChangeArgs args)
+    {
+        HandleHandStateChange(args.NewState, "right");
+    }
+
+    private void HandleHandStateChange(InteractorState state, string handType)
     {
         // KHÔNG cho phép tương tác nếu dice đang di chuyển
         if (DiceController.Instance != null && DiceController.Instance.IsDiceMoving())
@@ -79,39 +87,200 @@ public class GrabDice : MonoBehaviourPun
             return;
         }
 
-        if (args.NewState == InteractorState.Select)
+        // Kiểm tra xem interactor có thực sự chọn xúc xắc này không
+        HandGrabInteractor currentHand = handType == "left" ? leftHand : rightHand;
+        if (currentHand != null && diceInteractable != null)
         {
-            // Chỉ xử lý nếu interactor thực sự chọn chính viên xúc xắc này
-            if (handGrabInteractor != null && diceInteractable != null)
-            {
-                if (handGrabInteractor.SelectedInteractable != diceInteractable)
-                {
-                    return;
-                }
-            }
-
-            SetHeldState(true);
-
-            // Gọi RPC để đồng bộ với tất cả client
-            if (photonView != null && photonView.IsMine)
-            {
-                photonView.RPC("RPC_SetHeldState", RpcTarget.Others, true);
-            }
-        }
-        else if (args.NewState == InteractorState.Normal)
-        {
-            // Ngừng xử lý nếu trước đó không phải đang cầm chính xúc xắc này
-            if (!isBeingHeld)
+            if (currentHand.SelectedInteractable != diceInteractable && state == InteractorState.Select)
             {
                 return;
             }
+        }
 
-            SetHeldState(false);
-
-            // Gọi RPC để đồng bộ với tất cả client
-            if (photonView != null && photonView.IsMine)
+        if (state == InteractorState.Select)
+        {
+            // Yêu cầu ownership ngay lập tức
+            if (photonView != null && !photonView.IsMine)
             {
-                photonView.RPC("RPC_SetHeldState", RpcTarget.Others, false);
+                photonView.RequestOwnership();
+                StartCoroutine(WaitForOwnershipThenGrab());
+            }
+            else
+            {
+                StartGrab();
+            }
+
+            Debug.Log($"{handType} hand grabbed dice");
+        }
+        else if (state == InteractorState.Normal && isBeingHeld)
+        {
+            EndGrab();
+            Debug.Log($"{handType} hand released dice");
+        }
+    }
+
+    private IEnumerator WaitForOwnershipThenGrab()
+    {
+        float timeout = 1f;
+        float elapsed = 0f;
+
+        while (!photonView.IsMine && elapsed < timeout)
+        {
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        if (photonView.IsMine)
+        {
+            StartGrab();
+        }
+    }
+
+    private void StartGrab()
+    {
+        // KIỂM TRA: Không cho phép cầm nếu đang di chuyển
+        if (DiceController.Instance != null && DiceController.Instance.IsDiceMoving())
+        {
+            Debug.Log("Không thể cầm xúc xắc khi đang di chuyển giữa các lượt");
+            return;
+        }
+        
+        isBeingHeld = true;
+
+        // Lưu trạng thái vật lý trước khi cầm - SỬA ĐỔI
+        if (rb != null)
+        {
+            wasKinematicBeforeGrab = rb.isKinematic;
+            useGravityBeforeGrab = rb.useGravity;
+        
+            // Đảm bảo xúc xắc có vật lý khi được cầm
+            rb.isKinematic = true;  // Kinematic để di chuyển mượt
+            rb.useGravity = false;  // Tắt gravity khi cầm
+        
+            // Reset velocities
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+        }
+
+        // THÊM: Đồng bộ với NetworkDiceSync
+        if (networkDiceSync != null)
+        {
+            networkDiceSync.SetKinematic(true, true);
+        }
+
+        // Thông báo bắt đầu tương tác
+        if (networkDiceSync != null)
+        {
+            networkDiceSync.OnStartInteraction();
+        }
+
+        // Đánh dấu xúc xắc đã được cầm lên
+        if (diceDetector != null)
+        {
+            diceDetector.isFirstPickup = false;
+        }
+
+        // Thông báo cho DiceController
+        if (DiceController.Instance != null && !DiceController.Instance.hasRolledThisTurn)
+        {
+            DiceController.Instance.PrepareToRoll();
+            DiceController.Instance.UpdateDiceStatus(true);
+        }
+
+        // Gửi RPC đồng bộ trạng thái cầm
+        if (photonView != null && photonView.IsMine)
+        {
+            photonView.RPC("RPC_SetHeldState", RpcTarget.Others, true);
+        }
+
+        // Lưu vị trí ban đầu
+        lastSentPosition = transform.position;
+        lastSentRotation = transform.rotation;
+        lastSendTime = Time.time;
+    }
+
+    private void EndGrab()
+    {
+        isBeingHeld = false;
+
+        // Khôi phục trạng thái vật lý khi thả
+        // KHÔI PHỤC VẬT LÝ KHI THẢ - SỬA QUAN TRỌNG
+        if (rb != null)
+        {
+            // Luôn đảm bảo vật lý được kích hoạt khi thả
+            rb.isKinematic = false;
+            rb.useGravity = true;
+            rb.WakeUp();
+        
+            // Đảm bảo không có velocity cũ
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+        }
+        // THÊM: Đồng bộ với NetworkDiceSync
+        if (networkDiceSync != null)
+        {
+            networkDiceSync.SetKinematic(false, true);
+            networkDiceSync.EnsurePhysicsActivation();
+        }
+
+        // Thông báo kết thúc tương tác
+        if (networkDiceSync != null)
+        {
+            networkDiceSync.OnEndInteraction();
+        }
+
+        if (DiceController.Instance != null)
+        {
+            DiceController.Instance.UpdateDiceStatus(false);
+        }
+
+        // Gửi RPC đồng bộ trạng thái thả
+        if (photonView != null && photonView.IsMine)
+        {
+            photonView.RPC("RPC_SetHeldState", RpcTarget.Others, false);
+            // Gửi vị trí cuối cùng
+            photonView.RPC("RPC_UpdateGrabbedPosition", RpcTarget.Others,
+                transform.position, transform.rotation);
+        }
+    }
+
+    private void Update()
+    {
+        // Đồng bộ vị trí liên tục khi đang cầm
+        if (isBeingHeld && photonView != null && photonView.IsMine)
+        {
+            // Gửi theo tần suất cố định
+            if (Time.time - lastSendTime >= 1f / networkSendRate)
+            {
+                // Chỉ gửi nếu có thay đổi đáng kể
+                if (Vector3.Distance(transform.position, lastSentPosition) > 0.001f ||
+                    Quaternion.Angle(transform.rotation, lastSentRotation) > 0.1f)
+                {
+                    photonView.RPC("RPC_UpdateGrabbedPosition", RpcTarget.Others,
+                        transform.position, transform.rotation);
+
+                    lastSentPosition = transform.position;
+                    lastSentRotation = transform.rotation;
+                    lastSendTime = Time.time;
+                }
+            }
+        }
+
+        // Đồng bộ mượt cho non-owner - SỬ DỤNG CÁCH TIẾP CẬN GIỐNG PIECE
+        if (photonView != null && !photonView.IsMine && isNetworkSyncing)
+        {
+            // Áp dụng ngay lập tức không lerp khi đang được cầm
+            if (networkIsBeingHeld)
+            {
+                transform.position = targetNetworkPosition;
+                transform.rotation = targetNetworkRotation;
+            }
+            else
+            {
+                // Chỉ lerp khi không được cầm
+                float lerpFactor = Time.deltaTime * networkLerpSpeed;
+                transform.position = Vector3.Lerp(transform.position, targetNetworkPosition, lerpFactor);
+                transform.rotation = Quaternion.Slerp(transform.rotation, targetNetworkRotation, lerpFactor);
             }
         }
     }
@@ -121,8 +290,38 @@ public class GrabDice : MonoBehaviourPun
     {
         networkIsBeingHeld = heldState;
     
+        // Xử lý vật lý cho remote clients
+        if (photonView != null && !photonView.IsMine && rb != null)
+        {
+            if (heldState)
+            {
+                // Khi bắt đầu cầm - lưu trạng thái và đặt kinematic
+                wasKinematicBeforeGrab = rb.isKinematic;
+                useGravityBeforeGrab = rb.useGravity;
+                
+                rb.isKinematic = true;
+                rb.useGravity = false;
+                
+                // Reset velocities
+                rb.linearVelocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+            }
+            else
+            {
+                // Khi thả - khôi phục trạng thái vật lý
+                rb.isKinematic = wasKinematicBeforeGrab;
+                rb.useGravity = useGravityBeforeGrab;
+                
+                // Đảm bảo vật lý được kích hoạt
+                if (!rb.isKinematic)
+                {
+                    rb.WakeUp();
+                }
+            }
+        }
+
         // Reset interpolation khi bắt đầu/tạm dừng đồng bộ
-        if (!photonView.IsMine)
+        if (photonView != null && !photonView.IsMine)
         {
             if (heldState)
             {
@@ -136,66 +335,23 @@ public class GrabDice : MonoBehaviourPun
                 // Kết thúc cầm - giữ interpolation một lúc rồi tắt
                 Invoke("StopNetworkSync", 0.5f);
             }
-        
-            SetHeldState(heldState);
+        }
+    }
+
+    [PunRPC]
+    private void RPC_UpdateGrabbedPosition(Vector3 position, Quaternion rotation)
+    {
+        if (photonView != null && !photonView.IsMine)
+        {
+            targetNetworkPosition = position;
+            targetNetworkRotation = rotation;
+            isNetworkSyncing = true;
         }
     }
 
     private void StopNetworkSync()
     {
         isNetworkSyncing = false;
-    }
-
-    private void SetHeldState(bool heldState)
-    {
-        isBeingHeld = heldState;
-
-        // QUAN TRỌNG: Chỉ xử lý Rigidbody cho remote clients, không xử lý local
-        if (!photonView.IsMine && rb != null)
-        {
-            // Remote clients: điều khiển Rigidbody để đồng bộ
-            rb.isKinematic = heldState;
-            if (heldState)
-            {
-                rb.linearVelocity = Vector3.zero;
-                rb.angularVelocity = Vector3.zero;
-            }
-        }
-
-        if (heldState)
-        {
-            // Thông báo bắt đầu tương tác
-            if (networkDiceSync != null)
-            {
-                networkDiceSync.OnStartInteraction();
-            }
-
-            // Đánh dấu xúc xắc đã được cầm lên
-            if (diceDetector != null)
-            {
-                diceDetector.isFirstPickup = false;
-            }
-
-            // Thông báo cho DiceController
-            if (DiceController.Instance != null && !DiceController.Instance.hasRolledThisTurn)
-            {
-                DiceController.Instance.PrepareToRoll();
-                DiceController.Instance.UpdateDiceStatus(true);
-            }
-        }
-        else
-        {
-            // Thông báo kết thúc tương tác
-            if (networkDiceSync != null)
-            {
-                networkDiceSync.OnEndInteraction();
-            }
-
-            if (DiceController.Instance != null)
-            {
-                DiceController.Instance.UpdateDiceStatus(false);
-            }
-        }
     }
 
     public bool IsBeingHeld()
@@ -223,16 +379,24 @@ public class GrabDice : MonoBehaviourPun
             if (receivedHeldState != networkIsBeingHeld)
             {
                 networkIsBeingHeld = receivedHeldState;
-                SetHeldState(receivedHeldState);
+                RPC_SetHeldState(receivedHeldState); // Gọi lại RPC để xử lý vật lý
             }
             
             // Cập nhật vị trí cho remote clients
-            if (!photonView.IsMine)
+            if (photonView != null && !photonView.IsMine)
             {
                 targetNetworkPosition = receivedPosition;
                 targetNetworkRotation = receivedRotation;
                 isNetworkSyncing = true;
             }
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (photonView != null)
+        {
+            PhotonNetwork.RemoveCallbackTarget(this);
         }
     }
 
@@ -256,17 +420,6 @@ public class GrabDice : MonoBehaviourPun
         {
             photonView.RPC("SyncGrabState", RpcTarget.Others, isBeingHeld,
                 diceDetector != null ? diceDetector.isFirstPickup : true);
-        }
-    }
-    
-    [PunRPC]
-    private void RPC_UpdateGrabbedPosition(Vector3 position, Quaternion rotation)
-    {
-        if (!photonView.IsMine)
-        {
-            targetNetworkPosition = position;
-            targetNetworkRotation = rotation;
-            isNetworkSyncing = true;
         }
     }
 }
