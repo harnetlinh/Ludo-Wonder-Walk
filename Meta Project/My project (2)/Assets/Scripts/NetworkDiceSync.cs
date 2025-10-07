@@ -138,6 +138,8 @@ public class NetworkDiceSync : MonoBehaviourPun, IPunOwnershipCallbacks
     }
 
     // Phương thức để tạm thời override kinematic state
+    
+// Sửa phương thức SetKinematic để đồng bộ tốt hơn
     public void SetKinematic(bool kinematic, bool isOverride = false)
     {
         if (rb != null)
@@ -150,24 +152,46 @@ public class NetworkDiceSync : MonoBehaviourPun, IPunOwnershipCallbacks
             if (photonView.IsMine)
             {
                 rb.isKinematic = kinematic;
+                // THÊM: Đồng bộ useGravity với kinematic
+                rb.useGravity = !kinematic;
+            
+                if (!kinematic)
+                {
+                    rb.WakeUp();
+                }
             }
         }
     }
 
     // Gọi khi bắt đầu tương tác với xúc xắc
+    // Trong NetworkDiceSync.cs, thêm kiểm tra:
     public void OnStartInteraction()
     {
-        RequestOwnership();
-        SetKinematic(false);
+        // Chỉ xử lý vật lý cho remote clients
+        PhotonView photonView = GetComponent<PhotonView>();
+        if (photonView != null && !photonView.IsMine)
+        {
+            Rigidbody rb = GetComponent<Rigidbody>();
+            if (rb != null)
+            {
+                rb.isKinematic = true;
+            }
+        }
     }
 
-    // Gọi khi kết thúc tương tác với xúc xắc
     public void OnEndInteraction()
     {
-        // Giữ ownership một lúc sau khi thả để đồng bộ vật lý
-        Invoke("ReleaseOwnershipIfNeeded", 2f);
+        // Chỉ xử lý vật lý cho remote clients
+        PhotonView photonView = GetComponent<PhotonView>();
+        if (photonView != null && !photonView.IsMine)
+        {
+            Rigidbody rb = GetComponent<Rigidbody>();
+            if (rb != null)
+            {
+                rb.isKinematic = false;
+            }
+        }
     }
-
     private void ReleaseOwnershipIfNeeded()
     {
         // Chỉ master client mới nên giữ ownership khi không có ai tương tác
@@ -185,6 +209,21 @@ public class NetworkDiceSync : MonoBehaviourPun, IPunOwnershipCallbacks
         {
             transform.position = position;
             transform.rotation = rotation;
+        }
+    }
+    
+    // THÊM VÀO NetworkDiceSync.cs
+    public void EnsurePhysicsActivation()
+    {
+        if (rb != null && photonView.IsMine)
+        {
+            rb.isKinematic = false;
+            rb.useGravity = true;
+            rb.WakeUp();
+        
+            // Đảm bảo không có velocity cũ
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
         }
     }
 }

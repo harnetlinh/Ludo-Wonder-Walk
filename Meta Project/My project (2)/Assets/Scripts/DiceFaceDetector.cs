@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
+using Photon.Pun;
 
 public class DiceFaceDetector : MonoBehaviour
 {
@@ -104,6 +105,14 @@ public class DiceFaceDetector : MonoBehaviour
         {
             return false;
         }
+    
+        // THÊM: Không kiểm tra trạng thái dừng nếu không phải chủ sở hữu
+        PhotonView photonView = GetComponent<PhotonView>();
+        if (photonView != null && !photonView.IsMine)
+        {
+            return false; // Remote clients không quyết định trạng thái dừng
+        }
+    
         if (rb == null) return false;
         return rb.linearVelocity.magnitude < velocityThreshold &&
                rb.angularVelocity.magnitude < velocityThreshold;
@@ -166,8 +175,13 @@ public class DiceFaceDetector : MonoBehaviour
                 DiceController.Instance.UpdateDiceStatus(true);
             }
 
-            // CHỈ chuẩn bị roll nếu xúc xắc đã từng được cầm và chưa roll trong lượt này
-            if (!isFirstPickup && !DiceController.Instance.hasRolledThisTurn)
+            // THÊM KIỂM TRA QUAN TRỌNG: Chỉ chuẩn bị roll nếu:
+            // 1. Xúc xắc đã từng được cầm 
+            // 2. Chưa roll trong lượt này
+            // 3. Dice KHÔNG đang di chuyển giữa các người chơi
+            if (!isFirstPickup && 
+                !DiceController.Instance.hasRolledThisTurn &&
+                !DiceController.Instance.IsDiceMoving()) // <-- THÊM ĐIỀU KIỆN NÀY
             {
                 DiceController.Instance.PrepareToRoll();
             }
@@ -186,4 +200,6 @@ public class DiceFaceDetector : MonoBehaviour
             CheckTopFace();
         }
     }
+    
+    
 }
