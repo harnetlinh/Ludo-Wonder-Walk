@@ -13,6 +13,7 @@ public class GrabDice : MonoBehaviourPun
     private bool isBeingHeld = false;
     private DiceFaceDetector diceDetector;
     private NetworkDiceSync networkDiceSync;
+    private HandGrabInteractable diceInteractable; // Interactable của chính xúc xắc
 
     // Thêm biến để đồng bộ trạng thái cầm
     private bool networkIsBeingHeld = false;
@@ -29,6 +30,7 @@ public class GrabDice : MonoBehaviourPun
     {
         diceDetector = GetComponent<DiceFaceDetector>();
         networkDiceSync = GetComponent<NetworkDiceSync>();
+        diceInteractable = GetComponent<HandGrabInteractable>();
 
         // Đăng ký callback với Photon
         if (photonView != null)
@@ -68,10 +70,28 @@ public class GrabDice : MonoBehaviourPun
             handGrabInteractor.WhenStateChanged -= OnGrabStateChanged;
     }
 
+    // Trong GrabDice.cs
+
     private void OnGrabStateChanged(InteractorStateChangeArgs args)
     {
+        // KHÔNG cho phép tương tác nếu dice đang di chuyển
+        if (DiceController.Instance != null && DiceController.Instance.IsDiceMoving())
+        {
+            Debug.Log("Không thể tương tác với dice khi đang di chuyển");
+            return;
+        }
+
         if (args.NewState == InteractorState.Select)
         {
+            // Chỉ xử lý nếu interactor thực sự chọn chính viên xúc xắc này
+            if (handGrabInteractor != null && diceInteractable != null)
+            {
+                if (handGrabInteractor.SelectedInteractable != diceInteractable)
+                {
+                    return;
+                }
+            }
+
             SetHeldState(true);
 
             // Gọi RPC để đồng bộ với tất cả client
@@ -82,6 +102,12 @@ public class GrabDice : MonoBehaviourPun
         }
         else if (args.NewState == InteractorState.Normal)
         {
+            // Ngừng xử lý nếu trước đó không phải đang cầm chính xúc xắc này
+            if (!isBeingHeld)
+            {
+                return;
+            }
+
             SetHeldState(false);
 
             // Gọi RPC để đồng bộ với tất cả client

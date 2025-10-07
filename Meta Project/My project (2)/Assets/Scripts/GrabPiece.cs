@@ -70,10 +70,20 @@ public class GrabPiece : MonoBehaviourPun
             Debug.Log("🤚 Tay phải đã thả vật.");
     }
 
+    // Trong GrabPiece.cs
+
     private void HandleHandStateChange(InteractorState state, string handType)
     {
         if (positionOptimizer == null || pieceController == null) return;
 
+        // KIỂM TRA: Nếu dice đang di chuyển, không cho phép thay đổi trạng thái game
+        if (DiceController.Instance != null && DiceController.Instance.IsDiceMoving())
+        {
+            Debug.Log("Dice đang di chuyển, tạm thời không xử lý tương tác với piece");
+            return;
+        }
+
+        // THÊM KIỂM TRA QUAN TRỌNG: Không cho phép chuẩn bị roll khi đang cầm piece
         if (state == InteractorState.Select)
         {
             // Yêu cầu ownership ngay lập tức

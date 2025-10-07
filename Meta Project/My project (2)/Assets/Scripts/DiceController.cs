@@ -296,27 +296,7 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
     }
 
 
-    //public void EnableDiceForCurrentPlayer()
-    //{
-    //    currentRollingPlayer = GetCurrentPlayer();
-    //    diceButton.interactable = true;
-    //    diceResultText.text = "Nhấn để ném xúc xắc";
-    //}
-
-    //private PlayerColor GetCurrentPlayer()
-    //{
-    //    if (useCustomPlayerOrder && customPlayerOrder.Count > 0)
-    //    {
-    //        int currentIndex = GameTurnManager.Instance.currentPlayerIndex % customPlayerOrder.Count;
-    //        return customPlayerOrder[currentIndex];
-    //    }
-    //    return GameTurnManager.Instance.CurrentPlayer;
-    //}
-
-    //public void OnDiceClick()
-    //{
-    //    RollDice();
-    //}
+    
 
     public void RollDice()
     {
@@ -445,8 +425,17 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
     //}
 
     // Sửa phương thức EnableDiceForCurrentPlayer
+    // Trong DiceController.cs
+
     public void EnableDiceForCurrentPlayer()
     {
+        // KHÔNG cho phép kích hoạt nếu đang di chuyển
+        if (isMovingToPlayer) 
+        {
+            Debug.Log("Dice đang di chuyển, không thể kích hoạt ngay lúc này");
+            return;
+        }
+    
         currentRollingPlayer = GetCurrentPlayer();
         hasRolledThisTurn = false;
 
@@ -458,6 +447,17 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
 
         diceButton.interactable = !hasRolledThisTurn;
         diceResultText.text = !hasRolledThisTurn ? "Cầm xúc xắc lên để ném" : "Bạn đã xúc xắc trong lượt này";
+    }
+
+// Thêm phương thức kiểm tra trạng thái
+    public bool IsDiceMoving()
+    {
+        return isMovingToPlayer;
+    }
+
+    public bool CanInteractWithDice()
+    {
+        return !isMovingToPlayer && !isDiceRolling;
     }
 
     // PUN Network Synchronization

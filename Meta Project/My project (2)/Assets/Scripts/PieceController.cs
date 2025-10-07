@@ -733,6 +733,12 @@ private void OnCollisionEnter(Collision collision)
 {
     if (collision.gameObject.CompareTag("Table"))
     {
+        // KIỂM TRA: Nếu dice đang di chuyển, bỏ qua xử lý lượt
+        if (DiceController.Instance != null && DiceController.Instance.IsDiceMoving())
+        {
+            Debug.Log("Dice đang di chuyển, bỏ qua xử lý lượt từ va chạm");
+            return;
+        }
         // ĐẢM BẢO VẬT LÝ ĐƯỢC KÍCH HOẠT KHI CHẠM BÀN
         Rigidbody rb = GetComponent<Rigidbody>();
         if (rb != null)
