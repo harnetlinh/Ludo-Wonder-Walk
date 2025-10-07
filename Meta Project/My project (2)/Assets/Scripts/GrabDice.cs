@@ -13,13 +13,12 @@ public class GrabDice : MonoBehaviourPun
     private bool isBeingHeld = false;
     private DiceFaceDetector diceDetector;
     private NetworkDiceSync networkDiceSync;
-    private HandGrabInteractable diceInteractable; // Interactable của chính xúc xắc
+    private HandGrabInteractable diceInteractable;
+    private Rigidbody rb; // Thêm reference đến Rigidbody
 
     // Thêm biến để đồng bộ trạng thái cầm
     private bool networkIsBeingHeld = false;
     
-    
-    // THÊM VÀO GrabDice.cs
     [Header("Network Sync Settings")]
     public float networkLerpSpeed = 10f;
     private Vector3 targetNetworkPosition;
@@ -31,6 +30,7 @@ public class GrabDice : MonoBehaviourPun
         diceDetector = GetComponent<DiceFaceDetector>();
         networkDiceSync = GetComponent<NetworkDiceSync>();
         diceInteractable = GetComponent<HandGrabInteractable>();
+        rb = GetComponent<Rigidbody>(); // Lấy Rigidbody
 
         // Đăng ký callback với Photon
         if (photonView != null)
@@ -69,8 +69,6 @@ public class GrabDice : MonoBehaviourPun
         if (handGrabInteractor != null)
             handGrabInteractor.WhenStateChanged -= OnGrabStateChanged;
     }
-
-    // Trong GrabDice.cs
 
     private void OnGrabStateChanged(InteractorStateChangeArgs args)
     {
@@ -152,6 +150,18 @@ public class GrabDice : MonoBehaviourPun
     {
         isBeingHeld = heldState;
 
+        // QUAN TRỌNG: Chỉ xử lý Rigidbody cho remote clients, không xử lý local
+        if (!photonView.IsMine && rb != null)
+        {
+            // Remote clients: điều khiển Rigidbody để đồng bộ
+            rb.isKinematic = heldState;
+            if (heldState)
+            {
+                rb.linearVelocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+            }
+        }
+
         if (heldState)
         {
             // Thông báo bắt đầu tương tác
@@ -200,15 +210,28 @@ public class GrabDice : MonoBehaviourPun
         {
             // Gửi trạng thái hiện tại
             stream.SendNext(isBeingHeld);
+            stream.SendNext(transform.position);
+            stream.SendNext(transform.rotation);
         }
         else
         {
             // Nhận trạng thái từ master client
             bool receivedHeldState = (bool)stream.ReceiveNext();
+            Vector3 receivedPosition = (Vector3)stream.ReceiveNext();
+            Quaternion receivedRotation = (Quaternion)stream.ReceiveNext();
+            
             if (receivedHeldState != networkIsBeingHeld)
             {
                 networkIsBeingHeld = receivedHeldState;
                 SetHeldState(receivedHeldState);
+            }
+            
+            // Cập nhật vị trí cho remote clients
+            if (!photonView.IsMine)
+            {
+                targetNetworkPosition = receivedPosition;
+                targetNetworkRotation = receivedRotation;
+                isNetworkSyncing = true;
             }
         }
     }

@@ -155,19 +155,34 @@ public class NetworkDiceSync : MonoBehaviourPun, IPunOwnershipCallbacks
     }
 
     // Gọi khi bắt đầu tương tác với xúc xắc
+    // Trong NetworkDiceSync.cs, thêm kiểm tra:
     public void OnStartInteraction()
     {
-        RequestOwnership();
-        SetKinematic(false);
+        // Chỉ xử lý vật lý cho remote clients
+        PhotonView photonView = GetComponent<PhotonView>();
+        if (photonView != null && !photonView.IsMine)
+        {
+            Rigidbody rb = GetComponent<Rigidbody>();
+            if (rb != null)
+            {
+                rb.isKinematic = true;
+            }
+        }
     }
 
-    // Gọi khi kết thúc tương tác với xúc xắc
     public void OnEndInteraction()
     {
-        // Giữ ownership một lúc sau khi thả để đồng bộ vật lý
-        Invoke("ReleaseOwnershipIfNeeded", 2f);
+        // Chỉ xử lý vật lý cho remote clients
+        PhotonView photonView = GetComponent<PhotonView>();
+        if (photonView != null && !photonView.IsMine)
+        {
+            Rigidbody rb = GetComponent<Rigidbody>();
+            if (rb != null)
+            {
+                rb.isKinematic = false;
+            }
+        }
     }
-
     private void ReleaseOwnershipIfNeeded()
     {
         // Chỉ master client mới nên giữ ownership khi không có ai tương tác

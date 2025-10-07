@@ -109,6 +109,8 @@ MonoBehaviour:
   - RPC_SetGrabbedState
   - RPC_UpdateGrabbedPosition
   - SyncGrabState
+  - RPC_SetDiceKinematic
+  - SyncKinematicState
   DisableAutoOpenWizard: 1
   ShowSettings: 1
   DevRegionSetOnce: 1
