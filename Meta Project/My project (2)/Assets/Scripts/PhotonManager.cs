@@ -24,7 +24,8 @@ public class PhotonManager : MonoBehaviourPunCallbacks
     // ID của người chơi hiện tại
     private string playerID;
     private string lastAttemptedRoom = "";
-    
+    // THÊM: Delegate để thông báo sự kiện join room thất bại
+    public System.Action<short, string> OnJoinRoomFailedEvent;
 
     private void Awake()
     {
@@ -309,49 +310,31 @@ public class PhotonManager : MonoBehaviourPunCallbacks
 
     // SỬA: Xử lý lỗi join room tốt hơn
     // SỬA: Xử lý lỗi join room tốt hơn
+    // SỬA: Xử lý lỗi join room - KHÔNG tự động tạo phòng
     public override void OnJoinRoomFailed(short returnCode, string message)
     {
         Debug.LogError($"Failed to join room '{lastAttemptedRoom}': {returnCode} - {message}");
+
+        // THÊM: Gọi sự kiện để UI xử lý
+        OnJoinRoomFailedEvent?.Invoke(returnCode, message);
     
-        // Phân loại lỗi để xử lý phù hợp
+        // KHÔNG tự động tạo phòng nữa - để UI quyết định hành động tiếp theo
         switch (returnCode)
         {
             case ErrorCode.GameDoesNotExist:
-                Debug.Log("Room doesn't exist, creating new room...");
-                CreateOrJoinRoom();
+                Debug.Log($"Room '{lastAttemptedRoom}' doesn't exist.");
                 break;
-            
+        
             case ErrorCode.GameClosed:
-                Debug.LogWarning($"Room '{lastAttemptedRoom}' is closed/locked. Attempting special rejoin...");
-            
-                // THÊM: Thử rejoining bằng cách tạo room với cùng tên
-                // Khi master client tạo room với tên đã tồn tại, nó sẽ trở thành rejoining
-                if (IsPlayerAllowedInRoom(lastAttemptedRoom))
-                {
-                    Debug.Log($"Player is allowed to rejoin locked room '{lastAttemptedRoom}'");
-                    roomName = lastAttemptedRoom;
-                    CreateOrJoinRoom(); // Thử rejoining
-                }
-                else
-                {
-                    Debug.LogWarning($"Player is not allowed to rejoin locked room '{lastAttemptedRoom}'");
-                    // Tạo room mới với tên khác
-                    roomName = $"{lastAttemptedRoom}_{System.DateTime.Now:HHmmss}";
-                    CreateOrJoinRoom();
-                }
+                Debug.LogWarning($"Room '{lastAttemptedRoom}' is closed/locked.");
                 break;
-            
+        
             case ErrorCode.GameFull:
-                Debug.LogWarning($"Room '{lastAttemptedRoom}' is full. Cannot join.");
-                // Tạo room mới
-                roomName = $"{lastAttemptedRoom}_Full_{System.DateTime.Now:HHmmss}";
-                CreateOrJoinRoom();
+                Debug.LogWarning($"Room '{lastAttemptedRoom}' is full.");
                 break;
-            
+        
             default:
                 Debug.LogWarning($"Unknown error joining room: {returnCode} - {message}");
-                // Thử tạo room mới
-                CreateOrJoinRoom();
                 break;
         }
     }
@@ -382,26 +365,29 @@ public class PhotonManager : MonoBehaviourPunCallbacks
 
     // SỬA: Method để join room cụ thể với kiểm tra
     // SỬA: Method để join room cụ thể với kiểm tra
+    // SỬA: Method để join room cụ thể với kiểm tra
     public void JoinRoom(string roomName)
     {
         if (PhotonNetwork.IsConnectedAndReady)
         {
             this.roomName = roomName;
             lastAttemptedRoom = roomName;
-        
-            // LUÔN CHO PHÉP JOIN ROOM - BỎ KIỂM TRA HẠN CHẾ
-            // Player có thể vào bất kỳ room nào họ muốn, hệ thống Photon sẽ tự động xử lý
-            // các trường hợp room đầy, room không tồn tại, etc.
-        
+    
             Debug.Log($"Attempting to join room: {roomName}");
-            CreateOrJoinRoom();
+        
+            // Sử dụng JoinRoom thay vì CreateOrJoinRoom để chỉ join room có sẵn
+            PhotonNetwork.JoinRoom(roomName);
         }
         else
         {
             Debug.LogWarning("Not connected to Photon yet. Please wait for connection.");
+            // Có thể thêm callback để thông báo lỗi cho UI
+            /*if (MultiplayerTestUI.Instance != null)
+            {
+                // Gọi phương thức hiển thị lỗi trong UI
+            }*/
         }
     }
-
     // Lấy Player ID hiện tại
     public string GetCurrentPlayerID()
     {
@@ -441,5 +427,75 @@ public class PhotonManager : MonoBehaviourPunCallbacks
     
         // Kiểm tra thêm điều kiện khác nếu cần
         return allowRejoiningLockedRoom;
+    }
+    
+    
+    // THÊM: Tạo room với ID ngẫu nhiên
+    public void CreateRandomRoom(int maxPlayers, int piecesPerPlayer)
+    {
+        if (PhotonNetwork.IsConnectedAndReady)
+        {
+            // Tạo room ID ngẫu nhiên
+            string randomRoomId = System.Guid.NewGuid().ToString().Substring(0, 8).ToUpper();
+            this.roomName = randomRoomId;
+            lastAttemptedRoom = randomRoomId;
+
+            RoomOptions roomOptions = new RoomOptions();
+            roomOptions.MaxPlayers = (byte)maxPlayers;
+            roomOptions.IsVisible = true;
+            roomOptions.IsOpen = true;
+            roomOptions.EmptyRoomTtl = 30000;
+            roomOptions.PlayerTtl = 30000;
+
+            // THÊM: Lưu thông tin piecesPerPlayer vào room properties
+            roomOptions.CustomRoomProperties = new ExitGames.Client.Photon.Hashtable
+            {
+                { "PlayerIDs", "" },
+                { "IsLocked", false },
+                { "TurnCount", 0 },
+                { "AllowedPlayers", "" },
+                { "PiecesPerPlayer", piecesPerPlayer }, // THÊM: Số quân cờ mỗi người
+                { "RoomCreator", playerID } // THÊM: Người tạo phòng
+            };
+            roomOptions.CustomRoomPropertiesForLobby = new string[] { 
+                "PlayerIDs", "IsLocked", "TurnCount", "AllowedPlayers", "PiecesPerPlayer", "RoomCreator" 
+            };
+
+            Debug.Log($"Creating random room '{randomRoomId}' with {maxPlayers} players, {piecesPerPlayer} pieces each");
+            PhotonNetwork.CreateRoom(randomRoomId, roomOptions);
+        }
+        else
+        {
+            Debug.LogWarning("Not connected to Photon yet. Please wait for connection.");
+        }
+    }
+
+// THÊM: Lấy thông tin pieces per player từ room
+    public int GetPiecesPerPlayer()
+    {
+        if (PhotonNetwork.InRoom && PhotonNetwork.CurrentRoom.CustomProperties.ContainsKey("PiecesPerPlayer"))
+        {
+            return (int)PhotonNetwork.CurrentRoom.CustomProperties["PiecesPerPlayer"];
+        }
+        return 4; // Mặc định 4 quân nếu không có thông tin
+    }
+    
+    // THÊM: Phương thức join room thuần túy - không tự động tạo phòng khi thất bại
+    public void JoinRoomOnly(string roomName)
+    {
+        if (PhotonNetwork.IsConnectedAndReady)
+        {
+            this.roomName = roomName;
+            lastAttemptedRoom = roomName;
+
+            Debug.Log($"Attempting to join room ONLY: {roomName}");
+        
+            // Chỉ join room, không tạo phòng khi thất bại
+            PhotonNetwork.JoinRoom(roomName);
+        }
+        else
+        {
+            Debug.LogWarning("Not connected to Photon yet. Please wait for connection.");
+        }
     }
 }
