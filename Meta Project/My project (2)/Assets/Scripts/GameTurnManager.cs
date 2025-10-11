@@ -468,9 +468,24 @@ private bool pieceMovedThisTurn = false;
         }
     }
 
+    // Thêm vào class GameTurnManager
+    public void OnTurnCompleted()
+    {
+        // Gọi khi một lượt chơi hoàn thành
+        if (PhotonManager.Instance != null)
+        {
+            PhotonManager.Instance.IncrementTurnCount();
+        }
+    }
+
+// Cập nhật phương thức EndTurnLocal
     private void EndTurnLocal()
     {
         currentPlayerIndex = (currentPlayerIndex + 1) % playerOrder.Count;
+    
+        // Thông báo lượt chơi hoàn thành
+        OnTurnCompleted();
+    
         Invoke("StartTurn", 1f);
     }
 

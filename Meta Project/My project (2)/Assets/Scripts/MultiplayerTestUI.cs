@@ -2,8 +2,8 @@ using UnityEngine;
 using UnityEngine.UI;
 using Photon.Pun;
 using Photon.Realtime;
+using TMPro;
 
-// UI phòng đơn giản để test multiplayer và tương tác vật thể
 public class MultiplayerTestUI : MonoBehaviourPunCallbacks
 {
     [Header("UI Elements")]
@@ -27,17 +27,20 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
     public GameObject spherePrefab;
     public Transform spawnPoint;
     
+    [Header("Player Info")]
+    public TextMeshProUGUI playerIDText;
+    public TextMeshProUGUI roomLockStatusText;
+    public TextMeshProUGUI errorText; // THÊM: Hiển thị lỗi
+    
     private void Start()
     {
-        // UI này nên hoạt động cho mọi client cục bộ để quản lý kết nối
-        // Không cần kiểm tra photonView.IsMine cho UI quản lý phòng
         SetupUI();
-        ShowMainMenu(); // Hiển thị main menu đầu tiên
+        ShowMainMenu();
+        ClearError(); // Xóa lỗi khi bắt đầu
     }
     
     private void SetupUI()
     {
-        // Gán các button events
         if (connectButton != null)
             connectButton.onClick.AddListener(ConnectToPhoton);
             
@@ -59,10 +62,6 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
     
     private void Update()
     {
-        // UI này nên hoạt động cho mọi client cục bộ để quản lý kết nối
-        // Không cần kiểm tra photonView.IsMine cho UI quản lý phòng
-        
-        // Chỉ update UI nếu đã setup xong
         if (mainMenuPanel != null || roomPanel != null || loadingPanel != null)
         {
             UpdateUI();
@@ -144,6 +143,44 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
                 Debug.LogError($"Player Count Error: {e.Message}");
             }
         }
+        
+        // Hiển thị Player ID
+        if (playerIDText != null && PhotonManager.Instance != null)
+        {
+            playerIDText.text = $"ID: {PhotonManager.Instance.GetCurrentPlayerID().Substring(0, 8)}...";
+        }
+    
+        // Hiển thị trạng thái khóa phòng
+        if (roomLockStatusText != null && PhotonNetwork.InRoom)
+        {
+            bool isLocked = PhotonManager.Instance != null && PhotonManager.Instance.IsRoomLocked();
+            roomLockStatusText.text = isLocked ? "🔒 Đã khóa" : "🔓 Mở";
+            roomLockStatusText.color = isLocked ? Color.red : Color.green;
+        }
+    }
+    
+    // THÊM: Hiển thị lỗi
+    private void ShowError(string message, bool isWarning = false)
+    {
+        if (errorText != null)
+        {
+            errorText.text = message;
+            errorText.color = isWarning ? Color.yellow : Color.red;
+            errorText.gameObject.SetActive(true);
+            
+            // Tự động ẩn lỗi sau 5 giây
+            Invoke("ClearError", 5f);
+        }
+    }
+    
+    // THÊM: Xóa lỗi
+    private void ClearError()
+    {
+        if (errorText != null)
+        {
+            errorText.text = "";
+            errorText.gameObject.SetActive(false);
+        }
     }
     
     // Hiển thị chỉ 1 panel tại một thời điểm
@@ -152,6 +189,7 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
         SetPanelActive(mainMenuPanel, true);
         SetPanelActive(roomPanel, false);
         SetPanelActive(loadingPanel, false);
+        ClearError();
     }
     
     private void ShowRoomPanel()
@@ -159,6 +197,7 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
         SetPanelActive(mainMenuPanel, false);
         SetPanelActive(roomPanel, true);
         SetPanelActive(loadingPanel, false);
+        ClearError();
     }
     
     private void ShowLoadingPanel(string message = "Đang tải...")
@@ -171,6 +210,7 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
         {
             loadingText.text = message;
         }
+        ClearError();
     }
     
     private void SetPanelActive(GameObject panel, bool active)
@@ -199,7 +239,7 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
             
             RoomOptions roomOptions = new RoomOptions
             {
-                MaxPlayers = 2,
+                MaxPlayers = 4, // Sửa thành 4 để phù hợp với maxPlayers
                 IsVisible = true,
                 IsOpen = true
             };
@@ -213,6 +253,9 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
         if (PhotonNetwork.IsConnected && !PhotonNetwork.InRoom)
         {
             string roomName = string.IsNullOrEmpty(roomNameInput.text) ? "TestRoom" : roomNameInput.text;
+        
+            // BỎ KIỂM TRA HẠN CHẾ - LUÔN CHO PHÉP THỬ JOIN
+            // Photon sẽ tự động xử lý các trường hợp lỗi
             ShowLoadingPanel($"Đang vào phòng '{roomName}'...");
             PhotonNetwork.JoinRoom(roomName);
         }
@@ -249,48 +292,91 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
     public override void OnConnectedToMaster()
     {
         Debug.Log("Đã kết nối tới Master Server");
-        ShowMainMenu(); // Quay về main menu sau khi kết nối
-        
-        // Force update UI ngay lập tức
+        ShowMainMenu();
         UpdateUI();
     }
     
     public override void OnJoinedRoom()
     {
         Debug.Log($"Đã vào phòng: {PhotonNetwork.CurrentRoom.Name}");
-        ShowRoomPanel(); // Hiển thị room panel khi vào phòng
-        
-        // Force update UI ngay lập tức
+        ShowRoomPanel();
         UpdateUI();
+        ClearError();
     }
     
     public override void OnLeftRoom()
     {
         Debug.Log("Đã rời phòng");
-        ShowMainMenu(); // Quay về main menu sau khi rời phòng
-        
-        // Force update UI ngay lập tức
+        ShowMainMenu();
         UpdateUI();
     }
     
     public override void OnCreateRoomFailed(short returnCode, string message)
     {
         Debug.LogError($"Tạo phòng thất bại: {message}");
-        ShowMainMenu(); // Quay về main menu nếu tạo phòng thất bại
+        ShowMainMenu();
+        ShowError($"Tạo phòng thất bại: {message}");
     }
     
+    // SỬA: Xử lý lỗi join room với thông báo rõ ràng
+    // SỬA: Xử lý lỗi join room với thông báo rõ ràng
     public override void OnJoinRoomFailed(short returnCode, string message)
     {
         Debug.LogError($"Vào phòng thất bại: {message}");
-        ShowMainMenu(); // Quay về main menu nếu vào phòng thất bại
+    
+        string roomName = PhotonManager.Instance?.GetLastAttemptedRoom() ?? "unknown";
+        string errorMessage = "";
+        bool isWarning = false;
+    
+        switch (returnCode)
+        {
+            case ErrorCode.GameClosed:
+                errorMessage = $"Phòng '{roomName}' đã bị khóa. Đang thử kết nối lại...";
+                isWarning = true;
+                break;
+            case ErrorCode.GameFull:
+                errorMessage = $"Phòng '{roomName}' đã đầy. Đang thử tạo phòng mới...";
+                isWarning = true;
+                break;
+            case ErrorCode.GameDoesNotExist:
+                errorMessage = $"Phòng '{roomName}' không tồn tại. Đang thử tạo phòng mới...";
+                isWarning = true;
+                break;
+            default:
+                errorMessage = $"Không thể vào phòng '{roomName}': {message}";
+                break;
+        }
+    
+        // HIỂN THỊ LỖI TRÊN UI - sửa dòng này
+        ShowError(errorMessage, isWarning);
+    
+        // KHÔNG hiện main menu ngay, để PhotonManager xử lý rejoining
+        // ShowMainMenu(); // COMMENT DÒNG NÀY
+    
+        Debug.Log($"UI: {errorMessage}");
     }
     
     public override void OnDisconnected(DisconnectCause cause)
     {
         Debug.Log($"Mất kết nối: {cause}");
-        ShowMainMenu(); // Quay về main menu khi mất kết nối
-        
-        // Force update UI ngay lập tức
+        ShowMainMenu();
+        ShowError($"Mất kết nối: {cause}");
         UpdateUI();
+    }
+    
+    // THÊM: Hiển thị trạng thái đang thử kết nối lại
+    private void ShowReconnectingStatus(string roomName)
+    {
+        if (loadingText != null)
+        {
+            loadingText.text = $"Đang thử kết nối lại phòng '{roomName}'...";
+        }
+    
+        if (errorText != null)
+        {
+            errorText.text = $"Phòng '{roomName}' đã khóa. Đang thử kết nối lại...";
+            errorText.color = Color.yellow;
+            errorText.gameObject.SetActive(true);
+        }
     }
 }
