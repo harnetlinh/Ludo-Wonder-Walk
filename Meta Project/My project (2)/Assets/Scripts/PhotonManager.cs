@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Collections;
+using UnityEngine;
 using Photon.Pun;
 using Photon.Realtime;
 using System.Collections.Generic;
@@ -87,7 +88,7 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         Debug.Log("=== CONNECTED TO MASTER SERVER ===");
         
         // Đặt nickname với ID (rút ngắn để dễ nhìn)
-        PhotonNetwork.NickName = $"Player_{playerID.Substring(0, 6)}";
+        PhotonNetwork.NickName = $"Player_{playerID}";
 
         Debug.Log($"Player Nickname: {PhotonNetwork.NickName}");
 
@@ -145,27 +146,318 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         PhotonNetwork.JoinOrCreateRoom(roomName, roomOptions, TypedLobby.Default);
     }
 
-    public override void OnJoinedRoom()
+    // THÊM: Lấy danh sách màu quân cờ được chọn ngẫu nhiên
+public List<PlayerColor> GetRandomPlayerColors(int playerCount)
+{
+    List<PlayerColor> allColors = new List<PlayerColor> 
+    { 
+        PlayerColor.Red, 
+        PlayerColor.Blue, 
+        PlayerColor.Yellow, 
+        PlayerColor.Green 
+    };
+    
+    // Xáo trộn danh sách màu
+    System.Random rng = new System.Random();
+    List<PlayerColor> shuffledColors = allColors.OrderBy(x => rng.Next()).ToList();
+    
+    // Lấy số lượng màu tương ứng với số người chơi
+    return shuffledColors.Take(playerCount).ToList();
+}
+
+// THÊM: Lấy màu của player hiện tại
+public PlayerColor GetCurrentPlayerColor()
+{
+    if (PhotonNetwork.InRoom && PhotonNetwork.CurrentRoom.CustomProperties.ContainsKey("PlayerColors"))
     {
-        Debug.Log($"Joined room successfully as {PhotonNetwork.NickName}. Total players: {PhotonNetwork.CurrentRoom.PlayerCount}");
-        Debug.Log($"Is Master Client: {PhotonNetwork.IsMasterClient}");
+        string playerColorsData = (string)PhotonNetwork.CurrentRoom.CustomProperties["PlayerColors"];
+        if (!string.IsNullOrEmpty(playerColorsData))
+        {
+            string[] entries = playerColorsData.Split(';');
+            foreach (string entry in entries)
+            {
+                string[] parts = entry.Split(':');
+                if (parts.Length == 2 && parts[0] == playerID)
+                {
+                    return (PlayerColor)System.Enum.Parse(typeof(PlayerColor), parts[1]);
+                }
+            }
+        }
+    }
+    return PlayerColor.None;
+}
 
-        // LUÔN LƯU ROOM HIỆN TẠI - ĐỂ CÓ THỂ REJOIN SAU NÀY
-        PlayerPrefs.SetString($"LastRoom_{playerID}", PhotonNetwork.CurrentRoom.Name);
-        PlayerPrefs.Save();
+// THÊM: Lấy tất cả màu đang được sử dụng trong room
+public List<PlayerColor> GetRoomPlayerColors()
+{
+    List<PlayerColor> colors = new List<PlayerColor>();
+    
+    if (PhotonNetwork.InRoom && PhotonNetwork.CurrentRoom.CustomProperties.ContainsKey("PlayerColors"))
+    {
+        string playerColorsData = (string)PhotonNetwork.CurrentRoom.CustomProperties["PlayerColors"];
+        if (!string.IsNullOrEmpty(playerColorsData))
+        {
+            string[] entries = playerColorsData.Split(';');
+            foreach (string entry in entries)
+            {
+                string[] parts = entry.Split(':');
+                if (parts.Length == 2)
+                {
+                    colors.Add((PlayerColor)System.Enum.Parse(typeof(PlayerColor), parts[1]));
+                }
+            }
+        }
+    }
+    
+    return colors;
+}
 
-        // Thêm player ID vào room properties (chỉ master client)
+// THÊM: Phân phối màu cho người chơi khi tạo phòng
+
+// THÊM: Lấy màu đã được gán trước đó cho player
+private PlayerColor GetPreviouslyAssignedColor(string playerId)
+{
+    string key = $"AssignedColor_{playerId}";
+    if (PlayerPrefs.HasKey(key))
+    {
+        return (PlayerColor)PlayerPrefs.GetInt(key, 0);
+    }
+    return PlayerColor.None;
+}
+
+// THÊM: Lưu màu đã gán cho player
+private void SaveAssignedColor(string playerId, PlayerColor color)
+{
+    string key = $"AssignedColor_{playerId}";
+    PlayerPrefs.SetInt(key, (int)color);
+    PlayerPrefs.Save();
+    Debug.Log($"Saved color {color} for player {playerId}");
+}
+
+// THÊM: Xóa màu đã gán (khi player rời phòng hoàn toàn)
+private void ClearAssignedColor(string playerId)
+{
+    string key = $"AssignedColor_{playerId}";
+    PlayerPrefs.DeleteKey(key);
+    PlayerPrefs.Save();
+    Debug.Log($"Cleared color for player {playerId}");
+}
+
+// Trong PhotonManager.cs, SỬA LẠI HOÀN TOÀN phương thức AssignPlayerColors:
+
+// SỬA: Phương thức AssignPlayerColors để LUÔN ƯU TIÊN MÀU CŨ
+private void AssignPlayerColors()
+{
+    if (!PhotonNetwork.IsMasterClient) return;
+    
+    Debug.Log("=== ASSIGNING PLAYER COLORS ===");
+    
+    // Tạo dictionary để theo dõi màu đã gán
+    Dictionary<string, PlayerColor> assignedColors = new Dictionary<string, PlayerColor>();
+    List<PlayerColor> usedColors = new List<PlayerColor>();
+    
+    Player[] players = PhotonNetwork.PlayerList;
+    
+    // BƯỚC 1: LUÔN ƯU TIÊN GÁN LẠI MÀU CŨ CHO TẤT CẢ PLAYER
+    foreach (Player player in players)
+    {
+        string playerId = GetPlayerIDFromNickname(player.NickName);
+        PlayerColor previousColor = GetPreviouslyAssignedColor(playerId);
+        
+        if (previousColor != PlayerColor.None)
+        {
+            // KIỂM TRA: Nếu màu cũ đã được player khác sử dụng, vẫn ưu tiên cho player hiện tại
+            // Vì đây là player rejoining room cũ, họ có quyền lấy lại màu của mình
+            if (usedColors.Contains(previousColor))
+            {
+                Debug.LogWarning($"Color {previousColor} is already used, but reassigning to original owner {playerId}");
+                // Vẫn gán màu cũ cho player này, player khác sẽ phải điều chỉnh
+            }
+            
+            assignedColors[playerId] = previousColor;
+            usedColors.Add(previousColor);
+            Debug.Log($"Reassigned previous color {previousColor} to rejoining player {playerId}");
+        }
+    }
+    
+    // BƯỚC 2: Chỉ gán màu mới cho player thực sự chưa có màu
+    List<PlayerColor> allAvailableColors = new List<PlayerColor> 
+    { 
+        PlayerColor.Red, 
+        PlayerColor.Blue, 
+        PlayerColor.Yellow, 
+        PlayerColor.Green 
+    };
+    
+    foreach (Player player in players)
+    {
+        string playerId = GetPlayerIDFromNickname(player.NickName);
+        
+        if (!assignedColors.ContainsKey(playerId))
+        {
+            // Tìm màu chưa được sử dụng
+            PlayerColor availableColor = allAvailableColors.FirstOrDefault(color => !usedColors.Contains(color));
+            
+            if (availableColor != PlayerColor.None)
+            {
+                assignedColors[playerId] = availableColor;
+                usedColors.Add(availableColor);
+                SaveAssignedColor(playerId, availableColor);
+                Debug.Log($"Assigned new color {availableColor} to new player {playerId}");
+            }
+            else
+            {
+                Debug.LogError($"No available colors for new player {playerId}!");
+            }
+        }
+    }
+    
+    // Cập nhật room properties
+    UpdatePlayerColorsInRoom(assignedColors);
+}
+
+// THÊM: Phương thức cập nhật màu trong room
+private void UpdatePlayerColorsInRoom(Dictionary<string, PlayerColor> assignedColors)
+{
+    List<string> playerColorAssignments = new List<string>();
+    foreach (var assignment in assignedColors)
+    {
+        playerColorAssignments.Add($"{assignment.Key}:{assignment.Value}");
+    }
+    
+    string playerColorsData = string.Join(";", playerColorAssignments);
+    
+    PhotonNetwork.CurrentRoom.SetCustomProperties(new ExitGames.Client.Photon.Hashtable
+    {
+        { "PlayerColors", playerColorsData }
+    });
+    
+    Debug.Log($"Final color assignments: {playerColorsData}");
+}
+
+// THÊM: Phương thức xử lý khi player rejoins
+private void HandlePlayerRejoining(Player rejoiningPlayer)
+{
+    string playerId = GetPlayerIDFromNickname(rejoiningPlayer.NickName);
+    PlayerColor previousColor = GetPreviouslyAssignedColor(playerId);
+    
+    if (previousColor != PlayerColor.None)
+    {
+        Debug.Log($"Player {playerId} rejoined with previous color: {previousColor}");
+        
+        // Đảm bảo màu này được giữ nguyên trong room properties
+        AssignPlayerColors(); // Gọi lại để cập nhật
+    }
+}
+
+// THÊM: Lấy PlayerID từ nickname
+private string GetPlayerIDFromNickname(string nickname)
+{
+    if (nickname.StartsWith("Player_") && nickname.Length > 7)
+    {
+        return nickname.Substring(7);
+    }
+    return "";
+}
+
+// THÊM: Phương thức để kiểm tra và fix màu bị sai
+public void ValidateAndFixPlayerColors()
+{
+    if (!PhotonNetwork.IsMasterClient) return;
+    
+    Debug.Log("Validating player color assignments...");
+    
+    bool needsFix = false;
+    Dictionary<string, PlayerColor> currentAssignments = new Dictionary<string, PlayerColor>();
+    
+    // Lấy assignments hiện tại từ room properties
+    if (PhotonNetwork.CurrentRoom.CustomProperties.ContainsKey("PlayerColors"))
+    {
+        string playerColorsData = (string)PhotonNetwork.CurrentRoom.CustomProperties["PlayerColors"];
+        if (!string.IsNullOrEmpty(playerColorsData))
+        {
+            string[] entries = playerColorsData.Split(';');
+            foreach (string entry in entries)
+            {
+                string[] parts = entry.Split(':');
+                if (parts.Length == 2)
+                {
+                    currentAssignments[parts[0]] = (PlayerColor)System.Enum.Parse(typeof(PlayerColor), parts[1]);
+                }
+            }
+        }
+    }
+    
+    // Kiểm tra từng player hiện tại
+    foreach (Player player in PhotonNetwork.PlayerList)
+    {
+        string playerId = GetPlayerIDFromNickname(player.NickName);
+        PlayerColor savedColor = GetPreviouslyAssignedColor(playerId);
+        
+        if (savedColor != PlayerColor.None)
+        {
+            // Kiểm tra xem màu saved có khớp với màu trong room không
+            if (!currentAssignments.ContainsKey(playerId) || currentAssignments[playerId] != savedColor)
+            {
+                Debug.LogWarning($"Color mismatch for player {playerId}. Saved: {savedColor}, In room: {(currentAssignments.ContainsKey(playerId) ? currentAssignments[playerId].ToString() : "None")}");
+                needsFix = true;
+            }
+        }
+    }
+    
+    if (needsFix)
+    {
+        Debug.Log("Color assignments need fixing, reassigning...");
+        AssignPlayerColors();
+    }
+    else
+    {
+        Debug.Log("Player color assignments are valid");
+    }
+}
+
+// THÊM: Gọi validation định kỳ
+private IEnumerator PeriodicColorValidation()
+{
+    while (PhotonNetwork.InRoom)
+    {
+        yield return new WaitForSeconds(30f); // Kiểm tra mỗi 30 giây
         if (PhotonNetwork.IsMasterClient)
         {
-            UpdateRoomPlayerIDs();
+            ValidateAndFixPlayerColors();
         }
+    }
+}
 
-        // Log thông tin PhotonView
-        PhotonView[] scenePhotonViews = FindObjectsOfType<PhotonView>();
-        foreach (PhotonView pv in scenePhotonViews)
-        {
-            Debug.Log($"Scene PhotonView found: {pv.gameObject.name}, Owner: {pv.Owner?.NickName ?? "None"}, IsMine: {pv.IsMine}");
-        }
+// SỬA: OnJoinedRoom để bắt đầu validation
+public override void OnJoinedRoom()
+{
+    Debug.Log($"Joined room successfully as {PhotonNetwork.NickName}. Total players: {PhotonNetwork.CurrentRoom.PlayerCount}");
+    Debug.Log($"Is Master Client: {PhotonNetwork.IsMasterClient}");
+
+    // LUÔN LƯU ROOM HIỆN TẠI
+    PlayerPrefs.SetString($"LastRoom_{playerID}", PhotonNetwork.CurrentRoom.Name);
+    PlayerPrefs.Save();
+
+    if (PhotonNetwork.IsMasterClient)
+    {
+        UpdateRoomPlayerIDs();
+        AssignPlayerColors();
+        
+        // BẮT ĐẦU validation định kỳ
+        StartCoroutine(PeriodicColorValidation());
+    }
+
+    // Kích hoạt quân cờ sau khi join room
+    StartCoroutine(ActivatePiecesAfterDelay());
+}
+
+// THÊM: Coroutine để kích hoạt quân cờ sau một khoảng delay
+    private IEnumerator ActivatePiecesAfterDelay()
+    {
+        // Đợi một frame để đảm bảo tất cả component đã khởi tạo
+        yield return new WaitForSeconds(0.5f);
+        ActivatePiecesForPlayers();
     }
 
     private void UpdateRoomPlayerIDs()
@@ -214,24 +506,100 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         return true; // Tạm thời luôn cho phép, có thể điều chỉnh sau
     }
 
+    // Trong PhotonManager.cs, THÊM các phương thức sau:
+
+// THÊM: Callback khi player properties thay đổi (để phát hiện rejoining)
+    public override void OnPlayerPropertiesUpdate(Player targetPlayer, ExitGames.Client.Photon.Hashtable changedProps)
+    {
+        // Phát hiện khi player rejoining bằng cách theo dõi sự thay đổi trạng thái
+        if (changedProps.ContainsKey("IsInactive"))
+        {
+            bool isInactive = (bool)changedProps["IsInactive"];
+            if (!isInactive)
+            {
+                // Player đã trở lại active -> rejoining
+                Debug.Log($"Player {targetPlayer.NickName} became active (rejoining)");
+                HandlePlayerRejoining(targetPlayer);
+            }
+        }
+    }
+
+// SỬA: OnPlayerEnteredRoom để xử lý rejoining
     public override void OnPlayerEnteredRoom(Player newPlayer)
     {
-        Debug.Log($"Player {newPlayer.NickName} joined the room. Total players: {PhotonNetwork.CurrentRoom.PlayerCount}");
+        Debug.Log($"Player {newPlayer.NickName} entered the room. Total players: {PhotonNetwork.CurrentRoom.PlayerCount}");
+
+        // KIỂM TRA: Đây có phải là player rejoining không?
+        string playerId = GetPlayerIDFromNickname(newPlayer.NickName);
+        PlayerColor previousColor = GetPreviouslyAssignedColor(playerId);
+    
+        if (previousColor != PlayerColor.None)
+        {
+            Debug.Log($"This is a REJOINING player with previous color: {previousColor}");
+            HandlePlayerRejoining(newPlayer);
+        }
 
         if (PhotonNetwork.IsMasterClient)
         {
             CheckAndLockRoom();
             UpdateRoomPlayerIDs();
+            AssignPlayerColors(); // LUÔN gán màu khi có player mới
+        
+            // Kích hoạt lại quân cờ khi có người mới
+            StartCoroutine(ActivatePiecesAfterDelay());
         }
     }
 
+// THÊM: Phương thức force reassign màu khi cần
+    public void ForceColorReassignment()
+    {
+        if (PhotonNetwork.IsMasterClient)
+        {
+            Debug.Log("Forcing color reassignment for all players");
+            AssignPlayerColors();
+        }
+    }
+
+    // SỬA: OnPlayerLeftRoom để không xóa màu ngay lập tức
     public override void OnPlayerLeftRoom(Player otherPlayer)
     {
         Debug.Log($"Player {otherPlayer.NickName} left the room. Total players: {PhotonNetwork.CurrentRoom.PlayerCount}");
 
+        string leftPlayerId = GetPlayerIDFromNickname(otherPlayer.NickName);
+    
+        // QUAN TRỌNG: KHÔNG xóa màu ngay lập tức khi player rời
+        // Chỉ đánh dấu player là inactive, giữ màu để cho phép rejoining
+        Debug.Log($"Player {leftPlayerId} left, but keeping assigned color for potential rejoining");
+
         if (PhotonNetwork.IsMasterClient)
         {
             UpdateRoomPlayerIDs();
+            // KHÔNG gán lại màu ngay lập tức, chờ xem player có rejoining không
+            // Chỉ gán lại sau một khoảng thời gian nếu cần
+            StartCoroutine(DelayedColorCleanup(leftPlayerId, 180f)); // Chờ 10 giây
+        }
+    }
+
+// THÊM: Coroutine để cleanup màu sau delay
+    private IEnumerator DelayedColorCleanup(string playerId, float delaySeconds)
+    {
+        yield return new WaitForSeconds(delaySeconds);
+    
+        // Kiểm tra xem player có rejoined chưa
+        bool playerRejoined = PhotonNetwork.PlayerList.Any(p => GetPlayerIDFromNickname(p.NickName) == playerId);
+    
+        if (!playerRejoined)
+        {
+            // Nếu sau delay mà player không rejoined, thì xóa màu
+            ClearAssignedColor(playerId);
+            Debug.Log($"Player {playerId} did not rejoin after {delaySeconds} seconds, cleared assigned color");
+        
+            // Gán lại màu cho các player còn lại
+            AssignPlayerColors();
+        }
+        else
+        {
+            Debug.Log($"Player {playerId} rejoined within {delaySeconds} seconds, keeping assigned color");
         }
     }
 
@@ -496,6 +864,35 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         else
         {
             Debug.LogWarning("Not connected to Photon yet. Please wait for connection.");
+        }
+    }
+    
+    // THÊM: Phương thức kích hoạt quân cờ dựa trên màu được phân phối
+    public void ActivatePiecesForPlayers()
+    {
+        if (!PhotonNetwork.InRoom) return;
+    
+        PieceController[] allPieces = FindObjectsOfType<PieceController>(true); // Tìm cả những cái đang tắt
+        List<PlayerColor> activeColors = GetRoomPlayerColors();
+    
+        Debug.Log($"Activating pieces for {activeColors.Count} colors: {string.Join(", ", activeColors)}");
+    
+        foreach (PieceController piece in allPieces)
+        {
+            if (activeColors.Contains(piece.playerColor))
+            {
+                piece.gameObject.SetActive(true);
+            
+                // THÊM: Gọi phương thức activate nếu có
+                piece.ActivateForPlayer();
+            
+                Debug.Log($"Activated piece: {piece.playerColor}");
+            }
+            else
+            {
+                piece.gameObject.SetActive(false);
+                Debug.Log($"Deactivated piece: {piece.playerColor}");
+            }
         }
     }
 }

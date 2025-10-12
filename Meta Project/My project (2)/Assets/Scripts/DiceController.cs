@@ -427,6 +427,10 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
     // Sửa phương thức EnableDiceForCurrentPlayer
     // Trong DiceController.cs
 
+    // Trong DiceController.cs, sửa phương thức EnableDiceForCurrentPlayer:
+
+    // Trong DiceController.cs, sửa phương thức EnableDiceForCurrentPlayer:
+
     public void EnableDiceForCurrentPlayer()
     {
         // KHÔNG cho phép kích hoạt nếu đang di chuyển
@@ -437,6 +441,18 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
         }
     
         currentRollingPlayer = GetCurrentPlayer();
+    
+        // THÊM: Kiểm tra xem current player có trong game không
+        // VÀ kiểm tra xem player đó có đang online không
+        if (GameTurnManager.Instance != null && 
+            (!GameTurnManager.Instance.IsColorInGame(currentRollingPlayer) ||
+             !IsPlayerWithColorOnline(currentRollingPlayer)))
+        {
+            Debug.Log($"Player color {currentRollingPlayer} is not in game or offline, skipping turn");
+            GameTurnManager.Instance.EndTurn();
+            return;
+        }
+    
         hasRolledThisTurn = false;
 
         // Di chuyển xúc xắc đến vị trí người chơi hiện tại
@@ -447,6 +463,15 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
 
         diceButton.interactable = !hasRolledThisTurn;
         diceResultText.text = !hasRolledThisTurn ? "Cầm xúc xắc lên để ném" : "Bạn đã xúc xắc trong lượt này";
+    }
+
+// THÊM: Kiểm tra xem player với màu cụ thể có đang online không
+    private bool IsPlayerWithColorOnline(PlayerColor color)
+    {
+        if (PhotonManager.Instance == null) return true; // Fallback cho offline
+    
+        List<PlayerColor> onlineColors = PhotonManager.Instance.GetRoomPlayerColors();
+        return onlineColors.Contains(color);
     }
 
 // Thêm phương thức kiểm tra trạng thái

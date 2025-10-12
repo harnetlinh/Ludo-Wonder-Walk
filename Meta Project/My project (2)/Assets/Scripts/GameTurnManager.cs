@@ -51,8 +51,21 @@ private bool pieceMovedThisTurn = false;
         }
     }
 
+    // SỬA: Phương thức khởi tạo player order chỉ cho những player có màu
     public void InitializePlayerOrder(DiceController diceController)
     {
+        // Chỉ khởi tạo nếu có player colors được phân phối
+        if (PhotonManager.Instance != null)
+        {
+            List<PlayerColor> roomColors = PhotonManager.Instance.GetRoomPlayerColors();
+            if (roomColors.Count > 0)
+            {
+                StartCoroutine(DeterminePlayerOrder(diceController, roomColors));
+                return;
+            }
+        }
+    
+        // Fallback: sử dụng phương thức cũ nếu không có thông tin từ PhotonManager
         StartCoroutine(DeterminePlayerOrder(diceController));
     }
     public PlayerColor CurrentPlayer
@@ -68,10 +81,15 @@ private bool pieceMovedThisTurn = false;
         }
     }
 
-    private System.Collections.IEnumerator DeterminePlayerOrder(DiceController diceController)
+    // SỬA: Phương thức DeterminePlayerOrder để chỉ xét những player có trong room
+    private System.Collections.IEnumerator DeterminePlayerOrder(DiceController diceController, List<PlayerColor> availableColors = null)
     {
-        isDeterminingOrder = true; // Bật flag khi bắt đầu xác định thứ tự
+        isDeterminingOrder = true;
         Dictionary<PlayerColor, int> playerRolls = new Dictionary<PlayerColor, int>();
+
+        // Sử dụng danh sách màu từ PhotonManager nếu có
+        List<PlayerColor> colorsToProcess = availableColors ?? 
+                                            new List<PlayerColor> { PlayerColor.Red, PlayerColor.Blue, PlayerColor.Yellow, PlayerColor.Green };
 
         // Kiểm tra null trước khi truy cập diceButton
         if (diceController != null && diceController.diceButton != null)
@@ -79,10 +97,11 @@ private bool pieceMovedThisTurn = false;
             diceController.diceButton.interactable = false;
         }
 
-        foreach (PlayerColor color in System.Enum.GetValues(typeof(PlayerColor)))
+        foreach (PlayerColor color in colorsToProcess)
         {
-            // Bỏ qua PlayerColor.None
+            // Bỏ qua PlayerColor.None và những màu không có trong room
             if (color == PlayerColor.None) continue;
+        
             if (diceController != null)
             {
                 diceController.RollDiceForPlayer(color);
@@ -99,7 +118,7 @@ private bool pieceMovedThisTurn = false;
             playerOrder.Add(entry.Key);
         }
 
-        isDeterminingOrder = false; // Tắt flag khi hoàn thành
+        isDeterminingOrder = false;
 
         if (autoPlayAllPlayers)
         {
@@ -115,9 +134,16 @@ private bool pieceMovedThisTurn = false;
                 diceController.EnableDiceForCurrentPlayer();
             }
         }
-        isInitialized = true; // Thêm dòng này sau khi khởi tạo xong
+        isInitialized = true;
         isDeterminingOrder = false;
     }
+
+// THÊM: Kiểm tra xem player color có trong lượt chơi không
+    public bool IsColorInGame(PlayerColor color)
+    {
+        return playerOrder.Contains(color);
+    }
+
 
     // Cập nhật StartTurn để highlight các quân có thể di chuyển
     // Cập nhật StartTurn
@@ -257,9 +283,10 @@ private bool pieceMovedThisTurn = false;
         }
     }
 
+    // SỬA: Phương thức IsCurrentPlayer để kiểm tra cả việc màu có trong game không
     public bool IsCurrentPlayer(PlayerColor color)
     {
-        if (!isInitialized || playerOrder.Count == 0)
+        if (!isInitialized || playerOrder.Count == 0 || !IsColorInGame(color))
         {
             return false;
         }
@@ -496,10 +523,31 @@ private bool pieceMovedThisTurn = false;
         StartTurnLocal();
     }
 
+    // Trong GameTurnManager.cs, thêm phương thức:
+
+// THÊM: Kiểm tra xem player với màu cụ thể có đang online
+    public bool IsPlayerOnline(PlayerColor color)
+    {
+        if (PhotonManager.Instance == null) return true; // Fallback cho offline mode
+    
+        List<PlayerColor> onlineColors = PhotonManager.Instance.GetRoomPlayerColors();
+        return onlineColors.Contains(color);
+    }
+
+// SỬA: Phương thức StartTurnLocal để kiểm tra player online
     private void StartTurnLocal()
     {
         if (WinConditionManager.Instance != null && WinConditionManager.Instance.IsGameEnded())
         {
+            return;
+        }
+
+        // THÊM: Kiểm tra xem current player có online không
+        PlayerColor currentPlayer = CurrentPlayer;
+        if (!IsPlayerOnline(currentPlayer))
+        {
+            Debug.Log($"Player {currentPlayer} is offline, skipping turn");
+            Invoke("EndTurn", 1f);
             return;
         }
 
@@ -515,6 +563,7 @@ private bool pieceMovedThisTurn = false;
 
         DiceController.Instance.hasRolledThisTurn = false;
         DiceController.Instance.ResetDiceValue();
+    
         // THÊM: Đảm bảo vật lý xúc xắc được kích hoạt
         if (DiceController.Instance != null)
         {

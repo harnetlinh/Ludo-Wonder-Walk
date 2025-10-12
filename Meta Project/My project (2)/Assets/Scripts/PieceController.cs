@@ -64,11 +64,16 @@ private static bool isProcessingTurn = false;
 private static float lastTurnProcessingTime = 0f;
 private const float TURN_COOLDOWN = 1f; // Thời gian chờ giữa các lượt
 
+// Trong PieceController.cs, thêm kiểm tra trong Start:
+
     protected virtual void Start()
     {
         gameObject.tag = "Piece";
         pieceRenderer = GetComponent<Renderer>();
         originalColor = pieceRenderer.material.color;
+
+        // THÊM: Ban đầu tắt quân cờ, sẽ được kích hoạt sau khi phân phối màu
+        gameObject.SetActive(false);
 
         // Lưu vị trí chuồng ban đầu
         SaveInitialStablePosition();
@@ -76,20 +81,46 @@ private const float TURN_COOLDOWN = 1f; // Thời gian chờ giữa các lượt
         // Khởi tạo camera
         mainCamera = Camera.main;
 
-        // Khởi tạo biến đồng bộ
-        if (isOnlineMode && photonView != null)
+        // KHÔNG kiểm tra màu ở đây nữa, sẽ kiểm tra sau khi phân phối màu
+        Debug.Log($"PieceController ready for {playerColor}. Owner: {photonView?.Owner?.NickName}");
+    }
+
+// THÊM: Phương thức để kích hoạt quân cờ khi màu được phân phối
+    // Trong PieceController.cs, sửa phương thức ActivateForPlayer:
+
+    // Trong PieceController.cs, SỬA phương thức ActivateForPlayer:
+
+    public void ActivateForPlayer()
+    {
+        if (PhotonManager.Instance != null && GameTurnManager.Instance != null)
         {
-            networkPosition = transform.position;
-            networkRotation = transform.rotation;
-            networkPathIndex = currentPathIndex;
-            networkIsMoving = isMoving;
-            networkIsVRGrabbed = isVRGrabbed;
-
-            lastSentPosition = transform.position;
-            lastSentRotation = transform.rotation;
+            // LUÔN KIỂM TRA: Màu này có được assigned cho player nào không
+            PlayerColor currentPlayerColor = PhotonManager.Instance.GetCurrentPlayerColor();
+            List<PlayerColor> activeColors = PhotonManager.Instance.GetRoomPlayerColors();
+        
+            bool shouldActivate = activeColors.Contains(playerColor) && 
+                                  GameTurnManager.Instance.IsColorInGame(playerColor);
+    
+            if (shouldActivate)
+            {
+                gameObject.SetActive(true);
+                Debug.Log($"Activated piece for color: {playerColor} (Current player color: {currentPlayerColor})");
+        
+                // Đảm bảo vật lý được kích hoạt
+                Rigidbody rb = GetComponent<Rigidbody>();
+                if (rb != null)
+                {
+                    rb.isKinematic = false;
+                    rb.useGravity = true;
+                    rb.WakeUp();
+                }
+            }
+            else
+            {
+                gameObject.SetActive(false);
+                Debug.Log($"Deactivated piece for color: {playerColor} - not in active colors list: {string.Join(", ", activeColors)}");
+            }
         }
-
-        Debug.Log($"PieceController ready for {playerColor}. Owner: {photonView.Owner?.NickName}");
     }
 
     protected virtual void Update()
