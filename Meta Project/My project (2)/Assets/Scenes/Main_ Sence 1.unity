@@ -18236,12 +18236,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8deae370f0e0ee1479455db9418182d8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  targetFPS: 72
-  disableVSync: 1
-  renderScale: 0.5
-  autoAdjustQuality: 0
-  disableTransparentMaterials: 1
-  disableTransparentParticles: 1
 --- !u!4 &1350059363
 Transform:
   m_ObjectHideFlags: 0

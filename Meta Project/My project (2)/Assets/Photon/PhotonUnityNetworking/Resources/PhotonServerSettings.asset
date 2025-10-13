@@ -112,6 +112,8 @@ MonoBehaviour:
   - RPC_SetDiceKinematic
   - SyncKinematicState
   - RPC_SyncPhysicsState
+  - RPC_OnPlayerLeftRoom
+  - RPC_PlayerLeftRoom
   DisableAutoOpenWizard: 1
   ShowSettings: 1
   DevRegionSetOnce: 1

@@ -128,8 +128,8 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         roomOptions.IsVisible = true;
         roomOptions.IsOpen = true; // QUAN TRỌNG: Luôn mở khi tạo room
     
-        roomOptions.EmptyRoomTtl = 30000;
-        roomOptions.PlayerTtl = 30000;
+        roomOptions.EmptyRoomTtl = 15000;
+        roomOptions.PlayerTtl = 1000;
 
         // Thêm custom properties
         roomOptions.CustomRoomProperties = new ExitGames.Client.Photon.Hashtable
@@ -417,18 +417,6 @@ public void ValidateAndFixPlayerColors()
 }
 
 // THÊM: Gọi validation định kỳ
-private IEnumerator PeriodicColorValidation()
-{
-    while (PhotonNetwork.InRoom)
-    {
-        yield return new WaitForSeconds(30f); // Kiểm tra mỗi 30 giây
-        if (PhotonNetwork.IsMasterClient)
-        {
-            ValidateAndFixPlayerColors();
-        }
-    }
-}
-
 // SỬA: OnJoinedRoom để bắt đầu validation
 // SỬA: OnJoinedRoom để xử lý rejoin đúng cách
     public override void OnJoinedRoom()
@@ -452,9 +440,6 @@ private IEnumerator PeriodicColorValidation()
         {
             UpdateRoomPlayerIDs();
             AssignPlayerColors();
-        
-            // BẮT ĐẦU validation định kỳ
-            StartCoroutine(PeriodicColorValidation());
         }
         else if (isRejoining)
         {
@@ -825,8 +810,8 @@ private IEnumerator PeriodicColorValidation()
             roomOptions.MaxPlayers = (byte)maxPlayers;
             roomOptions.IsVisible = true;
             roomOptions.IsOpen = true;
-            roomOptions.EmptyRoomTtl = 30000;
-            roomOptions.PlayerTtl = 30000;
+            roomOptions.EmptyRoomTtl = 15000;
+            roomOptions.PlayerTtl = 1000;
 
             // THÊM: Lưu thông tin piecesPerPlayer vào room properties
             roomOptions.CustomRoomProperties = new ExitGames.Client.Photon.Hashtable
