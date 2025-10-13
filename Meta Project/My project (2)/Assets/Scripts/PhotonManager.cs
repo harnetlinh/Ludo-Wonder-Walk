@@ -245,7 +245,7 @@ private void ClearAssignedColor(string playerId)
 
 // Trong PhotonManager.cs, SỬA LẠI HOÀN TOÀN phương thức AssignPlayerColors:
 
-// SỬA: Phương thức AssignPlayerColors để LUÔN ƯU TIÊN MÀU CŨ
+// SỬA: Phương thức AssignPlayerColors để xử lý màu trùng thông minh hơn
 private void AssignPlayerColors()
 {
     if (!PhotonNetwork.IsMasterClient) return;
@@ -258,7 +258,7 @@ private void AssignPlayerColors()
     
     Player[] players = PhotonNetwork.PlayerList;
     
-    // BƯỚC 1: LUÔN ƯU TIÊN GÁN LẠI MÀU CŨ CHO TẤT CẢ PLAYER
+    // BƯỚC 1: Gán màu cũ CHO TỪNG PLAYER và kiểm tra trùng
     foreach (Player player in players)
     {
         string playerId = GetPlayerIDFromNickname(player.NickName);
@@ -266,12 +266,12 @@ private void AssignPlayerColors()
         
         if (previousColor != PlayerColor.None)
         {
-            // KIỂM TRA: Nếu màu cũ đã được player khác sử dụng, vẫn ưu tiên cho player hiện tại
-            // Vì đây là player rejoining room cũ, họ có quyền lấy lại màu của mình
+            // KIỂM TRA TRÙNG: Nếu màu cũ đã được player khác sử dụng
             if (usedColors.Contains(previousColor))
             {
-                Debug.LogWarning($"Color {previousColor} is already used, but reassigning to original owner {playerId}");
-                // Vẫn gán màu cũ cho player này, player khác sẽ phải điều chỉnh
+                Debug.LogWarning($"Color conflict: {previousColor} is already used by another player");
+                // KHÔNG gán màu cũ trong trường hợp này, sẽ gán màu mới ở bước sau
+                continue;
             }
             
             assignedColors[playerId] = previousColor;
@@ -280,7 +280,7 @@ private void AssignPlayerColors()
         }
     }
     
-    // BƯỚC 2: Chỉ gán màu mới cho player thực sự chưa có màu
+    // BƯỚC 2: Gán màu mới cho player chưa có màu hoặc bị trùng màu
     List<PlayerColor> allAvailableColors = new List<PlayerColor> 
     { 
         PlayerColor.Red, 
@@ -303,11 +303,11 @@ private void AssignPlayerColors()
                 assignedColors[playerId] = availableColor;
                 usedColors.Add(availableColor);
                 SaveAssignedColor(playerId, availableColor);
-                Debug.Log($"Assigned new color {availableColor} to new player {playerId}");
+                Debug.Log($"Assigned new color {availableColor} to player {playerId}");
             }
             else
             {
-                Debug.LogError($"No available colors for new player {playerId}!");
+                Debug.LogError($"No available colors for player {playerId}!");
             }
         }
     }
@@ -430,35 +430,44 @@ private IEnumerator PeriodicColorValidation()
 }
 
 // SỬA: OnJoinedRoom để bắt đầu validation
-public override void OnJoinedRoom()
-{
-    Debug.Log($"Joined room successfully as {PhotonNetwork.NickName}. Total players: {PhotonNetwork.CurrentRoom.PlayerCount}");
-    Debug.Log($"Is Master Client: {PhotonNetwork.IsMasterClient}");
-
-    // LUÔN LƯU ROOM HIỆN TẠI
-    PlayerPrefs.SetString($"LastRoom_{playerID}", PhotonNetwork.CurrentRoom.Name);
-    PlayerPrefs.Save();
-
-    if (PhotonNetwork.IsMasterClient)
+// SỬA: OnJoinedRoom để xử lý rejoin đúng cách
+    public override void OnJoinedRoom()
     {
-        UpdateRoomPlayerIDs();
-        AssignPlayerColors();
-        
-        // BẮT ĐẦU validation định kỳ
-        StartCoroutine(PeriodicColorValidation());
-    }
+        Debug.Log($"Joined room successfully as {PhotonNetwork.NickName}. Total players: {PhotonNetwork.CurrentRoom.PlayerCount}");
+        Debug.Log($"Is Master Client: {PhotonNetwork.IsMasterClient}");
 
-    // Kích hoạt quân cờ sau khi join room
-    StartCoroutine(ActivatePiecesAfterDelay());
-}
+        string currentRoomName = PhotonNetwork.CurrentRoom.Name;
+        string lastRoom = PlayerPrefs.GetString($"LastRoom_{playerID}", "");
+
+        // KIỂM TRA: Đây có phải là rejoin không?
+        bool isRejoining = (currentRoomName == lastRoom);
+    
+        Debug.Log($"Join type: {(isRejoining ? "REJOINING previous room" : "JOINING new room")}");
+
+        // LUÔN LƯU ROOM HIỆN TẠI
+        PlayerPrefs.SetString($"LastRoom_{playerID}", currentRoomName);
+        PlayerPrefs.Save();
+
+        if (PhotonNetwork.IsMasterClient)
+        {
+            UpdateRoomPlayerIDs();
+            AssignPlayerColors();
+        
+            // BẮT ĐẦU validation định kỳ
+            StartCoroutine(PeriodicColorValidation());
+        }
+        else if (isRejoining)
+        {
+            // Nếu là rejoin, thông báo cho master client biết để giữ màu cũ
+            Debug.Log($"Player {playerID} is rejoining, should keep previous color");
+        }
+
+        // Kích hoạt quân cờ sau khi join room
+        StartCoroutine(ActivatePiecesAfterDelay());
+    }
 
 // THÊM: Coroutine để kích hoạt quân cờ sau một khoảng delay
-    private IEnumerator ActivatePiecesAfterDelay()
-    {
-        // Đợi một frame để đảm bảo tất cả component đã khởi tạo
-        yield return new WaitForSeconds(0.5f);
-        ActivatePiecesForPlayers();
-    }
+    
 
     private void UpdateRoomPlayerIDs()
     {
@@ -532,7 +541,7 @@ public override void OnJoinedRoom()
         // KIỂM TRA: Đây có phải là player rejoining không?
         string playerId = GetPlayerIDFromNickname(newPlayer.NickName);
         PlayerColor previousColor = GetPreviouslyAssignedColor(playerId);
-    
+
         if (previousColor != PlayerColor.None)
         {
             Debug.Log($"This is a REJOINING player with previous color: {previousColor}");
@@ -544,8 +553,13 @@ public override void OnJoinedRoom()
             CheckAndLockRoom();
             UpdateRoomPlayerIDs();
             AssignPlayerColors(); // LUÔN gán màu khi có player mới
-        
-            // Kích hoạt lại quân cờ khi có người mới
+    
+            // Kích hoạt lại quân cờ khi có người mới - CẬP NHẬT: với số lượng chính xác
+            StartCoroutine(ActivatePiecesAfterDelay());
+        }
+        else
+        {
+            // Client cũng cần cập nhật khi có player mới
             StartCoroutine(ActivatePiecesAfterDelay());
         }
     }
@@ -734,26 +748,25 @@ public override void OnJoinedRoom()
     // SỬA: Method để join room cụ thể với kiểm tra
     // SỬA: Method để join room cụ thể với kiểm tra
     // SỬA: Method để join room cụ thể với kiểm tra
+    // SỬA: Method để join room cụ thể với kiểm tra màu cũ
     public void JoinRoom(string roomName)
     {
         if (PhotonNetwork.IsConnectedAndReady)
         {
             this.roomName = roomName;
             lastAttemptedRoom = roomName;
-    
+
+            // THÊM: Kiểm tra và xóa màu cũ nếu không phải rejoin
+            CheckAndClearPreviousColorIfNotRejoining(roomName);
+
             Debug.Log($"Attempting to join room: {roomName}");
-        
+    
             // Sử dụng JoinRoom thay vì CreateOrJoinRoom để chỉ join room có sẵn
             PhotonNetwork.JoinRoom(roomName);
         }
         else
         {
             Debug.LogWarning("Not connected to Photon yet. Please wait for connection.");
-            // Có thể thêm callback để thông báo lỗi cho UI
-            /*if (MultiplayerTestUI.Instance != null)
-            {
-                // Gọi phương thức hiển thị lỗi trong UI
-            }*/
         }
     }
     // Lấy Player ID hiện tại
@@ -849,6 +862,7 @@ public override void OnJoinedRoom()
     }
     
     // THÊM: Phương thức join room thuần túy - không tự động tạo phòng khi thất bại
+    // SỬA: Phương thức join room thuần túy - thêm kiểm tra màu cũ
     public void JoinRoomOnly(string roomName)
     {
         if (PhotonNetwork.IsConnectedAndReady)
@@ -856,8 +870,11 @@ public override void OnJoinedRoom()
             this.roomName = roomName;
             lastAttemptedRoom = roomName;
 
+            // THÊM: Kiểm tra và xóa màu cũ nếu không phải rejoin
+            CheckAndClearPreviousColorIfNotRejoining(roomName);
+
             Debug.Log($"Attempting to join room ONLY: {roomName}");
-        
+    
             // Chỉ join room, không tạo phòng khi thất bại
             PhotonNetwork.JoinRoom(roomName);
         }
@@ -868,31 +885,107 @@ public override void OnJoinedRoom()
     }
     
     // THÊM: Phương thức kích hoạt quân cờ dựa trên màu được phân phối
+    // THÊM: Phương thức kích hoạt quân cờ dựa trên màu được phân phối và số lượng quân mỗi người
     public void ActivatePiecesForPlayers()
     {
         if (!PhotonNetwork.InRoom) return;
-    
+
         PieceController[] allPieces = FindObjectsOfType<PieceController>(true); // Tìm cả những cái đang tắt
         List<PlayerColor> activeColors = GetRoomPlayerColors();
-    
-        Debug.Log($"Activating pieces for {activeColors.Count} colors: {string.Join(", ", activeColors)}");
-    
+        int piecesPerPlayer = GetPiecesPerPlayer();
+
+        Debug.Log($"Activating {piecesPerPlayer} pieces per player for {activeColors.Count} colors: {string.Join(", ", activeColors)}");
+
+        // Tạo dictionary để đếm số quân đã kích hoạt cho mỗi màu
+        Dictionary<PlayerColor, int> activatedCount = new Dictionary<PlayerColor, int>();
+        foreach (var color in activeColors)
+        {
+            activatedCount[color] = 0;
+        }
+
         foreach (PieceController piece in allPieces)
         {
             if (activeColors.Contains(piece.playerColor))
             {
-                piece.gameObject.SetActive(true);
+                // Kiểm tra xem đã kích hoạt đủ số quân cho màu này chưa
+                if (activatedCount[piece.playerColor] < piecesPerPlayer)
+                {
+                    piece.gameObject.SetActive(true);
             
-                // THÊM: Gọi phương thức activate nếu có
-                piece.ActivateForPlayer();
+                    // THÊM: Gọi phương thức activate nếu có
+                    piece.ActivateForPlayer();
             
-                Debug.Log($"Activated piece: {piece.playerColor}");
+                    activatedCount[piece.playerColor]++;
+                    Debug.Log($"Activated piece: {piece.playerColor} ({activatedCount[piece.playerColor]}/{piecesPerPlayer})");
+                }
+                else
+                {
+                    piece.gameObject.SetActive(false);
+                    Debug.Log($"Deactivated piece (limit reached): {piece.playerColor}");
+                }
             }
             else
             {
                 piece.gameObject.SetActive(false);
-                Debug.Log($"Deactivated piece: {piece.playerColor}");
+                Debug.Log($"Deactivated piece (color not active): {piece.playerColor}");
             }
+        }
+
+        // Log tổng kết
+        foreach (var color in activeColors)
+        {
+            Debug.Log($"Final: {color} has {activatedCount[color]}/{piecesPerPlayer} pieces active");
+        }
+    }
+    
+    // THÊM: Phương thức để các script khác kiểm tra số lượng quân tối đa
+    public int GetMaxPiecesPerPlayer()
+    {
+        return GetPiecesPerPlayer();
+    }
+    
+    // THÊM: Callback khi room properties thay đổi (để cập nhật số lượng quân)
+    public override void OnRoomPropertiesUpdate(ExitGames.Client.Photon.Hashtable propertiesThatChanged)
+    {
+        if (propertiesThatChanged.ContainsKey("PiecesPerPlayer"))
+        {
+            Debug.Log("PiecesPerPlayer changed, reactivating pieces...");
+            ActivatePiecesForPlayers();
+        }
+    }
+    
+    // THÊM: Coroutine để kích hoạt quân cờ sau một khoảng delay với số lượng chính xác
+    private IEnumerator ActivatePiecesAfterDelay()
+    {
+        // Đợi một frame để đảm bảo tất cả component đã khởi tạo
+        yield return new WaitForSeconds(0.5f);
+        ActivatePiecesForPlayers(); // SỬA: Gọi phương thức mới đã cập nhật
+    }
+    
+    // THÊM: Phương thức kiểm tra và xóa màu cũ khi join phòng không phải rejoin
+    private void CheckAndClearPreviousColorIfNotRejoining(string roomName)
+    {
+        string lastRoom = PlayerPrefs.GetString($"LastRoom_{playerID}", "");
+    
+        // Nếu join phòng KHÔNG PHẢI là phòng cũ -> xóa màu đã gán trước đó
+        if (!string.IsNullOrEmpty(lastRoom) && roomName != lastRoom)
+        {
+            Debug.Log($"Joining new room '{roomName}', clearing previous color assignment from old room '{lastRoom}'");
+            ClearAssignedColor(playerID);
+        
+            // Đồng thời reset room cũ
+            ResetPreviousRoom();
+        }
+    }
+    
+    // THÊM: Phương thức để ẩn tất cả quân cờ khi rời phòng
+    public void HideAllPiecesOnLeave()
+    {
+        PieceController[] allPieces = FindObjectsOfType<PieceController>(true); // Tìm cả những cái đang tắt
+        foreach (PieceController piece in allPieces)
+        {
+            piece.gameObject.SetActive(false);
+            Debug.Log($"Đã ẩn quân cờ {piece.playerColor} khi rời phòng");
         }
     }
 }

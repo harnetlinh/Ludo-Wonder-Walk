@@ -60,9 +60,9 @@ public class PieceController : MonoBehaviourPun, IPunObservable
 
 
     // Thêm vào class PieceController
-private static bool isProcessingTurn = false;
-private static float lastTurnProcessingTime = 0f;
-private const float TURN_COOLDOWN = 1f; // Thời gian chờ giữa các lượt
+    private static bool isProcessingTurn = false;
+    private static float lastTurnProcessingTime = 0f;
+    private const float TURN_COOLDOWN = 1f; // Thời gian chờ giữa các lượt
 
 // Trong PieceController.cs, thêm kiểm tra trong Start:
 
@@ -86,10 +86,7 @@ private const float TURN_COOLDOWN = 1f; // Thời gian chờ giữa các lượt
     }
 
 // THÊM: Phương thức để kích hoạt quân cờ khi màu được phân phối
-    // Trong PieceController.cs, sửa phương thức ActivateForPlayer:
-
-    // Trong PieceController.cs, SỬA phương thức ActivateForPlayer:
-
+    
     public void ActivateForPlayer()
     {
         if (PhotonManager.Instance != null && GameTurnManager.Instance != null)
@@ -97,15 +94,22 @@ private const float TURN_COOLDOWN = 1f; // Thời gian chờ giữa các lượt
             // LUÔN KIỂM TRA: Màu này có được assigned cho player nào không
             PlayerColor currentPlayerColor = PhotonManager.Instance.GetCurrentPlayerColor();
             List<PlayerColor> activeColors = PhotonManager.Instance.GetRoomPlayerColors();
-        
-            bool shouldActivate = activeColors.Contains(playerColor) && 
-                                  GameTurnManager.Instance.IsColorInGame(playerColor);
     
+            bool shouldActivate = activeColors.Contains(playerColor) && 
+                                  GameTurnManager.Instance.IsColorInGame(playerColor) &&
+                                  ShouldBeActiveBasedOnLimit(); // THÊM: Kiểm tra giới hạn số lượng
+
             if (shouldActivate)
             {
+                // LƯU currentPathIndex hiện tại trước khi kích hoạt
+                int savedPathIndex = currentPathIndex;
+                
                 gameObject.SetActive(true);
+                
+                // KHÔI PHỤC currentPathIndex sau khi kích hoạt
+                currentPathIndex = savedPathIndex;
                 Debug.Log($"Activated piece for color: {playerColor} (Current player color: {currentPlayerColor})");
-        
+    
                 // Đảm bảo vật lý được kích hoạt
                 Rigidbody rb = GetComponent<Rigidbody>();
                 if (rb != null)
@@ -118,7 +122,7 @@ private const float TURN_COOLDOWN = 1f; // Thời gian chờ giữa các lượt
             else
             {
                 gameObject.SetActive(false);
-                Debug.Log($"Deactivated piece for color: {playerColor} - not in active colors list: {string.Join(", ", activeColors)}");
+                Debug.Log($"Deactivated piece for color: {playerColor} - not in active colors list or limit reached");
             }
         }
     }
@@ -363,7 +367,12 @@ private const float TURN_COOLDOWN = 1f; // Thời gian chờ giữa các lượt
     protected virtual void MoveLocal(int steps)
     {
         Debug.Log($"MoveLocal called for {playerColor} piece, steps: {steps}");
-
+        // THÊM: Kiểm tra steps hợp lệ
+        if (steps <= 0)
+        {
+            Debug.LogWarning($"Invalid steps value: {steps}, aborting move");
+            return;
+        }
         if (isMoving) return;
 
         StartCoroutine(MoveStepByStep(steps));
@@ -987,5 +996,34 @@ private IEnumerator ResetTurnProcessingAfterDelay(float delay)
             // Đợi một chút để hoàn thành sắp xếp
             yield return new WaitForSeconds(0.2f);
         }
+    }
+    
+    // THÊM: Kiểm tra xem quân cờ này có nên được kích hoạt dựa trên giới hạn số lượng
+    public bool ShouldBeActiveBasedOnLimit()
+    {
+        if (PhotonManager.Instance == null) 
+            return true; // Fallback cho offline mode
+
+        // Lấy tất cả quân cờ cùng màu
+        PieceController[] allPieces = FindObjectsOfType<PieceController>();
+        List<PieceController> sameColorPieces = new List<PieceController>();
+    
+        foreach (PieceController piece in allPieces)
+        {
+            if (piece.playerColor == this.playerColor)
+            {
+                sameColorPieces.Add(piece);
+            }
+        }
+
+        // Sắp xếp theo instance ID để có thứ tự nhất quán
+        sameColorPieces.Sort((a, b) => a.GetInstanceID().CompareTo(b.GetInstanceID()));
+    
+        // Tìm vị trí của quân cờ này trong danh sách
+        int myIndex = sameColorPieces.IndexOf(this);
+        int maxPieces = PhotonManager.Instance.GetMaxPiecesPerPlayer();
+
+        // Chỉ kích hoạt nếu nằm trong số lượng cho phép
+        return myIndex < maxPieces;
     }
 }

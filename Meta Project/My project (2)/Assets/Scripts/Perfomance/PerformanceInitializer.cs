@@ -3,7 +3,7 @@ using UnityEngine.XR;
 
 public class PerformanceInitializer : MonoBehaviour
 {
-    [Header("Basic Settings")]
+    /*[Header("Basic Settings")]
     [Tooltip("Target FPS cho game.")]
     public int targetFPS = 72;
 
@@ -255,12 +255,12 @@ public class PerformanceInitializer : MonoBehaviour
 
     private void DisablePostProcessing()
     {
-        // Tắt Volume components (URP)
+        /#1#/ Tắt Volume components (URP)
         var volumes = FindObjectsOfType<UnityEngine.Rendering.Volume>();
         foreach (var vol in volumes)
         {
             vol.enabled = false;
-        }
+        }#1#
 
         // Tắt Post Process Layers (Built-in pipeline) - sử dụng reflection để tránh lỗi compile
         var allObjects = FindObjectsOfType<GameObject>();
@@ -282,7 +282,10 @@ public class PerformanceInitializer : MonoBehaviour
                 }
             }
         }
+        */
 
+        /*
         Debug.Log($"[Performance] Disabled {volumes.Length} volumes and {postProcessCount} post-process components");
-    }
+    */
+    /*}*/
 }

@@ -364,32 +364,41 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
 
 // THÊM: Xác nhận join phòng
     // SỬA: Xác nhận join phòng - sử dụng JoinRoomOnly
+    // SỬA: Xác nhận join phòng - reset previous room nếu cần
     public void ConfirmJoinRoom()
     {
         if (PhotonNetwork.IsConnected && !PhotonNetwork.InRoom)
         {
             string roomId = roomIdInput.text.Trim();
-    
+
             if (string.IsNullOrEmpty(roomId))
             {
                 ShowError("Vui lòng nhập Room ID!");
                 return;
             }
-    
+
             if (roomId.Length < 4)
             {
                 ShowError("Room ID phải có ít nhất 4 ký tự!");
                 return;
             }
-    
+
+            // THÊM: Reset previous room nếu join phòng khác
+            string previousRoom = PhotonManager.Instance?.GetPreviousRoom() ?? "";
+            if (!string.IsNullOrEmpty(previousRoom) && previousRoom != roomId)
+            {
+                Debug.Log($"Joining different room, resetting previous room record");
+                PhotonManager.Instance?.ResetPreviousRoom();
+            }
+
             ShowLoadingPanel($"Đang vào phòng '{roomId}'...");
-    
+
             // SỬA: Sử dụng JoinRoomOnly thay vì JoinRoom
             if (PhotonManager.Instance != null)
             {
                 // Đăng ký sự kiện join room thất bại
                 PhotonManager.Instance.OnJoinRoomFailedEvent += HandleJoinRoomFailed;
-            
+        
                 PhotonManager.Instance.JoinRoomOnly(roomId);
             }
         }
@@ -405,6 +414,12 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
     {
         if (PhotonNetwork.InRoom)
         {
+            // THÊM: Ẩn tất cả quân cờ trước khi rời phòng
+            if (PhotonManager.Instance != null)
+            {
+                PhotonManager.Instance.HideAllPiecesOnLeave();
+            }
+        
             ShowLoadingPanel("Đang rời phòng...");
             PhotonNetwork.LeaveRoom();
         }
