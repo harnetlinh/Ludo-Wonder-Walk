@@ -78,6 +78,12 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
                 Invoke("RequestInitialSync", 1f);
             }
         }
+        // THÊM: Tự động kích hoạt nếu game đã bắt đầu
+        if (PhotonManager.Instance != null && PhotonManager.Instance.IsGameStarted())
+        {
+            Debug.Log("Game đã bắt đầu, kích hoạt DiceController");
+            // Có thể thêm logic tự động enable dice ở đây
+        }
     }
 
     private void RequestInitialSync()
@@ -262,6 +268,13 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
 
     public void AutoRollForCurrentPlayer()
     {
+        // CHỈ Master Client mới được auto roll
+        if (!PhotonNetwork.IsMasterClient) 
+        {
+            Debug.Log("Chỉ Master Client mới được auto roll");
+            return;
+        }
+    
         currentRollingPlayer = GetCurrentPlayer();
         Invoke("PerformAutoRoll", autoRollDelay);
     }
@@ -433,6 +446,13 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
 
     public void EnableDiceForCurrentPlayer()
     {
+        // CHỈ Master client mới được điều khiển dice
+        if (!PhotonNetwork.IsMasterClient) 
+        {
+            Debug.Log("Chỉ Master client mới được điều khiển dice");
+            return;
+        }
+    
         // KHÔNG cho phép kích hoạt nếu đang di chuyển
         if (isMovingToPlayer) 
         {
@@ -442,8 +462,7 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
     
         currentRollingPlayer = GetCurrentPlayer();
     
-        // THÊM: Kiểm tra xem current player có trong game không
-        // VÀ kiểm tra xem player đó có đang online không
+        // Kiểm tra player có trong game và online
         if (GameTurnManager.Instance != null && 
             (!GameTurnManager.Instance.IsColorInGame(currentRollingPlayer) ||
              !IsPlayerWithColorOnline(currentRollingPlayer)))
@@ -458,11 +477,20 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
         // Di chuyển xúc xắc đến vị trí người chơi hiện tại
         MoveDiceToCurrentPlayer();
 
-        // Cập nhật thông báo
-        statusText.text = $"Lượt của {currentRollingPlayer}\nChưa xúc xắc";
+        // Cập nhật thông báo cho tất cả client
+        photonView.RPC("RPC_UpdateDiceStatus", RpcTarget.All, $"Lượt của {currentRollingPlayer}\nChưa xúc xắc");
 
         diceButton.interactable = !hasRolledThisTurn;
         diceResultText.text = !hasRolledThisTurn ? "Cầm xúc xắc lên để ném" : "Bạn đã xúc xắc trong lượt này";
+    }
+
+    [PunRPC]
+    private void RPC_UpdateDiceStatus(string status)
+    {
+        if (statusText != null)
+        {
+            statusText.text = status;
+        }
     }
 
 // THÊM: Kiểm tra xem player với màu cụ thể có đang online không

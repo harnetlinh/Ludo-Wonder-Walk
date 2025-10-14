@@ -536,8 +536,11 @@ public void ValidateAndFixPlayerColors()
             CheckAndLockRoom();
             UpdateRoomPlayerIDs();
             AssignPlayerColors(); // LUÔN gán màu khi có player mới
-    
-            // Kích hoạt lại quân cờ khi có người mới - CẬP NHẬT: với số lượng chính xác
+        
+            // THÊM: Kiểm tra và bắt đầu game nếu phòng full
+            CheckAndStartGame();
+
+            // Kích hoạt lại quân cờ khi có người mới
             StartCoroutine(ActivatePiecesAfterDelay());
         }
         else
@@ -928,8 +931,26 @@ public void ValidateAndFixPlayerColors()
     }
     
     // THÊM: Callback khi room properties thay đổi (để cập nhật số lượng quân)
+    // THÊM: Callback khi room properties thay đổi (để biết khi game bắt đầu)
     public override void OnRoomPropertiesUpdate(ExitGames.Client.Photon.Hashtable propertiesThatChanged)
     {
+        if (propertiesThatChanged.ContainsKey("GameStarted"))
+        {
+            bool gameStarted = (bool)propertiesThatChanged["GameStarted"];
+            if (gameStarted)
+            {
+                Debug.Log("Game đã được bắt đầu bởi Master Client");
+            
+                // Đảm bảo client cũng khởi tạo game
+                GameTurnManager turnManager = FindObjectOfType<GameTurnManager>();
+                if (turnManager != null && !turnManager.isInitialized)
+                {
+                    turnManager.InitializePlayerOrder(DiceController.Instance);
+                }
+            }
+        }
+    
+        // Giữ lại logic cũ cho PiecesPerPlayer
         if (propertiesThatChanged.ContainsKey("PiecesPerPlayer"))
         {
             Debug.Log("PiecesPerPlayer changed, reactivating pieces...");
@@ -970,5 +991,67 @@ public void ValidateAndFixPlayerColors()
             piece.gameObject.SetActive(false);
             Debug.Log($"Đã ẩn quân cờ {piece.playerColor} khi rời phòng");
         }
+    }
+    
+    // THÊM: Phương thức kiểm tra và bắt đầu game khi phòng full - CHỈ Master Client
+    private void CheckAndStartGame()
+    {
+        if (!PhotonNetwork.IsMasterClient) 
+        {
+            Debug.Log("Chỉ Master Client mới được bắt đầu game");
+            return;
+        }
+
+        // Kiểm tra nếu phòng đã full và game chưa được khởi tạo
+        if (PhotonNetwork.CurrentRoom.PlayerCount >= PhotonNetwork.CurrentRoom.MaxPlayers)
+        {
+            Debug.Log($"Phòng đã đầy ({PhotonNetwork.CurrentRoom.PlayerCount}/{PhotonNetwork.CurrentRoom.MaxPlayers}), Master Client bắt đầu khởi tạo game...");
+    
+            // Đánh dấu room đã bắt đầu game
+            PhotonNetwork.CurrentRoom.SetCustomProperties(new ExitGames.Client.Photon.Hashtable
+            {
+                { "GameStarted", true }
+            });
+    
+            // Bắt đầu game sau một khoảng delay ngắn
+            StartCoroutine(StartGameAfterDelay(2f));
+        }
+    }
+
+// THÊM: Coroutine để bắt đầu game - CHỈ chạy trên Master Client
+    // THÊM: Coroutine để bắt đầu game - CHỈ chạy trên Master Client
+    private IEnumerator StartGameAfterDelay(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+    
+        // Kiểm tra lại để chắc chắn chỉ Master Client thực hiện
+        if (!PhotonNetwork.IsMasterClient) 
+        {
+            Debug.Log("Không phải Master Client, không khởi tạo game");
+            yield break;
+        }
+
+        // Tìm và khởi tạo GameTurnManager
+        GameTurnManager turnManager = FindObjectOfType<GameTurnManager>();
+        if (turnManager != null && !turnManager.isInitialized)
+        {
+            Debug.Log("Master Client khởi tạo lượt chơi...");
+            turnManager.InitializePlayerOrder(DiceController.Instance);
+        }
+        else
+        {
+            Debug.LogWarning("Không tìm thấy GameTurnManager hoặc đã được khởi tạo");
+        }
+    }
+    
+
+// THÊM: Kiểm tra xem game đã bắt đầu chưa
+    public bool IsGameStarted()
+    {
+        if (PhotonNetwork.InRoom && PhotonNetwork.CurrentRoom.CustomProperties.ContainsKey("GameStarted"))
+        {
+            return (bool)PhotonNetwork.CurrentRoom.CustomProperties["GameStarted"];
+        }
+        return false;
     }
 }

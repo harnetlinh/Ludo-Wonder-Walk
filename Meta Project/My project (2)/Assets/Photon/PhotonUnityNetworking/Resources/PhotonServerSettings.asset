@@ -19,7 +19,7 @@ MonoBehaviour:
     AppIdVoice: 
     AppVersion: V1.0
     UseNameServer: 1
-    FixedRegion: 
+    FixedRegion: hk
     Server: 
     Port: 0
     ProxyServer: 
@@ -114,6 +114,14 @@ MonoBehaviour:
   - RPC_SyncPhysicsState
   - RPC_OnPlayerLeftRoom
   - RPC_PlayerLeftRoom
+  - SyncDiceState
+  - RPC_UpdateDiceStatus
+  - RPC_SendDiceState
+  - NetworkSyncPlayerOrder
+  - NetworkSyncCurrentPlayer
+  - RPC_ReportDiceResult
+  - RPC_SyncDiceResult
+  - RPC_UpdateUI
   DisableAutoOpenWizard: 1
   ShowSettings: 1
   DevRegionSetOnce: 1
