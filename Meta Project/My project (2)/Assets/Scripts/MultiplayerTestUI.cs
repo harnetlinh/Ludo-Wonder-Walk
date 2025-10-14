@@ -13,6 +13,7 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
     public Button connectButton;
     public Button createRoomButton;
     public Button joinRoomButton;
+    public Button rejoinButton; // THÊM: Button rejoin
     public Button leaveRoomButton;
     public Button spawnCubeButton;
     public Button spawnSphereButton;
@@ -30,7 +31,7 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
     [Header("Player Info")]
     public TextMeshProUGUI playerIDText;
     public TextMeshProUGUI roomLockStatusText;
-    public TextMeshProUGUI errorText; // THÊM: Hiển thị lỗi
+    public TextMeshProUGUI errorText;
     
     [Header("Room Creation Panel")]
     public GameObject roomCreationPanel;
@@ -38,8 +39,6 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
     public TMP_InputField piecesPerPlayerInput;
     public Button confirmCreateRoomButton;
     public Button cancelCreateRoomButton;
-    /*public TextMeshProUGUI generatedRoomIdText;*/
-    
     
     [Header("Room Join Panel")]
     public GameObject roomJoinPanel;
@@ -51,7 +50,8 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
     {
         SetupUI();
         ShowMainMenu();
-        ClearError(); // Xóa lỗi khi bắt đầu
+        ClearError();
+        UpdateRejoinButton(); // Cập nhật trạng thái rejoin button khi bắt đầu
     }
     
     private void SetupUI()
@@ -60,10 +60,14 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
             connectButton.onClick.AddListener(ConnectToPhoton);
             
         if (createRoomButton != null)
-            createRoomButton.onClick.AddListener(CreateRoom);
+            createRoomButton.onClick.AddListener(ShowRoomCreationPanel);
             
         if (joinRoomButton != null)
-            joinRoomButton.onClick.AddListener(JoinRoom);
+            joinRoomButton.onClick.AddListener(ShowRoomJoinPanel);
+            
+        // THÊM: Button rejoin
+        if (rejoinButton != null)
+            rejoinButton.onClick.AddListener(RejoinPreviousRoom);
             
         if (leaveRoomButton != null)
             leaveRoomButton.onClick.AddListener(LeaveRoom);
@@ -74,14 +78,12 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
         if (spawnSphereButton != null)
             spawnSphereButton.onClick.AddListener(SpawnSphere);
         
-        // THÊM: Button cho tạo phòng mới
         if (confirmCreateRoomButton != null)
             confirmCreateRoomButton.onClick.AddListener(ConfirmCreateRoom);
         
         if (cancelCreateRoomButton != null)
             cancelCreateRoomButton.onClick.AddListener(CancelCreateRoom);
         
-        // THÊM: Button cho join room panel
         if (confirmJoinRoomButton != null)
             confirmJoinRoomButton.onClick.AddListener(ConfirmJoinRoom);
         
@@ -186,9 +188,66 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
             roomLockStatusText.text = isLocked ? "🔒 Đã khóa" : "🔓 Mở";
             roomLockStatusText.color = isLocked ? Color.red : Color.green;
         }
+        
+        // THÊM: Cập nhật trạng thái rejoin button
+        UpdateRejoinButton();
     }
     
-    // THÊM: Hiển thị lỗi
+    // THÊM: Cập nhật trạng thái rejoin button
+    private void UpdateRejoinButton()
+    {
+        if (rejoinButton != null)
+        {
+            bool hasPreviousRoom = PhotonManager.Instance != null && 
+                                 !string.IsNullOrEmpty(PhotonManager.Instance.GetPreviousRoom());
+            
+            rejoinButton.interactable = hasPreviousRoom && PhotonNetwork.IsConnected && !PhotonNetwork.InRoom;
+            
+            // Cập nhật text hiển thị phòng cũ
+            TextMeshProUGUI buttonText = rejoinButton.GetComponentInChildren<TextMeshProUGUI>();
+            if (buttonText != null)
+            {
+                if (hasPreviousRoom)
+                {
+                    string previousRoom = PhotonManager.Instance.GetPreviousRoom();
+                    buttonText.text = $"Rejoin: {previousRoom}";
+                }
+                else
+                {
+                    buttonText.text = "Rejoin: Không có phòng cũ";
+                }
+            }
+        }
+    }
+    
+    // THÊM: Phương thức rejoin phòng cũ
+    public void RejoinPreviousRoom()
+    {
+        if (PhotonNetwork.IsConnected && !PhotonNetwork.InRoom)
+        {
+            string previousRoom = PhotonManager.Instance?.GetPreviousRoom();
+            
+            if (string.IsNullOrEmpty(previousRoom))
+            {
+                ShowError("Không có phòng cũ để rejoin!");
+                return;
+            }
+            
+            ShowLoadingPanel($"Đang rejoin phòng '{previousRoom}'...");
+            
+            // Đăng ký sự kiện join room thất bại
+            if (PhotonManager.Instance != null)
+            {
+                PhotonManager.Instance.OnJoinRoomFailedEvent += HandleJoinRoomFailed;
+                PhotonManager.Instance.JoinRoomOnly(previousRoom);
+            }
+        }
+        else
+        {
+            ShowError("Chưa kết nối hoặc đã trong phòng!");
+        }
+    }
+    
     private void ShowError(string message, bool isWarning = false)
     {
         if (errorText != null)
@@ -197,12 +256,10 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
             errorText.color = isWarning ? Color.yellow : Color.red;
             errorText.gameObject.SetActive(true);
             
-            // Tự động ẩn lỗi sau 5 giây
             Invoke("ClearError", 5f);
         }
     }
     
-    // THÊM: Xóa lỗi
     private void ClearError()
     {
         if (errorText != null)
@@ -212,34 +269,32 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
         }
     }
     
-    // SỬA: Cập nhật ShowMainMenu để ẩn tất cả panel
     private void ShowMainMenu()
     {
         SetPanelActive(mainMenuPanel, true);
         SetPanelActive(roomCreationPanel, false);
-        SetPanelActive(roomJoinPanel, false); // THÊM: Ẩn panel join room
+        SetPanelActive(roomJoinPanel, false);
         SetPanelActive(roomPanel, false);
         SetPanelActive(loadingPanel, false);
         ClearError();
+        UpdateRejoinButton(); // Cập nhật rejoin button khi hiển thị main menu
     }
     
-    // SỬA: Cập nhật ShowRoomPanel để ẩn các panel khác
     private void ShowRoomPanel()
     {
         SetPanelActive(mainMenuPanel, false);
         SetPanelActive(roomCreationPanel, false);
-        SetPanelActive(roomJoinPanel, false); // THÊM: Ẩn panel join room
+        SetPanelActive(roomJoinPanel, false);
         SetPanelActive(roomPanel, true);
         SetPanelActive(loadingPanel, false);
         ClearError();
     }
     
-    // SỬA: Cập nhật ShowLoadingPanel để ẩn các panel khác
     private void ShowLoadingPanel(string message = "Đang tải...")
     {
         SetPanelActive(mainMenuPanel, false);
         SetPanelActive(roomCreationPanel, false);
-        SetPanelActive(roomJoinPanel, false); // THÊM: Ẩn panel join room
+        SetPanelActive(roomJoinPanel, false);
         SetPanelActive(roomPanel, false);
         SetPanelActive(loadingPanel, true);
     
@@ -250,7 +305,6 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
         ClearError();
     }
     
-    // SỬA: Thêm roomCreationPanel vào SetPanelActive
     private void SetPanelActive(GameObject panel, bool active)
     {
         if (panel != null)
@@ -268,28 +322,28 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
         }
     }
     
-    // SỬA: Phương thức CreateRoom cũ thành hiển thị panel cấu hình
-    public void CreateRoom()
+    // SỬA: Xóa logic tự động rejoin trong OnConnectedToMaster
+    public override void OnConnectedToMaster()
     {
-        // Hiển thị panel cấu hình phòng thay vì tạo phòng ngay
-        ShowRoomCreationPanel();
+        Debug.Log("Đã kết nối tới Master Server");
+        ShowMainMenu();
+        UpdateUI();
+        UpdateRejoinButton(); // Chỉ cập nhật UI, không tự động rejoin
     }
-    // THÊM: Hiển thị panel tạo phòng
-    // SỬA: Cập nhật ShowRoomCreationPanel để ẩn các panel khác
+    
+    // Các phương thức khác giữ nguyên...
     private void ShowRoomCreationPanel()
     {
         SetPanelActive(mainMenuPanel, false);
         SetPanelActive(roomCreationPanel, true);
-        SetPanelActive(roomJoinPanel, false); // THÊM: Ẩn panel join room
+        SetPanelActive(roomJoinPanel, false);
         SetPanelActive(roomPanel, false);
         SetPanelActive(loadingPanel, false);
 
-        // Đặt giá trị mặc định
         if (maxPlayersInput != null) maxPlayersInput.text = "4";
         if (piecesPerPlayerInput != null) piecesPerPlayerInput.text = "4";
     }
 
-// THÊM: Xác nhận tạo phòng
     public void ConfirmCreateRoom()
     {
         if (PhotonNetwork.IsConnected && !PhotonNetwork.InRoom)
@@ -297,20 +351,17 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
             int maxPlayers = 4;
             int piecesPerPlayer = 4;
         
-            // Lấy giá trị từ input
             if (!string.IsNullOrEmpty(maxPlayersInput.text))
                 int.TryParse(maxPlayersInput.text, out maxPlayers);
             
             if (!string.IsNullOrEmpty(piecesPerPlayerInput.text))
                 int.TryParse(piecesPerPlayerInput.text, out piecesPerPlayer);
         
-            // Giới hạn giá trị hợp lệ
             maxPlayers = Mathf.Clamp(maxPlayers, 2, 8);
             piecesPerPlayer = Mathf.Clamp(piecesPerPlayer, 1, 4);
         
             ShowLoadingPanel("Đang tạo phòng...");
         
-            // Gọi PhotonManager để tạo phòng ngẫu nhiên
             if (PhotonManager.Instance != null)
             {
                 PhotonManager.Instance.CreateRandomRoom(maxPlayers, piecesPerPlayer);
@@ -318,34 +369,16 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
         }
     }
 
-// THÊM: Hủy tạo phòng
     public void CancelCreateRoom()
     {
         ShowMainMenu();
     }
 
-// THÊM: Cập nhật UI khi tạo phòng thành công
     public override void OnCreatedRoom()
     {
         Debug.Log($"Đã tạo phòng: {PhotonNetwork.CurrentRoom.Name}");
-    
-        /*// Hiển thị room ID trên UI
-        if (generatedRoomIdText != null)
-        {
-            generatedRoomIdText.text = $"Room ID: {PhotonNetwork.CurrentRoom.Name}";
-        }*/
-    
-        // KHÔNG chuyển sang room panel ngay, vẫn ở loading cho đến khi join hoàn tất
     }
-
     
-    public void JoinRoom()
-    {
-        // Hiển thị panel nhập ID phòng thay vì join ngay
-        ShowRoomJoinPanel();
-    }
-
-// THÊM: Hiển thị panel nhập ID phòng
     private void ShowRoomJoinPanel()
     {
         SetPanelActive(mainMenuPanel, false);
@@ -354,7 +387,6 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
         SetPanelActive(loadingPanel, false);
         SetPanelActive(roomCreationPanel, false);
     
-        // Reset input field
         if (roomIdInput != null)
         {
             roomIdInput.text = "";
@@ -362,9 +394,6 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
         }
     }
 
-// THÊM: Xác nhận join phòng
-    // SỬA: Xác nhận join phòng - sử dụng JoinRoomOnly
-    // SỬA: Xác nhận join phòng - reset previous room nếu cần
     public void ConfirmJoinRoom()
     {
         if (PhotonNetwork.IsConnected && !PhotonNetwork.InRoom)
@@ -383,7 +412,6 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
                 return;
             }
 
-            // THÊM: Reset previous room nếu join phòng khác
             string previousRoom = PhotonManager.Instance?.GetPreviousRoom() ?? "";
             if (!string.IsNullOrEmpty(previousRoom) && previousRoom != roomId)
             {
@@ -393,18 +421,14 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
 
             ShowLoadingPanel($"Đang vào phòng '{roomId}'...");
 
-            // SỬA: Sử dụng JoinRoomOnly thay vì JoinRoom
             if (PhotonManager.Instance != null)
             {
-                // Đăng ký sự kiện join room thất bại
                 PhotonManager.Instance.OnJoinRoomFailedEvent += HandleJoinRoomFailed;
-        
                 PhotonManager.Instance.JoinRoomOnly(roomId);
             }
         }
     }
 
-// THÊM: Hủy join phòng
     public void CancelJoinRoom()
     {
         ShowMainMenu();
@@ -414,7 +438,6 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
     {
         if (PhotonNetwork.InRoom)
         {
-            // THÊM: Ẩn tất cả quân cờ trước khi rời phòng
             if (PhotonManager.Instance != null)
             {
                 PhotonManager.Instance.HideAllPiecesOnLeave();
@@ -443,20 +466,10 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
         }
     }
     
-    // Photon Callbacks
-    public override void OnConnectedToMaster()
-    {
-        Debug.Log("Đã kết nối tới Master Server");
-        ShowMainMenu();
-        UpdateUI();
-    }
-    
-    // SỬA: Cập nhật khi join phòng thành công để hiển thị thông tin
     public override void OnJoinedRoom()
     {
         Debug.Log($"Đã vào phòng: {PhotonNetwork.CurrentRoom.Name}");
     
-        // Hiển thị thông tin phòng
         string roomInfo = $"Phòng: {PhotonNetwork.CurrentRoom.Name}\n";
         roomInfo += $"Số người: {PhotonNetwork.CurrentRoom.PlayerCount}/{PhotonNetwork.CurrentRoom.MaxPlayers}\n";
     
@@ -481,9 +494,9 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
         Debug.Log("Đã rời phòng");
         ShowMainMenu();
         UpdateUI();
+        UpdateRejoinButton(); // Cập nhật rejoin button sau khi rời phòng
     }
     
-    // THÊM: Xử lý lỗi tạo phòng
     public override void OnCreateRoomFailed(short returnCode, string message)
     {
         Debug.LogError($"Tạo phòng thất bại: {message}");
@@ -491,14 +504,8 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
         ShowError($"Tạo phòng thất bại: {message}");
     }
     
-    // SỬA: Xử lý lỗi join room với thông báo rõ ràng
-    // SỬA: Xử lý lỗi join room với thông báo rõ ràng
-    // SỬA: Xử lý lỗi join room với thông báo rõ ràng hơn
-    // SỬA: Xử lý lỗi join room - chỉ xử lý các trường hợp đặc biệt
     public override void OnJoinRoomFailed(short returnCode, string message)
     {
-        // Chỉ xử lý các trường hợp không được xử lý bởi HandleJoinRoomFailed
-        // Hoặc có thể bỏ qua vì đã xử lý trong HandleJoinRoomFailed
         Debug.Log($"OnJoinRoomFailed called: {returnCode} - {message}");
     }
     
@@ -510,26 +517,8 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
         UpdateUI();
     }
     
-    // THÊM: Hiển thị trạng thái đang thử kết nối lại
-    private void ShowReconnectingStatus(string roomName)
-    {
-        if (loadingText != null)
-        {
-            loadingText.text = $"Đang thử kết nối lại phòng '{roomName}'...";
-        }
-    
-        if (errorText != null)
-        {
-            errorText.text = $"Phòng '{roomName}' đã khóa. Đang thử kết nối lại...";
-            errorText.color = Color.yellow;
-            errorText.gameObject.SetActive(true);
-        }
-    }
-    
-    // THÊM: Xử lý khi join room thất bại
     private void HandleJoinRoomFailed(short returnCode, string message)
     {
-        // Hủy đăng ký sự kiện
         if (PhotonManager.Instance != null)
         {
             PhotonManager.Instance.OnJoinRoomFailedEvent -= HandleJoinRoomFailed;
@@ -537,36 +526,25 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
 
         string roomName = PhotonManager.Instance?.GetLastAttemptedRoom() ?? "unknown";
         string errorMessage = "";
-        bool showRetryButton = false;
 
         switch (returnCode)
         {
             case ErrorCode.GameClosed:
                 errorMessage = $"Phòng '{roomName}' đã bị khóa.";
-                showRetryButton = true;
                 break;
             case ErrorCode.GameFull:
                 errorMessage = $"Phòng '{roomName}' đã đầy.";
                 break;
             case ErrorCode.GameDoesNotExist:
                 errorMessage = $"Phòng '{roomName}' không tồn tại. Vui lòng kiểm tra lại Room ID.";
-                showRetryButton = true;
                 break;
             default:
                 errorMessage = $"Không thể vào phòng '{roomName}': {message}";
-                showRetryButton = true;
                 break;
         }
 
-        // Quay lại main menu và hiển thị lỗi
         ShowMainMenu();
         ShowError(errorMessage);
-
-        // THÊM: Có thể thêm nút "Thử lại" hoặc "Tạo phòng mới" tùy trường hợp
-        if (showRetryButton)
-        {
-            // Có thể thêm logic hiển thị nút thử lại hoặc tạo phòng ở đây
-            Debug.Log($"Có thể cho người dùng tạo phòng '{roomName}' mới hoặc thử lại");
-        }
+        UpdateRejoinButton(); // Cập nhật lại rejoin button sau khi thất bại
     }
 }

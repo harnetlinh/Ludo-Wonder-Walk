@@ -86,20 +86,18 @@ public class PhotonManager : MonoBehaviourPunCallbacks
     public override void OnConnectedToMaster()
     {
         Debug.Log("=== CONNECTED TO MASTER SERVER ===");
-        
+    
         // Đặt nickname với ID (rút ngắn để dễ nhìn)
         PhotonNetwork.NickName = $"Player_{playerID}";
 
         Debug.Log($"Player Nickname: {PhotonNetwork.NickName}");
 
-        // Thử join room cũ trước
-        if (TryJoinPreviousRoom())
-        {
-            return;
-        }
+        // SỬA: KHÔNG tự động thử join room cũ nữa
+        // Chỉ kết nối và để người dùng chọn thủ công
+        Debug.Log("Đã kết nối thành công. Vui lòng chọn phòng thủ công từ menu.");
 
-        // Nếu không join được room cũ, tạo/join room mới
-        CreateOrJoinRoom();
+        // Có thể thêm sự kiện để UI cập nhật trạng thái
+        // UI sẽ tự động cập nhật rejoin button thông qua UpdateRejoinButton()
     }
 
     private bool TryJoinPreviousRoom()
