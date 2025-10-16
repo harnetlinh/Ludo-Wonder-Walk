@@ -122,6 +122,12 @@ MonoBehaviour:
   - RPC_ReportDiceResult
   - RPC_SyncDiceResult
   - RPC_UpdateUI
+  - RPC_ClientRollDice
+  - RPC_SyncTurnInfo
+  - RPC_ClientRequestRoll
+  - RPC_SyncTurnState
+  - RPC_SyncCurrentTurn
+  - RPC_FullDiceSync
   DisableAutoOpenWizard: 1
   ShowSettings: 1
   DevRegionSetOnce: 1

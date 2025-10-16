@@ -417,6 +417,7 @@ public void ValidateAndFixPlayerColors()
 // THÊM: Gọi validation định kỳ
 // SỬA: OnJoinedRoom để bắt đầu validation
 // SỬA: OnJoinedRoom để xử lý rejoin đúng cách
+    // SỬA: Trong OnJoinedRoom
     public override void OnJoinedRoom()
     {
         Debug.Log($"Joined room successfully as {PhotonNetwork.NickName}. Total players: {PhotonNetwork.CurrentRoom.PlayerCount}");
@@ -425,9 +426,7 @@ public void ValidateAndFixPlayerColors()
         string currentRoomName = PhotonNetwork.CurrentRoom.Name;
         string lastRoom = PlayerPrefs.GetString($"LastRoom_{playerID}", "");
 
-        // KIỂM TRA: Đây có phải là rejoin không?
         bool isRejoining = (currentRoomName == lastRoom);
-    
         Debug.Log($"Join type: {(isRejoining ? "REJOINING previous room" : "JOINING new room")}");
 
         // LUÔN LƯU ROOM HIỆN TẠI
@@ -436,13 +435,19 @@ public void ValidateAndFixPlayerColors()
 
         if (PhotonNetwork.IsMasterClient)
         {
+            Debug.Log("Master client initializing room...");
             UpdateRoomPlayerIDs();
             AssignPlayerColors();
+        
+            // CHỈ Master Client mới khởi tạo game
+            if (GameTurnManager.Instance != null && !GameTurnManager.Instance.isInitialized)
+            {
+                GameTurnManager.Instance.InitializePlayerOrder(DiceController.Instance);
+            }
         }
-        else if (isRejoining)
+        else
         {
-            // Nếu là rejoin, thông báo cho master client biết để giữ màu cũ
-            Debug.Log($"Player {playerID} is rejoining, should keep previous color");
+            Debug.Log("Client joined, waiting for master client initialization...");
         }
 
         // Kích hoạt quân cờ sau khi join room

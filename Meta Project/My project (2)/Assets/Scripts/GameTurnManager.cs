@@ -72,6 +72,7 @@ void Start()
     }
 
     // SỬA: Phương thức khởi tạo player order chỉ cho Master Client
+    // SỬA: Phương thức InitializePlayerOrder để đảm bảo chỉ xử lý màu có trong game
     public void InitializePlayerOrder(DiceController diceController)
     {
         // CHỈ Master Client mới được khởi tạo game
@@ -81,7 +82,6 @@ void Start()
             return;
         }
 
-        // THÊM: Kiểm tra cờ bảo vệ
         if (isInitializing || isInitialized)
         {
             Debug.Log("Game đang khởi tạo hoặc đã khởi tạo, bỏ qua");
@@ -90,20 +90,39 @@ void Start()
 
         isInitializing = true;
 
-        // Chỉ khởi tạo nếu có player colors được phân phối
         if (PhotonManager.Instance != null)
         {
             List<PlayerColor> roomColors = PhotonManager.Instance.GetRoomPlayerColors();
             if (roomColors.Count > 0)
             {
                 Debug.Log($"Bắt đầu khởi tạo lượt chơi với {roomColors.Count} người chơi: {string.Join(", ", roomColors)}");
-                StartCoroutine(DeterminePlayerOrder(diceController, roomColors));
-                return;
+            
+                // CHỈ thêm những màu có trong room
+                playerOrder.Clear();
+                playerOrder.AddRange(roomColors);
+            
+                currentPlayerIndex = 0;
+                isInitialized = true;
+                isInitializing = false;
+            
+                Debug.Log($"Khởi tạo thành công: {playerOrder.Count} players in order");
+            
+                // Đồng bộ với các client khác
+                if (isNetworked && photonView.IsMine)
+                {
+                    int[] playerOrderArray = playerOrder.Select(color => (int)color).ToArray();
+                    photonView.RPC("NetworkSyncPlayerOrder", RpcTarget.Others, playerOrderArray, currentPlayerIndex);
+                }
+            
+                // Bắt đầu lượt đầu tiên
+                StartTurn();
+            }
+            else
+            {
+                Debug.LogWarning("Chưa có người chơi trong room, chờ...");
+                isInitializing = false;
             }
         }
-
-        Debug.LogWarning("Chưa có thông tin người chơi từ PhotonManager, chờ...");
-        isInitializing = false;
     }
     public PlayerColor CurrentPlayer
     {
@@ -197,16 +216,22 @@ void Start()
     // Cập nhật StartTurn để highlight các quân có thể di chuyển
     // Cập nhật StartTurn
     // Sửa phương thức StartTurn
+    // SỬA: Phương thức StartTurn để chỉ master client điều khiển
     public void StartTurn()
     {
-        // Nếu có PUN và là master client, gửi RPC
+        // CHỈ Master Client mới được bắt đầu lượt
+        if (isNetworked && !PhotonNetwork.IsMasterClient) 
+        {
+            Debug.Log("Client đang chờ master client bắt đầu lượt...");
+            return;
+        }
+
         if (isNetworked && photonView.IsMine)
         {
             photonView.RPC("NetworkStartTurn", RpcTarget.All);
         }
         else
         {
-            // Chạy local nếu không có PUN
             StartTurnLocal();
         }
     }
@@ -317,19 +342,36 @@ void Start()
         }
     }
 
+    // SỬA: Phương thức EndTurn để chỉ master client điều khiển
     public void EndTurn()
     {
         pieceMovedThisTurn = false;
-        // Nếu có PUN và là master client, gửi RPC
+    
+        // CHỈ Master Client mới được kết thúc lượt
+        if (isNetworked && !PhotonNetwork.IsMasterClient) 
+        {
+            Debug.Log("Client đang chờ master client kết thúc lượt...");
+            return;
+        }
+
         if (isNetworked && photonView.IsMine)
         {
             photonView.RPC("NetworkEndTurn", RpcTarget.All);
         }
         else
         {
-            // Chạy local nếu không có PUN
             EndTurnLocal();
         }
+    }
+
+// THÊM: Phương thức để client yêu cầu chuyển lượt
+    [PunRPC]
+    public void RPC_RequestEndTurn()
+    {
+        if (!PhotonNetwork.IsMasterClient) return;
+    
+        // Master client xác nhận và xử lý
+        EndTurn();
     }
 
     // SỬA: Phương thức IsCurrentPlayer để kiểm tra cả việc màu có trong game không
@@ -343,37 +385,46 @@ void Start()
     }
 
 
+    // SỬA: Phương thức CheckForPossibleMoves
     public void CheckForPossibleMoves()
     {
+        // CHỈ Master Client xử lý logic di chuyển
+        if (isNetworked && !PhotonNetwork.IsMasterClient) 
+        {
+            Debug.Log("Client đang chờ master client kiểm tra nước đi...");
+            return;
+        }
+
         int diceValue = DiceController.Instance.LastDiceValue;
         PlayerColor currentPlayer = CurrentPlayer;
 
-        Debug.Log($"CheckForPossibleMoves: Player {currentPlayer}, Dice value: {diceValue}");
+        Debug.Log($"Master client checking moves: Player {currentPlayer}, Dice value: {diceValue}");
 
-        // Kiểm tra xem có quân cờ nào có thể di chuyển với số xúc xắc hiện tại không
         bool canMove = HasValidMoves(currentPlayer, diceValue);
-
         Debug.Log($"Can move: {canMove}");
 
         if (!canMove)
         {
-            // Nếu không thể di chuyển, chuyển lượt sau 2 giây (tăng thời gian để người chơi thấy)
-            Debug.Log("No valid moves available, ending turn in 2 seconds");
+            Debug.Log("No valid moves available, ending turn");
             Invoke("EndTurn", 2f);
         }
         else
         {
-            // Nếu có thể di chuyển, khóa nút xúc xắc
             DiceController.Instance.canRollAgain = false;
             DiceController.Instance.diceButton.interactable = false;
 
-            // Cập nhật status text để thông báo cho người chơi
-            if (DiceController.Instance.statusText != null)
+            // Đồng bộ UI với tất cả client
+            if (DiceController.Instance.photonView != null)
             {
-                DiceController.Instance.statusText.text = $"Lượt của {currentPlayer}\nHãy di chuyển quân cờ!";
+                DiceController.Instance.photonView.RPC(
+                    "RPC_UpdateDiceStatus", 
+                    RpcTarget.All, 
+                    $"Lượt của {currentPlayer}\nHãy di chuyển quân cờ!"
+                );
             }
         }
     }
+
 
     // Cập nhật phương thức CanCurrentPlayerMove
     public bool CanCurrentPlayerMove()

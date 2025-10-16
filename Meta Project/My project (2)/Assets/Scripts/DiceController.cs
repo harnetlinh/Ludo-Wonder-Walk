@@ -600,19 +600,72 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
         }
     }
 
-    private void RollDiceLocal()
+    // THÊM: Phương thức để client gửi kết quả xúc xắc lên master
+[PunRPC]
+public void RPC_ReportDiceResult(int diceValue, PlayerColor rollingPlayer)
+{
+    if (!PhotonNetwork.IsMasterClient) return;
+    
+    Debug.Log($"Master client received dice result: {diceValue} from {rollingPlayer}");
+    
+    // Xác nhận và xử lý kết quả
+    LastDiceValue = diceValue;
+    currentRollingPlayer = rollingPlayer;
+    hasRolledThisTurn = true;
+    
+    // Đồng bộ với tất cả client
+    photonView.RPC("RPC_SyncDiceResult", RpcTarget.All, diceValue, rollingPlayer, hasRolledThisTurn);
+    
+    // Tiếp tục logic game
+    if (!GameTurnManager.Instance.isDeterminingOrder)
     {
-        if (useCustomDiceValues && customDiceSequence.Count > 0)
-        {
-            LastDiceValue = customDiceSequence[diceSequenceIndex % customDiceSequence.Count];
-            diceSequenceIndex++;
-        }
-        else
-        {
-            LastDiceValue = Random.Range(1, 7);
-        }
+        GameTurnManager.Instance.CheckForPossibleMoves();
+    }
+}
 
-        // Cập nhật text hiển thị
+[PunRPC]
+public void RPC_SyncDiceResult(int diceValue, PlayerColor rollingPlayer, bool hasRolled)
+{
+    LastDiceValue = diceValue;
+    currentRollingPlayer = rollingPlayer;
+    hasRolledThisTurn = hasRolled;
+    
+    // Cập nhật UI
+    if (diceResultText != null)
+    {
+        diceResultText.text = $"{rollingPlayer}: {diceValue}";
+    }
+    
+    if (statusText != null)
+    {
+        statusText.text = $"{rollingPlayer} xúc ra số {diceValue}";
+    }
+}
+
+// SỬA: Phương thức RollDiceLocal để client gửi kết quả lên master
+private void RollDiceLocal()
+{
+    if (useCustomDiceValues && customDiceSequence.Count > 0)
+    {
+        LastDiceValue = customDiceSequence[diceSequenceIndex % customDiceSequence.Count];
+        diceSequenceIndex++;
+    }
+    else
+    {
+        LastDiceValue = Random.Range(1, 7);
+    }
+
+    // Nếu là client, gửi kết quả lên master
+    if (isNetworked && !PhotonNetwork.IsMasterClient)
+    {
+        photonView.RPC("RPC_ReportDiceResult", RpcTarget.MasterClient, LastDiceValue, currentRollingPlayer);
+    }
+    else if (PhotonNetwork.IsMasterClient)
+    {
+        // Master client xử lý trực tiếp
+        hasRolledThisTurn = true;
+        
+        // Cập nhật UI
         diceResultText.text = $"{currentRollingPlayer}: {LastDiceValue}";
         diceButton.interactable = false;
 
@@ -620,7 +673,11 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
         {
             GameTurnManager.Instance.CheckForPossibleMoves();
         }
+        
+        // Đồng bộ với các client khác
+        photonView.RPC("RPC_SyncDiceResult", RpcTarget.Others, LastDiceValue, currentRollingPlayer, hasRolledThisTurn);
     }
+}
 
     // RPC để chuẩn bị xúc xắc
     [PunRPC]
@@ -796,5 +853,37 @@ public void EnsurePhysicsForNewTurn()
         {
             diceButton.interactable = !hasRolledThisTurn && !isDiceRolling && photonView.IsMine;
         }
+    }
+    
+    // THÊM vào DiceController.cs
+    [PunRPC]
+    public void RPC_UpdateUI(string diceResult, string status, bool diceButtonInteractable)
+    {
+        if (diceResultText != null)
+        {
+            diceResultText.text = diceResult;
+        }
+    
+        if (statusText != null)
+        {
+            statusText.text = status;
+        }
+    
+        if (diceButton != null)
+        {
+            diceButton.interactable = diceButtonInteractable;
+        }
+    }
+
+// Phương thức để master client đồng bộ UI
+    public void SyncUIWithAllClients()
+    {
+        if (!PhotonNetwork.IsMasterClient) return;
+    
+        string diceResult = diceResultText != null ? diceResultText.text : "";
+        string status = statusText != null ? statusText.text : "";
+        bool interactable = diceButton != null ? diceButton.interactable : false;
+    
+        photonView.RPC("RPC_UpdateUI", RpcTarget.Others, diceResult, status, interactable);
     }
 }

@@ -75,12 +75,33 @@ public class DiceFaceDetector : MonoBehaviour
 
                     // Kiểm tra nếu đã dừng đủ lâu, chưa xử lý, và không được cầm
                     // BỎ điều kiện !isFirstPickup ở đây để cho phép detection ngay cả lần đầu
+                    // SỬA: Trong phương thức Update, khi xúc xắc dừng
                     if (stoppedTime >= requiredStoppedDuration && !hasLanded)
                     {
                         hasLanded = true;
                         CheckTopFace();
-                        OnDiceStopped?.Invoke(currentFaceValue);
-                        DiceController.Instance.FinalizeRoll();
+    
+                        // THÊM: Phân biệt master client và client thường
+                        if (PhotonNetwork.IsMasterClient)
+                        {
+                            // Master client xử lý trực tiếp
+                            OnDiceStopped?.Invoke(currentFaceValue);
+                            DiceController.Instance.FinalizeRoll();
+                        }
+                        else
+                        {
+                            // Client gửi kết quả lên master
+                            DiceController diceController = DiceController.Instance;
+                            if (diceController != null && diceController.photonView != null)
+                            {
+                                diceController.photonView.RPC(
+                                    "RPC_ReportDiceResult", 
+                                    RpcTarget.MasterClient, 
+                                    currentFaceValue, 
+                                    diceController.currentRollingPlayer
+                                );
+                            }
+                        }
                     }
                 }
             }
