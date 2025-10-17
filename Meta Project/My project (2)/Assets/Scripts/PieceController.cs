@@ -52,6 +52,7 @@ public class PieceController : MonoBehaviourPun, IPunObservable
     private bool networkIsMoving;
     private int networkPathIndex;
     private bool networkIsVRGrabbed;
+    private bool hasReceivedInitialNetworkState = false;
 
     // High precision sync
     private float lastNetworkTime;
@@ -65,6 +66,12 @@ public class PieceController : MonoBehaviourPun, IPunObservable
     private const float TURN_COOLDOWN = 1f; // Thời gian chờ giữa các lượt
 
 // Trong PieceController.cs, thêm kiểm tra trong Start:
+    private void Awake()
+    {
+        // Initialize sync targets to valid values until network data arrives
+        networkPosition = transform.position;
+        networkRotation = SanitizeQuaternion(transform.rotation);
+    }
 
     protected virtual void Start()
     {
@@ -165,6 +172,11 @@ public class PieceController : MonoBehaviourPun, IPunObservable
     /// </summary>
     private void SmoothSync()
     {
+        if (!hasReceivedInitialNetworkState)
+        {
+            // Wait for the first data packet to avoid invalid interpolation
+            return;
+        }
         // Đồng bộ tức thì khi được cầm bằng VR
         if (networkIsVRGrabbed)
         {
@@ -174,7 +186,7 @@ public class PieceController : MonoBehaviourPun, IPunObservable
         else
         {
             // Sử dụng interpolation cho di chuyển bình thường
-            float lerpFactor = Time.deltaTime * networkUpdateRate;
+            float lerpFactor = Mathf.Clamp01(Time.deltaTime * networkUpdateRate);
             transform.position = Vector3.Lerp(transform.position, networkPosition, lerpFactor);
             transform.rotation = Quaternion.Lerp(transform.rotation, networkRotation, lerpFactor);
         }
@@ -183,6 +195,22 @@ public class PieceController : MonoBehaviourPun, IPunObservable
         isMoving = networkIsMoving;
         currentPathIndex = networkPathIndex;
         isVRGrabbed = networkIsVRGrabbed;
+    }
+
+    private static Quaternion SanitizeQuaternion(Quaternion rotation)
+    {
+        float magnitudeSq = rotation.x * rotation.x +
+                            rotation.y * rotation.y +
+                            rotation.z * rotation.z +
+                            rotation.w * rotation.w;
+
+        const float minMagnitudeSq = 1e-6f;
+        if (magnitudeSq <= minMagnitudeSq)
+        {
+            return Quaternion.identity;
+        }
+
+        return Quaternion.Normalize(rotation);
     }
 
     //private void UpdateVisualFeedback()
@@ -658,12 +686,20 @@ public class PieceController : MonoBehaviourPun, IPunObservable
         {
             // Nhận dữ liệu và áp dụng ngay lập tức
             networkPosition = (Vector3)stream.ReceiveNext();
-            networkRotation = (Quaternion)stream.ReceiveNext();
+            Quaternion receivedRotation = (Quaternion)stream.ReceiveNext();
+            networkRotation = SanitizeQuaternion(receivedRotation);
             networkIsMoving = (bool)stream.ReceiveNext();
             networkPathIndex = (int)stream.ReceiveNext();
             PlayerColor receivedColor = (PlayerColor)stream.ReceiveNext();
             networkIsVRGrabbed = (bool)stream.ReceiveNext();
             float sendTime = (float)stream.ReceiveNext();
+
+            if (!hasReceivedInitialNetworkState && photonView != null && !photonView.IsMine)
+            {
+                hasReceivedInitialNetworkState = true;
+                transform.position = networkPosition;
+                transform.rotation = networkRotation;
+            }
 
             // Tính độ trễ và bù trừ nếu cần
             float latency = Time.time - sendTime;
