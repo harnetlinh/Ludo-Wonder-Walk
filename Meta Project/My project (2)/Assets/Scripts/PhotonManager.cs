@@ -979,6 +979,11 @@ public class PhotonManager : MonoBehaviourPunCallbacks
             Debug.Log("PiecesPerPlayer changed, reactivating pieces...");
             ActivatePiecesForPlayers();
         }
+        if (propertiesThatChanged.ContainsKey("PlayerColors"))
+        {
+            Debug.Log("PlayerColors changed, reactivating pieces...");
+            ActivatePiecesForPlayers();
+        }
     }
 
     // THÊM: Coroutine để kích hoạt quân cờ sau một khoảng delay với số lượng chính xác

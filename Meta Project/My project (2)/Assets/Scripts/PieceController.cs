@@ -89,42 +89,58 @@ public class PieceController : MonoBehaviourPun, IPunObservable
     
     public void ActivateForPlayer()
     {
-        if (PhotonManager.Instance != null && GameTurnManager.Instance != null)
+        if (PhotonManager.Instance == null)
         {
-            // LUÔN KIỂM TRA: Màu này có được assigned cho player nào không
-            PlayerColor currentPlayerColor = PhotonManager.Instance.GetCurrentPlayerColor();
-            List<PlayerColor> activeColors = PhotonManager.Instance.GetRoomPlayerColors();
-    
-            bool shouldActivate = activeColors.Contains(playerColor) && 
-                                  GameTurnManager.Instance.IsColorInGame(playerColor) &&
-                                  ShouldBeActiveBasedOnLimit(); // THÊM: Kiểm tra giới hạn số lượng
+            gameObject.SetActive(true);
+            return;
+        }
 
-            if (shouldActivate)
-            {
-                // LƯU currentPathIndex hiện tại trước khi kích hoạt
-                int savedPathIndex = currentPathIndex;
-                
-                gameObject.SetActive(true);
-                
-                // KHÔI PHỤC currentPathIndex sau khi kích hoạt
-                currentPathIndex = savedPathIndex;
-                Debug.Log($"Activated piece for color: {playerColor} (Current player color: {currentPlayerColor})");
+        // LUÔN KIỂM TRA: Màu này có được assigned cho player nào không
+        PlayerColor currentPlayerColor = PhotonManager.Instance.GetCurrentPlayerColor();
+        List<PlayerColor> activeColors = PhotonManager.Instance.GetRoomPlayerColors();
     
-                // Đảm bảo vật lý được kích hoạt
-                Rigidbody rb = GetComponent<Rigidbody>();
-                if (rb != null)
-                {
-                    rb.isKinematic = false;
-                    rb.useGravity = true;
-                    rb.WakeUp();
-                }
+        bool shouldActivate = activeColors.Contains(playerColor) &&
+                              ShouldBeActiveBasedOnLimit(); // THÊM: Kiểm tra giới hạn số lượng
+
+        GameTurnManager turnManager = GameTurnManager.Instance;
+        if (turnManager != null)
+        {
+            if (turnManager.isInitialized)
+            {
+                shouldActivate &= turnManager.IsColorInGame(playerColor);
             }
             else
             {
-                gameObject.SetActive(false);
-                Debug.Log($"Deactivated piece for color: {playerColor} - not in active colors list or limit reached");
+                Debug.Log("Turn manager not initialized yet; enabling piece based on room colors");
             }
         }
+
+        if (shouldActivate)
+        {
+            // LƯU currentPathIndex hiện tại trước khi kích hoạt
+            int savedPathIndex = currentPathIndex;
+            
+            gameObject.SetActive(true);
+            
+            // KHÔI PHỤC currentPathIndex sau khi kích hoạt
+            currentPathIndex = savedPathIndex;
+            Debug.Log($"Activated piece for color: {playerColor} (Current player color: {currentPlayerColor})");
+
+            // Đảm bảo vật lý được kích hoạt
+            Rigidbody rb = GetComponent<Rigidbody>();
+            if (rb != null)
+            {
+                rb.isKinematic = false;
+                rb.useGravity = true;
+                rb.WakeUp();
+            }
+        }
+        else
+        {
+            gameObject.SetActive(false);
+            Debug.Log($"Deactivated piece for color: {playerColor} - not in active colors list or limit reached");
+        }
+
     }
 
     protected virtual void Update()
