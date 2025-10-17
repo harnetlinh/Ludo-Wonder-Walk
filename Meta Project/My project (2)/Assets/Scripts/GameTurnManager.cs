@@ -21,34 +21,54 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
     private bool networkIsInitialized = false;
     private bool isNetworked = false;
 
-        // Thêm vào class GameTurnManager
-private bool pieceMovedThisTurn = false;
-private bool isInitializing = false; // THÊM: Cờ bảo vệ tránh khởi tạo nhiều lần
+    // Thêm vào class GameTurnManager
+    private bool pieceMovedThisTurn = false;
+    private bool isInitializing = false; // THÊM: Cờ bảo vệ tránh khởi tạo nhiều lần
 
-void Start()
-{
-    // CHỈ Master Client mới gọi khởi tạo game và chỉ khi chưa khởi tạo
-    if (PhotonNetwork.IsMasterClient && !isInitialized && !isInitializing)
+// Thêm vào đầu class
+    private GameStateManager gameStateManager;
+
+    void Start()
     {
-        Debug.Log("Master Client đang khởi tạo player order...");
-        InitializePlayerOrder(DiceController.Instance);
-    }
-    else
-    {
-        if (isInitialized)
+        bool shouldInitialize = PhotonNetwork.IsMasterClient && !isInitialized && !isInitializing;
+
+        if (shouldInitialize)
         {
-            Debug.Log("Game đã được khởi tạo trước đó");
-        }
-        else if (isInitializing)
-        {
-            Debug.Log("Game đang được khởi tạo");
+            if (PhotonManager.Instance != null)
+            {
+                if (PhotonManager.Instance.IsGameStarted())
+                {
+                    Debug.Log("Master Client kh?i t?o player order sau khi ph?ng s?n s?ng...");
+                    InitializePlayerOrder(DiceController.Instance);
+                }
+                else
+                {
+                    Debug.Log("Dang ch? ph?ng full v? GameStarted tr??c khi kh?i t?o player order.");
+                }
+            }
+            else
+            {
+                Debug.LogWarning("Kh?ng t?m th?y PhotonManager, kh?i t?o player order ngay l?p t?c.");
+                InitializePlayerOrder(DiceController.Instance);
+            }
         }
         else
         {
-            Debug.Log("Client đang chờ Master Client khởi tạo game...");
+            if (isInitialized)
+            {
+                Debug.Log("Game da du?c kh?i t?o tru?c d?");
+            }
+            else if (isInitializing)
+            {
+                Debug.Log("Game dang du?c kh?i t?o");
+            }
+            else
+            {
+                Debug.Log("Client dang ch? Master Client kh?i t?o game...");
+            }
         }
     }
-}
+
     private void Awake()
     {
         if (Instance == null)
@@ -61,6 +81,13 @@ void Start()
             Destroy(gameObject);
         }
 
+        // KHỞI TẠO GameStateManager NGAY TỪ ĐẦU
+        gameStateManager = GameStateManager.Instance;
+        if (gameStateManager == null)
+        {
+            Debug.LogWarning("GameStateManager not found on Awake, will try again later");
+        }
+
         // Khởi tạo PUN
         if (photonView != null)
         {
@@ -71,140 +98,187 @@ void Start()
         }
     }
 
-    // SỬA: Phương thức khởi tạo player order chỉ cho Master Client
-    // SỬA: Phương thức InitializePlayerOrder để đảm bảo chỉ xử lý màu có trong game
+    // SỬA phương thức InitializePlayerOrder()
     public void InitializePlayerOrder(DiceController diceController)
     {
-        // CHỈ Master Client mới được khởi tạo game
+        if (gameStateManager == null)
+        {
+            gameStateManager = GameStateManager.Instance;
+            if (gameStateManager == null)
+            {
+                Debug.LogError("GameStateManager is null in InitializePlayerOrder!");
+                return;
+            }
+        }
+
         if (isNetworked && !PhotonNetwork.IsMasterClient)
         {
-            Debug.Log("Chỉ Master Client mới được khởi tạo game - bỏ qua trên client này");
+            Debug.Log("Chi Master Client moi duoc khoi tao game - bo qua tren client nay");
             return;
         }
 
         if (isInitializing || isInitialized)
         {
-            Debug.Log("Game đang khởi tạo hoặc đã khởi tạo, bỏ qua");
+            Debug.Log("Game dang khoi tao hoac da khoi tao, bo qua");
             return;
+        }
+
+        List<PlayerColor> roomColors = null;
+        if (PhotonManager.Instance != null)
+        {
+            roomColors = PhotonManager.Instance.GetRoomPlayerColors();
+            if (!IsRoomReadyForTurnOrder(roomColors))
+            {
+                Debug.LogWarning("Phong chua san sang (chua du nguoi hoac chua gan mau), se thu khoi tao lai sau.");
+                return;
+            }
         }
 
         isInitializing = true;
 
-        if (PhotonManager.Instance != null)
+        if (roomColors != null && roomColors.Count > 0)
         {
-            List<PlayerColor> roomColors = PhotonManager.Instance.GetRoomPlayerColors();
-            if (roomColors.Count > 0)
+            Debug.Log($"Bat dau khoi tao luot choi voi {roomColors.Count} nguoi choi: {string.Join(", ", roomColors)}");
+
+            if (PhotonNetwork.IsMasterClient)
             {
-                Debug.Log($"Bắt đầu khởi tạo lượt chơi với {roomColors.Count} người chơi: {string.Join(", ", roomColors)}");
-            
-                // CHỈ thêm những màu có trong room
-                playerOrder.Clear();
-                playerOrder.AddRange(roomColors);
-            
-                currentPlayerIndex = 0;
-                isInitialized = true;
-                isInitializing = false;
-            
-                Debug.Log($"Khởi tạo thành công: {playerOrder.Count} players in order");
-            
-                // Đồng bộ với các client khác
-                if (isNetworked && photonView.IsMine)
-                {
-                    int[] playerOrderArray = playerOrder.Select(color => (int)color).ToArray();
-                    photonView.RPC("NetworkSyncPlayerOrder", RpcTarget.Others, playerOrderArray, currentPlayerIndex);
-                }
-            
-                // Bắt đầu lượt đầu tiên
-                StartTurn();
+                gameStateManager.SetPlayerOrder(roomColors);
             }
-            else
-            {
-                Debug.LogWarning("Chưa có người chơi trong room, chờ...");
-                isInitializing = false;
-            }
+
+            StartCoroutine(DeterminePlayerOrder(diceController, roomColors));
+            return;
         }
+
+        Debug.LogWarning("Chua co thong tin nguoi choi tu PhotonManager, cho...");
+        isInitializing = false;
     }
+
+
+    private bool IsRoomReadyForTurnOrder(List<PlayerColor> assignedColors)
+    {
+        if (!PhotonNetwork.InRoom)
+        {
+            return assignedColors != null && assignedColors.Count > 0;
+        }
+
+        var room = PhotonNetwork.CurrentRoom;
+        if (room == null)
+        {
+            return false;
+        }
+
+        int currentPlayers = room.PlayerCount;
+        int maxPlayers = room.MaxPlayers;
+
+        if (maxPlayers > 0 && currentPlayers < maxPlayers)
+        {
+            Debug.Log($"Dang doi phong full truoc khi khoi tao luot choi ({currentPlayers}/{maxPlayers}).");
+            return false;
+        }
+
+        if (assignedColors == null || assignedColors.Count == 0)
+        {
+            Debug.Log("Chua co danh sach mau nguoi choi, doi them...");
+            return false;
+        }
+
+        if (assignedColors.Count < currentPlayers)
+        {
+            Debug.Log($"Chua gan mau cho tat ca nguoi choi ({assignedColors.Count}/{currentPlayers}).");
+            return false;
+        }
+
+        return true;
+    }
+
     public PlayerColor CurrentPlayer
     {
         get
         {
-            if (playerOrder == null || playerOrder.Count == 0 || currentPlayerIndex < 0 || currentPlayerIndex >= playerOrder.Count)
+            if (playerOrder == null || playerOrder.Count == 0 || currentPlayerIndex < 0 ||
+                currentPlayerIndex >= playerOrder.Count)
             {
                 //Debug.LogError("Player order is not initialized or invalid currentPlayerIndex!");
                 return PlayerColor.Red; // Hoặc giá trị mặc định khác
             }
+
             return playerOrder[currentPlayerIndex];
         }
     }
 
     // SỬA: Phương thức DeterminePlayerOrder để chỉ xét những player có trong room
-    private System.Collections.IEnumerator DeterminePlayerOrder(DiceController diceController, List<PlayerColor> availableColors = null)
-{
-    isDeterminingOrder = true;
-    Dictionary<PlayerColor, int> playerRolls = new Dictionary<PlayerColor, int>();
-
-    // Sử dụng danh sách màu từ PhotonManager nếu có
-    List<PlayerColor> colorsToProcess = availableColors ?? 
-                                        new List<PlayerColor> { PlayerColor.Red, PlayerColor.Blue, PlayerColor.Yellow, PlayerColor.Green };
-
-    // Kiểm tra null trước khi truy cập diceButton
-    if (diceController != null && diceController.diceButton != null)
+    private System.Collections.IEnumerator DeterminePlayerOrder(DiceController diceController,
+        List<PlayerColor> availableColors = null)
     {
-        diceController.diceButton.interactable = false;
-    }
+        isDeterminingOrder = true;
+        Dictionary<PlayerColor, int> playerRolls = new Dictionary<PlayerColor, int>();
 
-    foreach (PlayerColor color in colorsToProcess)
-    {
-        // Bỏ qua PlayerColor.None và những màu không có trong room
-        if (color == PlayerColor.None) continue;
-    
-        if (diceController != null)
+        // Sử dụng danh sách màu từ PhotonManager nếu có
+        List<PlayerColor> colorsToProcess = availableColors ??
+                                            new List<PlayerColor>
+                                            {
+                                                PlayerColor.Red, PlayerColor.Blue, PlayerColor.Yellow, PlayerColor.Green
+                                            };
+
+        // Kiểm tra null trước khi truy cập diceButton
+        if (diceController != null && diceController.diceButton != null)
         {
-            diceController.RollDiceForPlayer(color);
-            yield return new WaitUntil(() => diceController.LastDiceValue > 0);
-            playerRolls[color] = diceController.LastDiceValue;
-            diceController.ResetDiceValue();
+            diceController.diceButton.interactable = false;
         }
-        yield return null;
-    }
 
-    playerOrder.Clear();
-    foreach (var entry in playerRolls.OrderByDescending(x => x.Value))
-    {
-        playerOrder.Add(entry.Key);
-    }
-
-    isDeterminingOrder = false;
-    
-    // THÊM: Đồng bộ với các client khác
-    if (isNetworked && photonView.IsMine)
-    {
-        int[] playerOrderArray = playerOrder.Select(color => (int)color).ToArray();
-        photonView.RPC("NetworkSyncPlayerOrder", RpcTarget.Others, playerOrderArray, currentPlayerIndex);
-    }
-
-    if (autoPlayAllPlayers)
-    {
-        if (DiceController.Instance != null)
+        foreach (PlayerColor color in colorsToProcess)
         {
-            DiceController.Instance.AutoRollForCurrentPlayer();
+            // Bỏ qua PlayerColor.None và những màu không có trong room
+            if (color == PlayerColor.None) continue;
+
+            if (diceController != null)
+            {
+                diceController.RollDiceForPlayer(color);
+                yield return new WaitUntil(() => diceController.LastDiceValue > 0);
+                playerRolls[color] = diceController.LastDiceValue;
+                diceController.ResetDiceValue();
+            }
+
+            yield return null;
         }
-    }
-    else
-    {
-        if (diceController != null)
+
+        playerOrder.Clear();
+        foreach (var entry in playerRolls.OrderByDescending(x => x.Value))
         {
-            diceController.EnableDiceForCurrentPlayer();
+            playerOrder.Add(entry.Key);
         }
+
+        isDeterminingOrder = false;
+
+        // THÊM: Đồng bộ với các client khác
+        if (isNetworked && photonView.IsMine)
+        {
+            int[] playerOrderArray = playerOrder.Select(color => (int)color).ToArray();
+            photonView.RPC("NetworkSyncPlayerOrder", RpcTarget.Others, playerOrderArray, currentPlayerIndex);
+        }
+
+        if (autoPlayAllPlayers)
+        {
+            if (DiceController.Instance != null)
+            {
+                DiceController.Instance.AutoRollForCurrentPlayer();
+            }
+        }
+        else
+        {
+            if (diceController != null)
+            {
+                diceController.EnableDiceForCurrentPlayer();
+            }
+        }
+
+        // THÊM: Đánh dấu đã khởi tạo xong
+        isInitialized = true;
+        isInitializing = false; // THÊM: Reset cờ khởi tạo
+        isDeterminingOrder = false;
+
+        Debug.Log("Khởi tạo lượt chơi HOÀN TẤT");
     }
-    
-    // THÊM: Đánh dấu đã khởi tạo xong
-    isInitialized = true;
-    isInitializing = false; // THÊM: Reset cờ khởi tạo
-    isDeterminingOrder = false;
-    
-    Debug.Log("Khởi tạo lượt chơi HOÀN TẤT");
-}
 
 // THÊM: Kiểm tra xem player color có trong lượt chơi không
     public bool IsColorInGame(PlayerColor color)
@@ -216,25 +290,20 @@ void Start()
     // Cập nhật StartTurn để highlight các quân có thể di chuyển
     // Cập nhật StartTurn
     // Sửa phương thức StartTurn
-    // SỬA: Phương thức StartTurn để chỉ master client điều khiển
     public void StartTurn()
     {
-        // CHỈ Master Client mới được bắt đầu lượt
-        if (isNetworked && !PhotonNetwork.IsMasterClient) 
-        {
-            Debug.Log("Client đang chờ master client bắt đầu lượt...");
-            return;
-        }
-
+        // Nếu có PUN và là master client, gửi RPC
         if (isNetworked && photonView.IsMine)
         {
             photonView.RPC("NetworkStartTurn", RpcTarget.All);
         }
         else
         {
+            // Chạy local nếu không có PUN
             StartTurnLocal();
         }
     }
+
     public bool HasValidMoves(PlayerColor playerColor, int diceValue)
     {
         Debug.Log($"HasValidMoves checking for {playerColor} with dice value {diceValue}");
@@ -279,7 +348,7 @@ void Start()
                     if (isPrivatePath)
                     {
                         tempIndex = HorseRacePathManager.Instance.commonPathPoints.Count +
-                                   HorseRacePathManager.Instance.GetPrivatePath(playerColor).IndexOf(nextPoint);
+                                    HorseRacePathManager.Instance.GetPrivatePath(playerColor).IndexOf(nextPoint);
                     }
                     else
                     {
@@ -342,36 +411,19 @@ void Start()
         }
     }
 
-    // SỬA: Phương thức EndTurn để chỉ master client điều khiển
     public void EndTurn()
     {
         pieceMovedThisTurn = false;
-    
-        // CHỈ Master Client mới được kết thúc lượt
-        if (isNetworked && !PhotonNetwork.IsMasterClient) 
-        {
-            Debug.Log("Client đang chờ master client kết thúc lượt...");
-            return;
-        }
-
+        // Nếu có PUN và là master client, gửi RPC
         if (isNetworked && photonView.IsMine)
         {
             photonView.RPC("NetworkEndTurn", RpcTarget.All);
         }
         else
         {
+            // Chạy local nếu không có PUN
             EndTurnLocal();
         }
-    }
-
-// THÊM: Phương thức để client yêu cầu chuyển lượt
-    [PunRPC]
-    public void RPC_RequestEndTurn()
-    {
-        if (!PhotonNetwork.IsMasterClient) return;
-    
-        // Master client xác nhận và xử lý
-        EndTurn();
     }
 
     // SỬA: Phương thức IsCurrentPlayer để kiểm tra cả việc màu có trong game không
@@ -381,50 +433,42 @@ void Start()
         {
             return false;
         }
+
         return CurrentPlayer == color;
     }
 
 
-    // SỬA: Phương thức CheckForPossibleMoves
     public void CheckForPossibleMoves()
     {
-        // CHỈ Master Client xử lý logic di chuyển
-        if (isNetworked && !PhotonNetwork.IsMasterClient) 
-        {
-            Debug.Log("Client đang chờ master client kiểm tra nước đi...");
-            return;
-        }
-
         int diceValue = DiceController.Instance.LastDiceValue;
         PlayerColor currentPlayer = CurrentPlayer;
 
-        Debug.Log($"Master client checking moves: Player {currentPlayer}, Dice value: {diceValue}");
+        Debug.Log($"CheckForPossibleMoves: Player {currentPlayer}, Dice value: {diceValue}");
 
+        // Kiểm tra xem có quân cờ nào có thể di chuyển với số xúc xắc hiện tại không
         bool canMove = HasValidMoves(currentPlayer, diceValue);
+
         Debug.Log($"Can move: {canMove}");
 
         if (!canMove)
         {
-            Debug.Log("No valid moves available, ending turn");
+            // Nếu không thể di chuyển, chuyển lượt sau 2 giây (tăng thời gian để người chơi thấy)
+            Debug.Log("No valid moves available, ending turn in 2 seconds");
             Invoke("EndTurn", 2f);
         }
         else
         {
+            // Nếu có thể di chuyển, khóa nút xúc xắc
             DiceController.Instance.canRollAgain = false;
             DiceController.Instance.diceButton.interactable = false;
 
-            // Đồng bộ UI với tất cả client
-            if (DiceController.Instance.photonView != null)
+            // Cập nhật status text để thông báo cho người chơi
+            if (DiceController.Instance.statusText != null)
             {
-                DiceController.Instance.photonView.RPC(
-                    "RPC_UpdateDiceStatus", 
-                    RpcTarget.All, 
-                    $"Lượt của {currentPlayer}\nHãy di chuyển quân cờ!"
-                );
+                DiceController.Instance.statusText.text = $"Lượt của {currentPlayer}\nHãy di chuyển quân cờ!";
             }
         }
     }
-
 
     // Cập nhật phương thức CanCurrentPlayerMove
     public bool CanCurrentPlayerMove()
@@ -472,6 +516,7 @@ void Start()
                 return true; // Có quân trong chuồng
             }
         }
+
         return false;
     }
 
@@ -534,6 +579,7 @@ void Start()
             {
                 stream.SendNext(playerOrder[i]);
             }
+
             stream.SendNext(isInitialized);
             stream.SendNext(isDeterminingOrder);
         }
@@ -547,6 +593,7 @@ void Start()
             {
                 networkPlayerOrder.Add((PlayerColor)stream.ReceiveNext());
             }
+
             networkIsInitialized = (bool)stream.ReceiveNext();
             bool networkIsDeterminingOrder = (bool)stream.ReceiveNext();
 
@@ -605,15 +652,36 @@ void Start()
         }
     }
 
-// Cập nhật phương thức EndTurnLocal
+
+    // SỬA phương thức EndTurnLocal()
     private void EndTurnLocal()
     {
-        currentPlayerIndex = (currentPlayerIndex + 1) % playerOrder.Count;
-    
+        // KIỂM TRA NULL TRƯỚC KHI SỬ DỤNG
+        if (gameStateManager == null)
+        {
+            gameStateManager = GameStateManager.Instance;
+            if (gameStateManager == null)
+            {
+                Debug.LogError("GameStateManager is null in EndTurnLocal!");
+                return;
+            }
+        }
+
+        if (!gameStateManager.isGameInitialized || gameStateManager.playerOrder == null ||
+            gameStateManager.playerOrder.Count == 0)
+        {
+            Debug.LogWarning("Khong the ket thuc luot vi player order chua san sang.");
+            return;
+        }
+
+        // Sử dụng GameStateManager để chuyển lượt (chỉ Master Client)
+        if (PhotonNetwork.IsMasterClient)
+        {
+            gameStateManager.NextTurn();
+        }
+
         // Thông báo lượt chơi hoàn thành
         OnTurnCompleted();
-    
-        Invoke("StartTurn", 1f);
     }
 
     // RPC để bắt đầu lượt
@@ -629,21 +697,35 @@ void Start()
     public bool IsPlayerOnline(PlayerColor color)
     {
         if (PhotonManager.Instance == null) return true; // Fallback cho offline mode
-    
+
         List<PlayerColor> onlineColors = PhotonManager.Instance.GetRoomPlayerColors();
         return onlineColors.Contains(color);
     }
 
 // SỬA: Phương thức StartTurnLocal để kiểm tra player online
+    // SỬA phương thức StartTurnLocal()
     private void StartTurnLocal()
     {
+        // KIỂM TRA NULL
+        if (gameStateManager == null)
+        {
+            gameStateManager = GameStateManager.Instance;
+            if (gameStateManager == null)
+            {
+                Debug.LogError("GameStateManager is null in StartTurnLocal!");
+                return;
+            }
+        }
+
         if (WinConditionManager.Instance != null && WinConditionManager.Instance.IsGameEnded())
         {
             return;
         }
 
-        // THÊM: Kiểm tra xem current player có online không
-        PlayerColor currentPlayer = CurrentPlayer;
+        // Sử dụng thông tin từ GameStateManager thay vì local state
+        PlayerColor currentPlayer = gameStateManager.currentPlayerColor;
+
+        // Kiểm tra player có online không
         if (!IsPlayerOnline(currentPlayer))
         {
             Debug.Log($"Player {currentPlayer} is offline, skipping turn");
@@ -653,18 +735,19 @@ void Start()
 
         if (DiceController.Instance != null)
         {
+            DiceController.Instance.currentRollingPlayer = currentPlayer;
             DiceController.Instance.EnableDiceForCurrentPlayer();
         }
 
         if (DiceController.Instance.statusText != null)
         {
-            DiceController.Instance.statusText.text = $"Lượt của {CurrentPlayer}\nChưa xúc xắc";
+            DiceController.Instance.statusText.text = $"Lượt của {currentPlayer}\nChưa xúc xắc";
         }
 
         DiceController.Instance.hasRolledThisTurn = false;
         DiceController.Instance.ResetDiceValue();
-    
-        // THÊM: Đảm bảo vật lý xúc xắc được kích hoạt
+
+        // Đảm bảo vật lý xúc xắc được kích hoạt
         if (DiceController.Instance != null)
         {
             DiceController.Instance.EnsurePhysicsForNewTurn();
@@ -675,6 +758,7 @@ void Start()
             DiceController.Instance.AutoRollForCurrentPlayer();
         }
     }
+
 
     // RPC để di chuyển quân cờ
     [PunRPC]
@@ -706,28 +790,29 @@ void Start()
 
 
 
-public bool HasPieceMovedThisTurn()
-{
-    return pieceMovedThisTurn;
-}
-
-[PunRPC]
-public void NetworkSyncPlayerOrder(int[] playerOrderArray, int startPlayerIndex)
-{
-    if (!PhotonNetwork.IsMasterClient) // Chỉ các client khác mới nhận
+    public bool HasPieceMovedThisTurn()
     {
-        playerOrder.Clear();
-        foreach (int colorValue in playerOrderArray)
-        {
-            playerOrder.Add((PlayerColor)colorValue);
-        }
-        currentPlayerIndex = startPlayerIndex;
-        isInitialized = true;
-        
-        Debug.Log($"Đã nhận player order từ Master Client: {string.Join(", ", playerOrder)}");
-        
-        // Bắt đầu lượt chơi đầu tiên
-        StartTurn();
+        return pieceMovedThisTurn;
     }
-}
+
+    [PunRPC]
+    public void NetworkSyncPlayerOrder(int[] playerOrderArray, int startPlayerIndex)
+    {
+        if (!PhotonNetwork.IsMasterClient) // Chỉ các client khác mới nhận
+        {
+            playerOrder.Clear();
+            foreach (int colorValue in playerOrderArray)
+            {
+                playerOrder.Add((PlayerColor)colorValue);
+            }
+
+            currentPlayerIndex = startPlayerIndex;
+            isInitialized = true;
+
+            Debug.Log($"Đã nhận player order từ Master Client: {string.Join(", ", playerOrder)}");
+
+            // Bắt đầu lượt chơi đầu tiên
+            StartTurn();
+        }
+    }
 }

@@ -128,6 +128,8 @@ MonoBehaviour:
   - RPC_SyncTurnState
   - RPC_SyncCurrentTurn
   - RPC_FullDiceSync
+  - RPC_SyncPlayerOrder
+  - RPC_SyncTurn
   DisableAutoOpenWizard: 1
   ShowSettings: 1
   DevRegionSetOnce: 1

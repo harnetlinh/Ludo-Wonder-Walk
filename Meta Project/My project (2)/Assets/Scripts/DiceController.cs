@@ -12,7 +12,7 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
 
     public Button diceButton;
     public TextMeshProUGUI diceResultText;
-    public int LastDiceValue { get; private set; }
+    public int LastDiceValue { get; set; }
     public float autoRollDelay = 1f;
     public DiceFaceDetector diceFaceDetector;
     public bool isDiceRolling = false;
@@ -61,6 +61,8 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
 
     private DiceFaceDetector diceDetector;
     private NetworkDiceSync networkDiceSync;
+    // Thêm vào đầu class
+    private GameStateManager gameStateManager;
 
     private void Start()
     {
@@ -83,6 +85,12 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
         {
             Debug.Log("Game đã bắt đầu, kích hoạt DiceController");
             // Có thể thêm logic tự động enable dice ở đây
+        }
+        
+        // Đăng ký event từ GameStateManager
+        if (GameStateManager.Instance != null)
+        {
+            GameStateManager.Instance.OnDiceResultChanged += OnDiceResultChanged;
         }
     }
 
@@ -142,6 +150,8 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
             networkDiceValue = LastDiceValue;
             networkIsRolling = isDiceRolling;
         }
+        // Thêm vào Awake()
+        gameStateManager = GameStateManager.Instance;
     }
 
     public void SetDicePositionForPlayer(PlayerColor color, Vector3 position)
@@ -311,19 +321,90 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
 
     
 
-    public void RollDice()
+    // THAY THẾ phương thức RollDice()
+public void RollDice()
+{
+    // CHỈ cho phép roll nếu là lượt của player này VÀ chưa roll trong lượt này
+    if (!GameTurnManager.Instance.IsCurrentPlayer(currentRollingPlayer) || hasRolledThisTurn)
     {
-        // Nếu có PUN và là master client, gửi RPC
-        if (isNetworked && photonView.IsMine && PhotonNetwork.InRoom)
+        Debug.LogWarning($"❌ Cannot roll dice: Not your turn or already rolled");
+        return;
+    }
+
+    // Nếu là Master Client, xử lý trực tiếp
+    if (PhotonNetwork.IsMasterClient)
+    {
+        StartDiceRollProcess();
+    }
+    else
+    {
+        // Client gửi yêu cầu roll dice đến Master Client
+        photonView.RPC("RPC_RequestRollDice", RpcTarget.MasterClient, currentRollingPlayer);
+    }
+}
+
+[PunRPC]
+private void RPC_RequestRollDice(PlayerColor requestingPlayer)
+{
+    if (!PhotonNetwork.IsMasterClient) return;
+
+    Debug.Log($"🎲 Master received roll request from {requestingPlayer}");
+
+    // Kiểm tra xem có phải lượt của player này không
+    if (GameTurnManager.Instance.IsCurrentPlayer(requestingPlayer))
+    {
+        currentRollingPlayer = requestingPlayer;
+        StartDiceRollProcess();
+    }
+    else
+    {
+        Debug.LogWarning($"❌ Roll request denied: Not {requestingPlayer}'s turn");
+    }
+}
+
+private void StartDiceRollProcess()
+{
+    // Thông báo bắt đầu roll dice
+    gameStateManager.StartDiceRolling(currentRollingPlayer);
+    
+    PrepareToRoll();
+    
+    // Master Client sẽ xác định kết quả xúc xắc
+    if (PhotonNetwork.IsMasterClient)
+    {
+        // Simulate dice roll (trong thực tế, bạn sẽ dùng diceFaceDetector)
+        int diceValue = useCustomDiceValues && customDiceSequence.Count > 0 
+            ? customDiceSequence[diceSequenceIndex++ % customDiceSequence.Count] 
+            : Random.Range(1, 7);
+
+        // Set kết quả và đồng bộ đến tất cả clients
+        gameStateManager.SetDiceResult(diceValue, currentRollingPlayer);
+    }
+}
+
+// THÊM phương thức để nhận kết quả xúc xắc từ GameStateManager
+private void OnDiceResultChanged(int value, PlayerColor playerColor)
+{
+    if (playerColor == currentRollingPlayer)
+    {
+        LastDiceValue = value;
+        diceResultText.text = $"{playerColor}: {value}";
+        isDiceRolling = false;
+        hasRolledThisTurn = true;
+
+        if (statusText != null)
         {
-            photonView.RPC("NetworkRollDice", RpcTarget.All);
+            statusText.text = $"{playerColor} xúc ra số {value}";
         }
-        else
+
+        // Kiểm tra nước đi có thể
+        if (!GameTurnManager.Instance.isDeterminingOrder)
         {
-            // Chạy local nếu không có PUN
-            RollDiceLocal();
+            GameTurnManager.Instance.CheckForPossibleMoves();
         }
     }
+}
+
 
     //public void AutoRollForCurrentPlayer()
     //{
@@ -600,72 +681,19 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
         }
     }
 
-    // THÊM: Phương thức để client gửi kết quả xúc xắc lên master
-[PunRPC]
-public void RPC_ReportDiceResult(int diceValue, PlayerColor rollingPlayer)
-{
-    if (!PhotonNetwork.IsMasterClient) return;
-    
-    Debug.Log($"Master client received dice result: {diceValue} from {rollingPlayer}");
-    
-    // Xác nhận và xử lý kết quả
-    LastDiceValue = diceValue;
-    currentRollingPlayer = rollingPlayer;
-    hasRolledThisTurn = true;
-    
-    // Đồng bộ với tất cả client
-    photonView.RPC("RPC_SyncDiceResult", RpcTarget.All, diceValue, rollingPlayer, hasRolledThisTurn);
-    
-    // Tiếp tục logic game
-    if (!GameTurnManager.Instance.isDeterminingOrder)
+    private void RollDiceLocal()
     {
-        GameTurnManager.Instance.CheckForPossibleMoves();
-    }
-}
+        if (useCustomDiceValues && customDiceSequence.Count > 0)
+        {
+            LastDiceValue = customDiceSequence[diceSequenceIndex % customDiceSequence.Count];
+            diceSequenceIndex++;
+        }
+        else
+        {
+            LastDiceValue = Random.Range(1, 7);
+        }
 
-[PunRPC]
-public void RPC_SyncDiceResult(int diceValue, PlayerColor rollingPlayer, bool hasRolled)
-{
-    LastDiceValue = diceValue;
-    currentRollingPlayer = rollingPlayer;
-    hasRolledThisTurn = hasRolled;
-    
-    // Cập nhật UI
-    if (diceResultText != null)
-    {
-        diceResultText.text = $"{rollingPlayer}: {diceValue}";
-    }
-    
-    if (statusText != null)
-    {
-        statusText.text = $"{rollingPlayer} xúc ra số {diceValue}";
-    }
-}
-
-// SỬA: Phương thức RollDiceLocal để client gửi kết quả lên master
-private void RollDiceLocal()
-{
-    if (useCustomDiceValues && customDiceSequence.Count > 0)
-    {
-        LastDiceValue = customDiceSequence[diceSequenceIndex % customDiceSequence.Count];
-        diceSequenceIndex++;
-    }
-    else
-    {
-        LastDiceValue = Random.Range(1, 7);
-    }
-
-    // Nếu là client, gửi kết quả lên master
-    if (isNetworked && !PhotonNetwork.IsMasterClient)
-    {
-        photonView.RPC("RPC_ReportDiceResult", RpcTarget.MasterClient, LastDiceValue, currentRollingPlayer);
-    }
-    else if (PhotonNetwork.IsMasterClient)
-    {
-        // Master client xử lý trực tiếp
-        hasRolledThisTurn = true;
-        
-        // Cập nhật UI
+        // Cập nhật text hiển thị
         diceResultText.text = $"{currentRollingPlayer}: {LastDiceValue}";
         diceButton.interactable = false;
 
@@ -673,11 +701,7 @@ private void RollDiceLocal()
         {
             GameTurnManager.Instance.CheckForPossibleMoves();
         }
-        
-        // Đồng bộ với các client khác
-        photonView.RPC("RPC_SyncDiceResult", RpcTarget.Others, LastDiceValue, currentRollingPlayer, hasRolledThisTurn);
     }
-}
 
     // RPC để chuẩn bị xúc xắc
     [PunRPC]
@@ -854,36 +878,12 @@ public void EnsurePhysicsForNewTurn()
             diceButton.interactable = !hasRolledThisTurn && !isDiceRolling && photonView.IsMine;
         }
     }
-    
-    // THÊM vào DiceController.cs
-    [PunRPC]
-    public void RPC_UpdateUI(string diceResult, string status, bool diceButtonInteractable)
+    // THÊM vào OnDestroy() để hủy đăng ký event
+    private void OnDestroy()
     {
-        if (diceResultText != null)
+        if (GameStateManager.Instance != null)
         {
-            diceResultText.text = diceResult;
+            GameStateManager.Instance.OnDiceResultChanged -= OnDiceResultChanged;
         }
-    
-        if (statusText != null)
-        {
-            statusText.text = status;
-        }
-    
-        if (diceButton != null)
-        {
-            diceButton.interactable = diceButtonInteractable;
-        }
-    }
-
-// Phương thức để master client đồng bộ UI
-    public void SyncUIWithAllClients()
-    {
-        if (!PhotonNetwork.IsMasterClient) return;
-    
-        string diceResult = diceResultText != null ? diceResultText.text : "";
-        string status = statusText != null ? statusText.text : "";
-        bool interactable = diceButton != null ? diceButton.interactable : false;
-    
-        photonView.RPC("RPC_UpdateUI", RpcTarget.Others, diceResult, status, interactable);
     }
 }
