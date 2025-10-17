@@ -932,15 +932,23 @@ private void UpdateDiceButtonInteractivity()
             Debug.LogWarning($"RPC_ReportDiceResult received on non-master client from {info.Sender?.NickName}");
             return;
         }
-
-        if (GameTurnManager.Instance != null && !GameTurnManager.Instance.IsCurrentPlayer(reportingColor))
+        bool isValidTurn = GameTurnManager.Instance == null
+                           || GameTurnManager.Instance.IsCurrentPlayer(reportingColor);
+        if (!isValidTurn && GameTurnManager.Instance != null)
         {
-            Debug.LogWarning($"Ignoring dice result {reportedValue} from {reportingColor} because it is not their turn.");
-            return;
+            if (GameTurnManager.Instance.ForceSetCurrentPlayer(reportingColor))
+            {
+                Debug.LogWarning(
+                    $"DiceController: Detected turn desync from {info.Sender?.NickName}. Aligning turn to {reportingColor} before applying dice result {reportedValue}.");
+            }
+            else
+            {
+                Debug.LogWarning(
+                    $"DiceController: Ignoring dice result {reportedValue} from {reportingColor} – color not present in current turn order.");
+                return;
+            }
         }
-
         currentRollingPlayer = reportingColor;
-
         if (gameStateManager == null)
         {
             gameStateManager = GameStateManager.Instance;

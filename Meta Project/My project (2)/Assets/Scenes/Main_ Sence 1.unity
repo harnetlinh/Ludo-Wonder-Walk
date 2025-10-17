@@ -22019,7 +22019,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   currentTurnIndex: 0
   currentPlayerColor: 0
-  lastDiceValue: 0
   isDiceRolling: 0
   playerOrder: 
   isGameInitialized: 0
@@ -22054,7 +22053,7 @@ MonoBehaviour:
   Group: 0
   prefixField: -1
   Synchronization: 3
-  OwnershipTransfer: 0
+  OwnershipTransfer: 1
   observableSearch: 2
   ObservedComponents: []
   sceneViewId: 22

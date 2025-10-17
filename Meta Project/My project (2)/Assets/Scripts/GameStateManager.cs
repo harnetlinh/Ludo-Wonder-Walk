@@ -195,20 +195,25 @@ public class GameStateManager : MonoBehaviourPunCallbacks
     /// <summary>
     /// Set dice result (Master Client only) and sync to all clients
     /// </summary>
-    public void SetDiceResult(int? value, PlayerColor playerColor)
+   public void SetDiceResult(int? value, PlayerColor playerColor)
     {
         if (!PhotonNetwork.IsMasterClient)
         {
             Debug.LogWarning("❌ Only Master Client can set dice result!");
             return;
         }
-
         lastDiceValue = NormalizeDiceValue(value);
         currentPlayerColor = playerColor;
         isDiceRolling = false;
-
+        if (playerOrder != null && playerOrder.Count > 0)
+        {
+            int colorIndex = playerOrder.IndexOf(playerColor);
+            if (colorIndex >= 0)
+            {
+                currentTurnIndex = colorIndex;
+            }
+        }
         Debug.Log($"🎲 Dice result set: {playerColor} rolled {FormatDiceValue(lastDiceValue)}");
-
         // Save to room properties
         SaveGameState();
 

@@ -433,8 +433,25 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
         {
             return false;
         }
-
         return CurrentPlayer == color;
+    }
+    /// <summary>
+    /// Forcefully aligns the current player index with the provided color.
+    /// Used by the master client to recover from desyncs reported by remote results.
+    /// </summary>
+    public bool ForceSetCurrentPlayer(PlayerColor color)
+    {
+        if (playerOrder == null || playerOrder.Count == 0)
+        {
+            return false;
+        }
+        int index = playerOrder.IndexOf(color);
+        if (index < 0)
+        {
+            return false;
+        }
+        currentPlayerIndex = index;
+        return true;
     }
 
 
