@@ -12,7 +12,13 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
 
     public Button diceButton;
     public TextMeshProUGUI diceResultText;
-    public int LastDiceValue { get; set; }
+    private int? lastDiceValue;
+    private const int DiceNullSentinel = -1;
+    public int? LastDiceValue
+    {
+        get => lastDiceValue;
+        set => lastDiceValue = NormalizeDiceValue(value);
+    }
     public float autoRollDelay = 1f;
     public DiceFaceDetector diceFaceDetector;
     public bool isDiceRolling = false;
@@ -53,7 +59,7 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
     public bool isMovingToPlayer = false; // <-- THÊM DÒNG NÀY
 
     // PUN Network Variables
-    private int networkDiceValue = 0;
+    private int? networkDiceValue = null;
     private bool networkIsRolling = false;
     private PlayerColor networkCurrentPlayer;
     private bool isNetworked = false;
@@ -64,6 +70,32 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
     private PlayerColor localPlayerColor = PlayerColor.None;
     // Thêm vào đầu class
     private GameStateManager gameStateManager;
+
+    private static int? NormalizeDiceValue(int? value)
+    {
+        if (!value.HasValue)
+        {
+            return null;
+        }
+
+        int sanitized = value.Value;
+        return sanitized >= 1 && sanitized <= 6 ? sanitized : (int?)null;
+    }
+
+    private static string FormatDiceValue(int? value)
+    {
+        return value.HasValue ? value.Value.ToString() : "-";
+    }
+
+    private static int ToNetworkValue(int? value)
+    {
+        return value.HasValue ? value.Value : DiceNullSentinel;
+    }
+
+    private static int? FromNetworkValue(int value)
+    {
+        return value == DiceNullSentinel ? null : NormalizeDiceValue(value);
+    }
 
     private void Start()
     {
@@ -241,7 +273,7 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
         {
             statusText.text = $"{currentRollingPlayer} dang xuc xac...";
         }
-        LastDiceValue = 0;
+        LastDiceValue = null;
         UpdateDiceButtonInteractivity();
     }
 
@@ -264,13 +296,13 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
         if (isDiceRolling && diceFaceDetector != null && diceFaceDetector.IsDiceStopped())
         {
             LastDiceValue = diceFaceDetector.GetCurrentFaceValue();
-            diceResultText.text = $"{currentRollingPlayer}: {LastDiceValue}";
+            diceResultText.text = $"{currentRollingPlayer}: {FormatDiceValue(LastDiceValue)}";
             if (statusText != null)
             {
-                statusText.text = $"{currentRollingPlayer} xúc ra số {LastDiceValue}";
+                statusText.text = $"{currentRollingPlayer} xúc ra số {FormatDiceValue(LastDiceValue)}";
             }
             isDiceRolling = false;
-            hasRolledThisTurn = true;
+            hasRolledThisTurn = LastDiceValue.HasValue;
 
             if (!GameTurnManager.Instance.isDeterminingOrder)
             {
@@ -323,8 +355,9 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
             LastDiceValue = Random.Range(1, 7);
         }
 
-        diceResultText.text = $"{currentRollingPlayer}: {LastDiceValue}";
+        diceResultText.text = $"{currentRollingPlayer}: {FormatDiceValue(LastDiceValue)}";
         isDiceRolling = false;
+        hasRolledThisTurn = LastDiceValue.HasValue;
 
         if (!GameTurnManager.Instance.isDeterminingOrder)
         {
@@ -424,7 +457,7 @@ private void StartDiceRollProcess()
 }
 
 // THÊM phương thức để nhận kết quả xúc xắc từ GameStateManager
-private void OnDiceResultChanged(int value, PlayerColor playerColor)
+private void OnDiceResultChanged(int? value, PlayerColor playerColor)
 {
     if (playerColor != currentRollingPlayer)
     {
@@ -434,14 +467,16 @@ private void OnDiceResultChanged(int value, PlayerColor playerColor)
     LastDiceValue = value;
     if (diceResultText != null)
     {
-        diceResultText.text = $"{playerColor}: {value}";
+        diceResultText.text = $"{playerColor}: {FormatDiceValue(LastDiceValue)}";
     }
     isDiceRolling = false;
-    hasRolledThisTurn = true;
+    hasRolledThisTurn = value.HasValue;
 
     if (statusText != null)
     {
-        statusText.text = $"{playerColor} xuc ra so {value}";
+        statusText.text = value.HasValue
+            ? $"{playerColor} xuc ra so {FormatDiceValue(value)}"
+            : $"Luot cua {playerColor}\nChua xuc xac";
     }
 
     if (GameTurnManager.Instance != null && !GameTurnManager.Instance.isDeterminingOrder)
@@ -462,6 +497,7 @@ private void HandleTurnChanged(int turnIndex, PlayerColor playerColor)
     currentRollingPlayer = playerColor;
     hasRolledThisTurn = false;
     isDiceRolling = false;
+    ResetDiceValue();
 
     if (statusText != null)
     {
@@ -530,7 +566,14 @@ private void UpdateDiceButtonInteractivity()
 
     public void ResetDiceValue()
     {
-        LastDiceValue = 0;
+        LastDiceValue = null;
+        hasRolledThisTurn = false;
+        if (diceResultText != null)
+        {
+            diceResultText.text = currentRollingPlayer == PlayerColor.None
+                ? "-"
+                : $"{currentRollingPlayer}: {FormatDiceValue(LastDiceValue)}";
+        }
     }
 
     public void SetCustomDiceSequence(List<int> sequence)
@@ -710,7 +753,7 @@ private void UpdateDiceButtonInteractivity()
         if (stream.IsWriting)
         {
             // Gửi dữ liệu đến các client khác
-            stream.SendNext(LastDiceValue);
+            stream.SendNext(ToNetworkValue(LastDiceValue));
             stream.SendNext(isDiceRolling);
             stream.SendNext(currentRollingPlayer);
             stream.SendNext(hasRolledThisTurn);
@@ -718,7 +761,7 @@ private void UpdateDiceButtonInteractivity()
         else
         {
             // Nhận dữ liệu từ master client
-            networkDiceValue = (int)stream.ReceiveNext();
+            networkDiceValue = FromNetworkValue((int)stream.ReceiveNext());
             networkIsRolling = (bool)stream.ReceiveNext();
             networkCurrentPlayer = (PlayerColor)stream.ReceiveNext();
             bool networkHasRolled = (bool)stream.ReceiveNext();
@@ -739,7 +782,7 @@ private void UpdateDiceButtonInteractivity()
             LastDiceValue = networkDiceValue;
             if (diceResultText != null)
             {
-                diceResultText.text = $"{networkCurrentPlayer}: {LastDiceValue}";
+                diceResultText.text = $"{networkCurrentPlayer}: {FormatDiceValue(LastDiceValue)}";
             }
         }
 
@@ -801,7 +844,8 @@ private void UpdateDiceButtonInteractivity()
         }
 
         // Cập nhật text hiển thị
-        diceResultText.text = $"{currentRollingPlayer}: {LastDiceValue}";
+        diceResultText.text = $"{currentRollingPlayer}: {FormatDiceValue(LastDiceValue)}";
+        hasRolledThisTurn = LastDiceValue.HasValue;
         UpdateDiceButtonInteractivity();
 
         if (!GameTurnManager.Instance.isDeterminingOrder)
@@ -823,7 +867,7 @@ private void UpdateDiceButtonInteractivity()
         {
             statusText.text = $"{currentRollingPlayer} dang xuc xac...";
         }
-        LastDiceValue = 0;
+        LastDiceValue = null;
         UpdateDiceButtonInteractivity();
     }
 
@@ -834,13 +878,13 @@ private void UpdateDiceButtonInteractivity()
         if (isDiceRolling && diceFaceDetector != null && diceFaceDetector.IsDiceStopped())
         {
             LastDiceValue = diceFaceDetector.GetCurrentFaceValue();
-            diceResultText.text = $"{currentRollingPlayer}: {LastDiceValue}";
+            diceResultText.text = $"{currentRollingPlayer}: {FormatDiceValue(LastDiceValue)}";
             if (statusText != null)
             {
-                statusText.text = $"{currentRollingPlayer} xúc ra số {LastDiceValue}";
+                statusText.text = $"{currentRollingPlayer} xúc ra số {FormatDiceValue(LastDiceValue)}";
             }
             isDiceRolling = false;
-            hasRolledThisTurn = true;
+            hasRolledThisTurn = LastDiceValue.HasValue;
 
             if (!GameTurnManager.Instance.isDeterminingOrder)
             {
@@ -984,7 +1028,7 @@ public void EnsurePhysicsForNewTurn()
         photonView.RPC(
             nameof(ReceiveDiceState),
             newPlayer,
-            LastDiceValue,
+            ToNetworkValue(LastDiceValue),
             isDiceRolling,
             currentRollingPlayer,
             hasRolledThisTurn
@@ -994,7 +1038,7 @@ public void EnsurePhysicsForNewTurn()
     [PunRPC]
     private void ReceiveDiceState(int value, bool rolling, PlayerColor currentPlayer, bool hasRolled)
     {
-        LastDiceValue = value;
+        LastDiceValue = FromNetworkValue(value);
         isDiceRolling = rolling;
         currentRollingPlayer = currentPlayer;
         hasRolledThisTurn = hasRolled;
@@ -1003,7 +1047,7 @@ public void EnsurePhysicsForNewTurn()
         {
             diceResultText.text = isDiceRolling
                 ? "Dang xuc xac..."
-                : $"{currentRollingPlayer}: {LastDiceValue}";
+                : $"{currentRollingPlayer}: {FormatDiceValue(LastDiceValue)}";
         }
 
         if (statusText != null)

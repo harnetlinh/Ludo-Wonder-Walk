@@ -21580,7 +21580,7 @@ MonoBehaviour:
   blueDicePosition: {fileID: 927737289}
   yellowDicePosition: {fileID: 2097667766}
   greenDicePosition: {fileID: 1614802829}
-  canRollAgain: 1
+  canRollAgain: 0
   hasRolledThisTurn: 0
   statusText: {fileID: 1216640807}
   diceMoveDuration: 1

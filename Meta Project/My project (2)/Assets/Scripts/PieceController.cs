@@ -936,12 +936,19 @@ private void OnCollisionEnter(Collision collision)
                 return;
             }
 
+            int? diceValue = DiceController.Instance.LastDiceValue;
+            if (!diceValue.HasValue)
+            {
+                Debug.LogWarning("Cannot move piece without a rolled dice value.");
+                return;
+            }
+
             // THÊM: Đánh dấu đang xử lý lượt
             isProcessingTurn = true;
             lastTurnProcessingTime = Time.time;
 
             // Di chuyển quân theo số xúc xắc
-            Move(DiceController.Instance.LastDiceValue);
+            Move(diceValue.Value);
 
             // THÊM: Reset trạng thái xử lý sau một khoảng thời gian
             StartCoroutine(ResetTurnProcessingAfterDelay(TURN_COOLDOWN));

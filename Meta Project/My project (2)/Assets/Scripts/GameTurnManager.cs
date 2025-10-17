@@ -234,8 +234,8 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
             if (diceController != null)
             {
                 diceController.RollDiceForPlayer(color);
-                yield return new WaitUntil(() => diceController.LastDiceValue > 0);
-                playerRolls[color] = diceController.LastDiceValue;
+                yield return new WaitUntil(() => diceController.LastDiceValue.HasValue);
+                playerRolls[color] = diceController.LastDiceValue ?? 0;
                 diceController.ResetDiceValue();
             }
 
@@ -440,7 +440,14 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
 
     public void CheckForPossibleMoves()
     {
-        int diceValue = DiceController.Instance.LastDiceValue;
+        int? diceValueNullable = DiceController.Instance.LastDiceValue;
+        if (!diceValueNullable.HasValue)
+        {
+            Debug.LogWarning("CheckForPossibleMoves called without a dice value.");
+            return;
+        }
+
+        int diceValue = diceValueNullable.Value;
         PlayerColor currentPlayer = CurrentPlayer;
 
         Debug.Log($"CheckForPossibleMoves: Player {currentPlayer}, Dice value: {diceValue}");
@@ -473,7 +480,13 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
     // Cập nhật phương thức CanCurrentPlayerMove
     public bool CanCurrentPlayerMove()
     {
-        int diceValue = DiceController.Instance.LastDiceValue;
+        int? diceValueNullable = DiceController.Instance.LastDiceValue;
+        if (!diceValueNullable.HasValue)
+        {
+            return false;
+        }
+
+        int diceValue = diceValueNullable.Value;
         PlayerColor currentPlayer = CurrentPlayer;
 
         // Kiểm tra nếu có thể xuất quân (xúc xắc = 6)
@@ -557,7 +570,14 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
     {
         if (!IsCurrentPlayer(piece.playerColor)) return;
 
-        piece.Move(DiceController.Instance.LastDiceValue);
+        int? diceValueNullable = DiceController.Instance.LastDiceValue;
+        if (!diceValueNullable.HasValue)
+        {
+            Debug.LogWarning("Attempted to move piece without a dice roll value.");
+            return;
+        }
+
+        piece.Move(diceValueNullable.Value);
     }
 
     // Thêm phương thức để xử lý khi quân bị đá

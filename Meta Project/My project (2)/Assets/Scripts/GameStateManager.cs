@@ -11,17 +11,18 @@ public class GameStateManager : MonoBehaviourPunCallbacks
     [Header("Game State Debug")]
     public int currentTurnIndex = 0;
     public PlayerColor currentPlayerColor = PlayerColor.None;
-    public int lastDiceValue = 0;
+    public int? lastDiceValue = null;
     public bool isDiceRolling = false;
     public List<PlayerColor> playerOrder = new List<PlayerColor>();
     public bool isGameInitialized = false;
 
     // Events for UI updates
-    public System.Action<int, PlayerColor> OnDiceResultChanged;
+    public System.Action<int?, PlayerColor> OnDiceResultChanged;
     public System.Action<int, PlayerColor> OnTurnChanged;
     public System.Action<bool> OnGameInitialized;
 
     private PhotonView cachedPhotonView;
+    private const int DiceNullSentinel = -1;
 
     private void CachePhotonView()
     {
@@ -42,6 +43,32 @@ public class GameStateManager : MonoBehaviourPunCallbacks
             CachePhotonView();
         }
         return cachedPhotonView;
+    }
+
+    private static int? NormalizeDiceValue(int? value)
+    {
+        if (!value.HasValue)
+        {
+            return null;
+        }
+
+        int sanitized = value.Value;
+        return sanitized >= 1 && sanitized <= 6 ? sanitized : (int?)null;
+    }
+
+    private static int ToNetworkValue(int? value)
+    {
+        return value.HasValue ? value.Value : DiceNullSentinel;
+    }
+
+    private static int? FromNetworkValue(int value)
+    {
+        return value == DiceNullSentinel ? null : NormalizeDiceValue(value);
+    }
+
+    private static string FormatDiceValue(int? value)
+    {
+        return value.HasValue ? value.Value.ToString() : "-";
     }
 
     private void Awake()
@@ -83,7 +110,7 @@ public class GameStateManager : MonoBehaviourPunCallbacks
         {
             ["CurrentTurnIndex"] = currentTurnIndex,
             ["CurrentPlayerColor"] = currentPlayerColor.ToString(),
-            ["LastDiceValue"] = lastDiceValue,
+            ["LastDiceValue"] = ToNetworkValue(lastDiceValue),
             ["IsDiceRolling"] = isDiceRolling,
             ["IsGameInitialized"] = isGameInitialized
         };
@@ -100,7 +127,7 @@ public class GameStateManager : MonoBehaviourPunCallbacks
         }
 
         PhotonNetwork.CurrentRoom.SetCustomProperties(props);
-        Debug.Log($"✅ Game state saved: Turn={currentTurnIndex}, Player={currentPlayerColor}, Dice={lastDiceValue}");
+        Debug.Log($"✅ Game state saved: Turn={currentTurnIndex}, Player={currentPlayerColor}, Dice={FormatDiceValue(lastDiceValue)}");
     }
 
     /// <summary>
@@ -128,7 +155,7 @@ public class GameStateManager : MonoBehaviourPunCallbacks
 
         if (props.ContainsKey("LastDiceValue"))
         {
-            lastDiceValue = (int)props["LastDiceValue"];
+            lastDiceValue = FromNetworkValue((int)props["LastDiceValue"]);
         }
 
         if (props.ContainsKey("IsDiceRolling"))
@@ -158,7 +185,7 @@ public class GameStateManager : MonoBehaviourPunCallbacks
             }
         }
 
-        Debug.Log($"📖 Game state loaded: Turn={currentTurnIndex}, Player={currentPlayerColor}, Dice={lastDiceValue}, Initialized={isGameInitialized}");
+        Debug.Log($"📖 Game state loaded: Turn={currentTurnIndex}, Player={currentPlayerColor}, Dice={FormatDiceValue(lastDiceValue)}, Initialized={isGameInitialized}");
         
         // Notify other systems
         OnDiceResultChanged?.Invoke(lastDiceValue, currentPlayerColor);
@@ -168,7 +195,7 @@ public class GameStateManager : MonoBehaviourPunCallbacks
     /// <summary>
     /// Set dice result (Master Client only) and sync to all clients
     /// </summary>
-    public void SetDiceResult(int value, PlayerColor playerColor)
+    public void SetDiceResult(int? value, PlayerColor playerColor)
     {
         if (!PhotonNetwork.IsMasterClient)
         {
@@ -176,11 +203,11 @@ public class GameStateManager : MonoBehaviourPunCallbacks
             return;
         }
 
-        lastDiceValue = value;
+        lastDiceValue = NormalizeDiceValue(value);
         currentPlayerColor = playerColor;
         isDiceRolling = false;
 
-        Debug.Log($"🎲 Dice result set: {playerColor} rolled {value}");
+        Debug.Log($"🎲 Dice result set: {playerColor} rolled {FormatDiceValue(lastDiceValue)}");
 
         // Save to room properties
         SaveGameState();
@@ -188,7 +215,7 @@ public class GameStateManager : MonoBehaviourPunCallbacks
         // Notify all clients via RPC
         var view = GetPhotonView();
         if (view == null) return;
-        view.RPC("RPC_SyncDiceResult", RpcTarget.All, value, playerColor);
+        view.RPC("RPC_SyncDiceResult", RpcTarget.All, ToNetworkValue(lastDiceValue), playerColor);
     }
 
     /// <summary>
@@ -217,7 +244,7 @@ public class GameStateManager : MonoBehaviourPunCallbacks
 
         currentTurnIndex = (currentTurnIndex + 1) % playerOrder.Count;
         currentPlayerColor = playerOrder[currentTurnIndex];
-        lastDiceValue = 0;
+        lastDiceValue = null;
         isDiceRolling = false;
 
         Debug.Log($"[GameStateManager] Turn changed: {currentPlayerColor} (Index: {currentTurnIndex})");
@@ -288,26 +315,27 @@ public class GameStateManager : MonoBehaviourPunCallbacks
     [PunRPC]
     private void RPC_SyncDiceResult(int value, PlayerColor playerColor)
     {
-        lastDiceValue = value;
+        int? normalizedValue = FromNetworkValue(value);
+        lastDiceValue = normalizedValue;
         currentPlayerColor = playerColor;
         isDiceRolling = false;
 
-        Debug.Log($"📢 Received dice result: {playerColor} rolled {value}");
+        Debug.Log($"📢 Received dice result: {playerColor} rolled {FormatDiceValue(normalizedValue)}");
 
         // Update UI and game logic
-        OnDiceResultChanged?.Invoke(value, playerColor);
+        OnDiceResultChanged?.Invoke(normalizedValue, playerColor);
 
         // Update DiceController
         if (DiceController.Instance != null)
         {
-            DiceController.Instance.LastDiceValue = value;
+            DiceController.Instance.LastDiceValue = normalizedValue;
             DiceController.Instance.currentRollingPlayer = playerColor;
             DiceController.Instance.isDiceRolling = false;
-            DiceController.Instance.hasRolledThisTurn = true;
+            DiceController.Instance.hasRolledThisTurn = normalizedValue.HasValue;
 
             if (DiceController.Instance.diceResultText != null)
             {
-                DiceController.Instance.diceResultText.text = $"{playerColor}: {value}";
+                DiceController.Instance.diceResultText.text = $"{playerColor}: {FormatDiceValue(normalizedValue)}";
             }
         }
 
@@ -323,7 +351,7 @@ public class GameStateManager : MonoBehaviourPunCallbacks
     {
         currentTurnIndex = turnIndex;
         currentPlayerColor = playerColor;
-        lastDiceValue = 0;
+        lastDiceValue = null;
         isDiceRolling = false;
 
         Debug.Log($"📢 Received turn change: {playerColor} (Index: {turnIndex})");
@@ -406,9 +434,9 @@ public class GameStateManager : MonoBehaviourPunCallbacks
             }
 
             // Send current dice state
-            if (lastDiceValue > 0)
+            if (lastDiceValue.HasValue)
             {
-                view.RPC("RPC_SyncDiceResult", newPlayer, lastDiceValue, currentPlayerColor);
+                view.RPC("RPC_SyncDiceResult", newPlayer, ToNetworkValue(lastDiceValue), currentPlayerColor);
             }
             else
             {
@@ -436,7 +464,7 @@ public class GameStateManager : MonoBehaviourPunCallbacks
         Debug.Log($"=== 🎮 GAME STATE DEBUG ===");
         Debug.Log($"Turn Index: {currentTurnIndex}");
         Debug.Log($"Current Player: {currentPlayerColor}");
-        Debug.Log($"Last Dice Value: {lastDiceValue}");
+        Debug.Log($"Last Dice Value: {FormatDiceValue(lastDiceValue)}");
         Debug.Log($"Is Dice Rolling: {isDiceRolling}");
         Debug.Log($"Is Game Initialized: {isGameInitialized}");
         Debug.Log($"Player Order: {(playerOrder.Count > 0 ? string.Join(" → ", playerOrder) : "Empty")}");
@@ -462,9 +490,9 @@ public class GameStateManager : MonoBehaviourPunCallbacks
             view.RPC("RPC_SyncPlayerOrder", RpcTarget.Others, orderArray, currentTurnIndex);
         }
 
-        if (lastDiceValue > 0)
+        if (lastDiceValue.HasValue)
         {
-            view.RPC("RPC_SyncDiceResult", RpcTarget.Others, lastDiceValue, currentPlayerColor);
+            view.RPC("RPC_SyncDiceResult", RpcTarget.Others, ToNetworkValue(lastDiceValue), currentPlayerColor);
         }
         else
         {
