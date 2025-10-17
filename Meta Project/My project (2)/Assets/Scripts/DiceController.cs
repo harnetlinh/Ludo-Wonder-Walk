@@ -61,6 +61,7 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
 
     private DiceFaceDetector diceDetector;
     private NetworkDiceSync networkDiceSync;
+    private PlayerColor localPlayerColor = PlayerColor.None;
     // Thêm vào đầu class
     private GameStateManager gameStateManager;
 
@@ -69,29 +70,40 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
         diceDetector = GetComponent<DiceFaceDetector>();
         networkDiceSync = GetComponent<NetworkDiceSync>();
 
-        // Đăng ký callback với Photon
         if (photonView != null)
         {
             PhotonNetwork.AddCallbackTarget(this);
 
-            // Request sync nếu là client mới
             if (!photonView.IsMine)
             {
                 Invoke("RequestInitialSync", 1f);
             }
         }
-        // THÊM: Tự động kích hoạt nếu game đã bắt đầu
+
         if (PhotonManager.Instance != null && PhotonManager.Instance.IsGameStarted())
         {
-            Debug.Log("Game đã bắt đầu, kích hoạt DiceController");
-            // Có thể thêm logic tự động enable dice ở đây
+            Debug.Log("Game da bat dau, kich hoat DiceController");
         }
-        
-        // Đăng ký event từ GameStateManager
+
+        if (PhotonManager.Instance != null)
+        {
+            localPlayerColor = PhotonManager.Instance.GetCurrentPlayerColor();
+            PhotonManager.Instance.OnLocalPlayerColorAssigned += HandleLocalPlayerColorAssigned;
+        }
+
         if (GameStateManager.Instance != null)
         {
-            GameStateManager.Instance.OnDiceResultChanged += OnDiceResultChanged;
+            gameStateManager = GameStateManager.Instance;
+            gameStateManager.OnDiceResultChanged += OnDiceResultChanged;
+            gameStateManager.OnTurnChanged += HandleTurnChanged;
+
+            if (gameStateManager.isGameInitialized && gameStateManager.playerOrder.Count > 0)
+            {
+                HandleTurnChanged(gameStateManager.currentTurnIndex, gameStateManager.currentPlayerColor);
+            }
         }
+
+        UpdateDiceButtonInteractivity();
     }
 
     private void RequestInitialSync()
@@ -221,13 +233,16 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
     private void PrepareToRollLocal()
     {
         isDiceRolling = true;
-        diceButton.interactable = false;
-        diceResultText.text = "Đang xúc xắc...";
+        if (diceResultText != null)
+        {
+            diceResultText.text = "Dang xuc xac...";
+        }
         if (statusText != null)
         {
-            statusText.text = $"{currentRollingPlayer} đang xúc xắc...";
+            statusText.text = $"{currentRollingPlayer} dang xuc xac...";
         }
         LastDiceValue = 0;
+        UpdateDiceButtonInteractivity();
     }
 
     public void FinalizeRoll()
@@ -324,21 +339,39 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
     // THAY THẾ phương thức RollDice()
 public void RollDice()
 {
-    // CHỈ cho phép roll nếu là lượt của player này VÀ chưa roll trong lượt này
-    if (!GameTurnManager.Instance.IsCurrentPlayer(currentRollingPlayer) || hasRolledThisTurn)
+    if (gameStateManager == null)
     {
-        Debug.LogWarning($"❌ Cannot roll dice: Not your turn or already rolled");
+        gameStateManager = GameStateManager.Instance;
+    }
+
+    if (!IsLocalPlayersTurn())
+    {
+        Debug.LogWarning("Cannot roll dice: not your turn");
+        UpdateDiceButtonInteractivity();
         return;
     }
 
-    // Nếu là Master Client, xử lý trực tiếp
+    if (hasRolledThisTurn)
+    {
+        Debug.LogWarning("Cannot roll dice: already rolled this turn");
+        UpdateDiceButtonInteractivity();
+        return;
+    }
+
+    GameTurnManager turnManager = GameTurnManager.Instance;
+    if (turnManager != null && !turnManager.IsCurrentPlayer(currentRollingPlayer))
+    {
+        Debug.LogWarning("Cannot roll dice: turn data out of sync");
+        UpdateDiceButtonInteractivity();
+        return;
+    }
+
     if (PhotonNetwork.IsMasterClient)
     {
         StartDiceRollProcess();
     }
     else
     {
-        // Client gửi yêu cầu roll dice đến Master Client
         photonView.RPC("RPC_RequestRollDice", RpcTarget.MasterClient, currentRollingPlayer);
     }
 }
@@ -364,20 +397,28 @@ private void RPC_RequestRollDice(PlayerColor requestingPlayer)
 
 private void StartDiceRollProcess()
 {
-    // Thông báo bắt đầu roll dice
+    if (gameStateManager == null)
+    {
+        gameStateManager = GameStateManager.Instance;
+    }
+
+    if (gameStateManager == null)
+    {
+        Debug.LogError("DiceController: GameStateManager missing, aborting roll");
+        return;
+    }
+
     gameStateManager.StartDiceRolling(currentRollingPlayer);
-    
+
     PrepareToRoll();
-    
-    // Master Client sẽ xác định kết quả xúc xắc
+    UpdateDiceButtonInteractivity();
+
     if (PhotonNetwork.IsMasterClient)
     {
-        // Simulate dice roll (trong thực tế, bạn sẽ dùng diceFaceDetector)
-        int diceValue = useCustomDiceValues && customDiceSequence.Count > 0 
-            ? customDiceSequence[diceSequenceIndex++ % customDiceSequence.Count] 
+        int diceValue = useCustomDiceValues && customDiceSequence.Count > 0
+            ? customDiceSequence[diceSequenceIndex++ % customDiceSequence.Count]
             : Random.Range(1, 7);
 
-        // Set kết quả và đồng bộ đến tất cả clients
         gameStateManager.SetDiceResult(diceValue, currentRollingPlayer);
     }
 }
@@ -385,25 +426,89 @@ private void StartDiceRollProcess()
 // THÊM phương thức để nhận kết quả xúc xắc từ GameStateManager
 private void OnDiceResultChanged(int value, PlayerColor playerColor)
 {
-    if (playerColor == currentRollingPlayer)
+    if (playerColor != currentRollingPlayer)
     {
-        LastDiceValue = value;
+        return;
+    }
+
+    LastDiceValue = value;
+    if (diceResultText != null)
+    {
         diceResultText.text = $"{playerColor}: {value}";
-        isDiceRolling = false;
-        hasRolledThisTurn = true;
+    }
+    isDiceRolling = false;
+    hasRolledThisTurn = true;
 
-        if (statusText != null)
+    if (statusText != null)
+    {
+        statusText.text = $"{playerColor} xuc ra so {value}";
+    }
+
+    if (GameTurnManager.Instance != null && !GameTurnManager.Instance.isDeterminingOrder)
+    {
+        GameTurnManager.Instance.CheckForPossibleMoves();
+    }
+
+    UpdateDiceButtonInteractivity();
+}
+private void HandleLocalPlayerColorAssigned(PlayerColor color)
+{
+    localPlayerColor = color;
+    UpdateDiceButtonInteractivity();
+}
+
+private void HandleTurnChanged(int turnIndex, PlayerColor playerColor)
+{
+    currentRollingPlayer = playerColor;
+    hasRolledThisTurn = false;
+    isDiceRolling = false;
+
+    if (statusText != null)
+    {
+        if (playerColor == PlayerColor.None)
         {
-            statusText.text = $"{playerColor} xúc ra số {value}";
+            statusText.text = "Dang cho luot...";
         }
-
-        // Kiểm tra nước đi có thể
-        if (!GameTurnManager.Instance.isDeterminingOrder)
+        else
         {
-            GameTurnManager.Instance.CheckForPossibleMoves();
+            statusText.text = $"Luot cua {playerColor}\nChua xuc xac";
         }
     }
+
+    UpdateDiceButtonInteractivity();
 }
+
+private bool IsLocalPlayersTurn()
+{
+    if (currentRollingPlayer == PlayerColor.None)
+    {
+        return false;
+    }
+
+    if (PhotonManager.Instance == null || !PhotonNetwork.InRoom)
+    {
+        return true;
+    }
+
+    if (localPlayerColor == PlayerColor.None)
+    {
+        localPlayerColor = PhotonManager.Instance.GetCurrentPlayerColor();
+    }
+
+    return localPlayerColor != PlayerColor.None && localPlayerColor == currentRollingPlayer;
+}
+
+private void UpdateDiceButtonInteractivity()
+{
+    if (diceButton == null)
+    {
+        return;
+    }
+
+    bool canInteract = !isDiceRolling && !hasRolledThisTurn && IsLocalPlayersTurn();
+    diceButton.interactable = canInteract;
+}
+
 
 
     //public void AutoRollForCurrentPlayer()
@@ -559,10 +664,15 @@ private void OnDiceResultChanged(int value, PlayerColor playerColor)
         MoveDiceToCurrentPlayer();
 
         // Cập nhật thông báo cho tất cả client
-        photonView.RPC("RPC_UpdateDiceStatus", RpcTarget.All, $"Lượt của {currentRollingPlayer}\nChưa xúc xắc");
+        photonView.RPC("RPC_UpdateDiceStatus", RpcTarget.All, $"Luot cua {currentRollingPlayer}\nChua xuc xac");
 
-        diceButton.interactable = !hasRolledThisTurn;
-        diceResultText.text = !hasRolledThisTurn ? "Cầm xúc xắc lên để ném" : "Bạn đã xúc xắc trong lượt này";
+        if (diceResultText != null)
+        {
+            diceResultText.text = hasRolledThisTurn
+                ? "Ban da xuc xac trong luot nay"
+                : "Cam xuc xac len de nem";
+        }
+        UpdateDiceButtonInteractivity();
     }
 
     [PunRPC]
@@ -665,10 +775,7 @@ private void OnDiceResultChanged(int value, PlayerColor playerColor)
                     : $"Lượt của {currentRollingPlayer}\nChưa xúc xắc");
         }
 
-        if (diceButton != null)
-        {
-            diceButton.interactable = !hasRolledThisTurn && !isDiceRolling && photonView.IsMine;
-        }
+        UpdateDiceButtonInteractivity();
     }
 
     // RPC để xúc xắc
@@ -695,7 +802,7 @@ private void OnDiceResultChanged(int value, PlayerColor playerColor)
 
         // Cập nhật text hiển thị
         diceResultText.text = $"{currentRollingPlayer}: {LastDiceValue}";
-        diceButton.interactable = false;
+        UpdateDiceButtonInteractivity();
 
         if (!GameTurnManager.Instance.isDeterminingOrder)
         {
@@ -708,13 +815,16 @@ private void OnDiceResultChanged(int value, PlayerColor playerColor)
     public void NetworkPrepareToRoll()
     {
         isDiceRolling = true;
-        diceButton.interactable = false;
-        diceResultText.text = "Đang xúc xắc...";
+        if (diceResultText != null)
+        {
+            diceResultText.text = "Dang xuc xac...";
+        }
         if (statusText != null)
         {
-            statusText.text = $"{currentRollingPlayer} đang xúc xắc...";
+            statusText.text = $"{currentRollingPlayer} dang xuc xac...";
         }
         LastDiceValue = 0;
+        UpdateDiceButtonInteractivity();
     }
 
     // RPC để hoàn thành xúc xắc
@@ -736,6 +846,38 @@ private void OnDiceResultChanged(int value, PlayerColor playerColor)
             {
                 GameTurnManager.Instance.CheckForPossibleMoves();
             }
+        }
+    }
+
+    [PunRPC]
+    private void RPC_ReportDiceResult(int reportedValue, PlayerColor reportingColor, PhotonMessageInfo info)
+    {
+        if (!PhotonNetwork.IsMasterClient)
+        {
+            Debug.LogWarning($"RPC_ReportDiceResult received on non-master client from {info.Sender?.NickName}");
+            return;
+        }
+
+        if (GameTurnManager.Instance != null && !GameTurnManager.Instance.IsCurrentPlayer(reportingColor))
+        {
+            Debug.LogWarning($"Ignoring dice result {reportedValue} from {reportingColor} because it is not their turn.");
+            return;
+        }
+
+        currentRollingPlayer = reportingColor;
+
+        if (gameStateManager == null)
+        {
+            gameStateManager = GameStateManager.Instance;
+        }
+
+        if (gameStateManager != null)
+        {
+            gameStateManager.SetDiceResult(reportedValue, reportingColor);
+        }
+        else
+        {
+            OnDiceResultChanged(reportedValue, reportingColor);
         }
     }
 
@@ -860,30 +1002,33 @@ public void EnsurePhysicsForNewTurn()
         if (diceResultText != null)
         {
             diceResultText.text = isDiceRolling
-                ? "Đang xúc xắc..."
+                ? "Dang xuc xac..."
                 : $"{currentRollingPlayer}: {LastDiceValue}";
         }
 
         if (statusText != null)
         {
             statusText.text = isDiceRolling
-                ? $"{currentRollingPlayer} đang xúc xắc..."
+                ? $"{currentRollingPlayer} dang xuc xac..."
                 : (hasRolledThisTurn
-                    ? $"{currentRollingPlayer} đã xúc xắc"
-                    : $"Lượt của {currentRollingPlayer}\nChưa xúc xắc");
+                    ? $"{currentRollingPlayer} da xuc xac"
+                    : $"Luot cua {currentRollingPlayer}\nChua xuc xac");
         }
 
-        if (diceButton != null)
-        {
-            diceButton.interactable = !hasRolledThisTurn && !isDiceRolling && photonView.IsMine;
-        }
+        UpdateDiceButtonInteractivity();
     }
     // THÊM vào OnDestroy() để hủy đăng ký event
     private void OnDestroy()
     {
-        if (GameStateManager.Instance != null)
+        if (gameStateManager != null)
         {
-            GameStateManager.Instance.OnDiceResultChanged -= OnDiceResultChanged;
+            gameStateManager.OnDiceResultChanged -= OnDiceResultChanged;
+            gameStateManager.OnTurnChanged -= HandleTurnChanged;
+        }
+
+        if (PhotonManager.Instance != null)
+        {
+            PhotonManager.Instance.OnLocalPlayerColorAssigned -= HandleLocalPlayerColorAssigned;
         }
     }
 }

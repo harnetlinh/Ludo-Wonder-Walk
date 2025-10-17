@@ -9,6 +9,12 @@ public class PhotonManager : MonoBehaviourPunCallbacks
 {
     public static PhotonManager Instance { get; private set; }
 
+    public event System.Action<PlayerColor> OnLocalPlayerColorAssigned;
+
+    public PlayerColor LocalPlayerColor { get; private set; } = PlayerColor.None;
+
+    private readonly Dictionary<string, PlayerColor> cachedPlayerColors = new Dictionary<string, PlayerColor>();
+
     [Header("Connection Settings")] public bool autoConnectOnStart = true;
     public string roomName = "TestRoom";
     public int maxPlayers = 4;
@@ -168,20 +174,18 @@ public class PhotonManager : MonoBehaviourPunCallbacks
 // THÊM: Lấy màu của player hiện tại
     public PlayerColor GetCurrentPlayerColor()
     {
-        if (PhotonNetwork.InRoom && PhotonNetwork.CurrentRoom.CustomProperties.ContainsKey("PlayerColors"))
+        if (LocalPlayerColor != PlayerColor.None)
         {
-            string playerColorsData = (string)PhotonNetwork.CurrentRoom.CustomProperties["PlayerColors"];
-            if (!string.IsNullOrEmpty(playerColorsData))
+            return LocalPlayerColor;
+        }
+
+        if (PhotonNetwork.InRoom && PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue("PlayerColors", out object rawValue) && rawValue is string playerColorsData)
+        {
+            UpdateColorCacheAndNotify(playerColorsData);
+
+            if (LocalPlayerColor != PlayerColor.None)
             {
-                string[] entries = playerColorsData.Split(';');
-                foreach (string entry in entries)
-                {
-                    string[] parts = entry.Split(':');
-                    if (parts.Length == 2 && parts[0] == playerID)
-                    {
-                        return (PlayerColor)System.Enum.Parse(typeof(PlayerColor), parts[1]);
-                    }
-                }
+                return LocalPlayerColor;
             }
         }
 
@@ -191,26 +195,22 @@ public class PhotonManager : MonoBehaviourPunCallbacks
 // THÊM: Lấy tất cả màu đang được sử dụng trong room
     public List<PlayerColor> GetRoomPlayerColors()
     {
-        List<PlayerColor> colors = new List<PlayerColor>();
-
-        if (PhotonNetwork.InRoom && PhotonNetwork.CurrentRoom.CustomProperties.ContainsKey("PlayerColors"))
+        if (cachedPlayerColors.Count > 0)
         {
-            string playerColorsData = (string)PhotonNetwork.CurrentRoom.CustomProperties["PlayerColors"];
-            if (!string.IsNullOrEmpty(playerColorsData))
+            return cachedPlayerColors.Values.Distinct().ToList();
+        }
+
+        if (PhotonNetwork.InRoom && PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue("PlayerColors", out object rawValue) && rawValue is string playerColorsData)
+        {
+            UpdateColorCacheAndNotify(playerColorsData);
+
+            if (cachedPlayerColors.Count > 0)
             {
-                string[] entries = playerColorsData.Split(';');
-                foreach (string entry in entries)
-                {
-                    string[] parts = entry.Split(':');
-                    if (parts.Length == 2)
-                    {
-                        colors.Add((PlayerColor)System.Enum.Parse(typeof(PlayerColor), parts[1]));
-                    }
-                }
+                return cachedPlayerColors.Values.Distinct().ToList();
             }
         }
 
-        return colors;
+        return new List<PlayerColor>();
     }
 
 // THÊM: Phân phối màu cho người chơi khi tạo phòng
@@ -234,6 +234,12 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         PlayerPrefs.SetInt(key, (int)color);
         PlayerPrefs.Save();
         Debug.Log($"Saved color {color} for player {playerId}");
+
+        cachedPlayerColors[playerId] = color;
+        if (playerId == playerID)
+        {
+            SetLocalPlayerColor(color);
+        }
     }
 
 // THÊM: Xóa màu đã gán (khi player rời phòng hoàn toàn)
@@ -243,6 +249,53 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         PlayerPrefs.DeleteKey(key);
         PlayerPrefs.Save();
         Debug.Log($"Cleared color for player {playerId}");
+
+        if (cachedPlayerColors.Remove(playerId) && playerId == playerID)
+        {
+            SetLocalPlayerColor(PlayerColor.None);
+        }
+    }
+
+    private void SetLocalPlayerColor(PlayerColor color)
+    {
+        if (LocalPlayerColor == color) return;
+
+        LocalPlayerColor = color;
+        Debug.Log($"Local player color updated to {LocalPlayerColor}");
+        OnLocalPlayerColorAssigned?.Invoke(LocalPlayerColor);
+    }
+
+    private void UpdateColorCacheAndNotify(string playerColorsData)
+    {
+        cachedPlayerColors.Clear();
+
+        if (string.IsNullOrEmpty(playerColorsData))
+        {
+            SetLocalPlayerColor(PlayerColor.None);
+            return;
+        }
+
+        string[] entries = playerColorsData.Split(';');
+        foreach (string entry in entries)
+        {
+            if (string.IsNullOrWhiteSpace(entry)) continue;
+
+            string[] parts = entry.Split(':');
+            if (parts.Length != 2) continue;
+
+            string targetPlayerId = parts[0];
+            if (string.IsNullOrEmpty(targetPlayerId)) continue;
+
+            if (System.Enum.TryParse(parts[1], out PlayerColor color))
+            {
+                cachedPlayerColors[targetPlayerId] = color;
+            }
+        }
+
+        if (!string.IsNullOrEmpty(playerID) && cachedPlayerColors.TryGetValue(playerID, out PlayerColor localColor))
+        {
+            SetLocalPlayerColor(localColor);
+        }
     }
 
 // Trong PhotonManager.cs, SỬA LẠI HOÀN TOÀN phương thức AssignPlayerColors:
@@ -335,6 +388,8 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         });
 
         Debug.Log($"Final color assignments: {playerColorsData}");
+
+        UpdateColorCacheAndNotify(playerColorsData);
     }
 
 // THÊM: Phương thức xử lý khi player rejoins
@@ -982,6 +1037,14 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         if (propertiesThatChanged.ContainsKey("PlayerColors"))
         {
             Debug.Log("PlayerColors changed, reactivating pieces...");
+            if (propertiesThatChanged["PlayerColors"] is string playerColorsData)
+            {
+                UpdateColorCacheAndNotify(playerColorsData);
+            }
+            else
+            {
+                UpdateColorCacheAndNotify(null);
+            }
             ActivatePiecesForPlayers();
         }
     }

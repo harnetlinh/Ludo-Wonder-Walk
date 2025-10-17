@@ -10993,7 +10993,6 @@ GameObject:
   - component: {fileID: 846720860}
   - component: {fileID: 846720862}
   - component: {fileID: 846720863}
-  - component: {fileID: 846720864}
   m_Layer: 0
   m_Name: manager
   m_TagString: Untagged
@@ -11072,62 +11071,6 @@ MonoBehaviour:
   titleText: {fileID: 605399268}
   descriptionText: {fileID: 954736319}
   factImage: {fileID: 1787150531}
---- !u!114 &846720864
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 846720856}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4d5350e632e0d3542abb1122bdca02a0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  diceButton: {fileID: 358267189}
-  diceResultText: {fileID: 49654675}
-  autoRollDelay: 1
-  diceFaceDetector: {fileID: 8332235010527911185}
-  isDiceRolling: 0
-  useCustomDiceValues: 1
-  customDiceSequence: 060000000600000006000000060000000600000001000000010000000600000006000000010000000100000001000000060000000100000001000000010000000600000001000000010000000100000006000000010000000100000001000000060000000100000001000000010000000600000001000000010000000100000006000000010000000100000001000000060000000100000001000000010000000600000001000000010000000100000006000000
-  diceSequenceIndex: 0
-  useCustomPlayerOrder: 0
-  customPlayerOrder: 01000000020000000300000000000000
-  currentRollingPlayer: 0
-  redDicePosition: {fileID: 2119394005}
-  blueDicePosition: {fileID: 927737289}
-  yellowDicePosition: {fileID: 2097667766}
-  greenDicePosition: {fileID: 1614802829}
-  canRollAgain: 1
-  hasRolledThisTurn: 0
-  statusText: {fileID: 1216640807}
-  diceMoveDuration: 1
-  diceMoveCurve:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 0
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    - serializedVersion: 3
-      time: 1
-      value: 1
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  isMovingToPlayer: 0
 --- !u!4 &863919028 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 6273802573030695725, guid: c4ddddf582cf11e4fa92d3d5e3ee5855, type: 3}
@@ -21569,6 +21512,118 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1767480610}
   m_Mesh: {fileID: 2752281392421980169, guid: 7d52fee3bbc9d6d44a676fa370d1f4dc, type: 3}
+--- !u!1 &1779782086
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1779782089}
+  - component: {fileID: 1779782088}
+  - component: {fileID: 1779782087}
+  m_Layer: 0
+  m_Name: diceController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1779782087
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1779782086}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aa584fbee541324448dd18d8409c7a41, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ObservedComponentsFoldoutOpen: 1
+  Group: 0
+  prefixField: -1
+  Synchronization: 3
+  OwnershipTransfer: 1
+  observableSearch: 2
+  ObservedComponents:
+  - {fileID: 1779782088}
+  sceneViewId: 23
+  InstantiationId: 0
+  isRuntimeInstantiated: 0
+--- !u!114 &1779782088
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1779782086}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4d5350e632e0d3542abb1122bdca02a0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  diceButton: {fileID: 358267189}
+  diceResultText: {fileID: 49654675}
+  autoRollDelay: 1
+  diceFaceDetector: {fileID: 8332235010527911185}
+  isDiceRolling: 0
+  useCustomDiceValues: 1
+  customDiceSequence: 060000000600000006000000060000000600000001000000010000000600000006000000010000000100000001000000060000000100000001000000010000000600000001000000010000000100000006000000010000000100000001000000060000000100000001000000010000000600000001000000010000000100000006000000010000000100000001000000060000000100000001000000010000000600000001000000010000000100000006000000
+  diceSequenceIndex: 0
+  useCustomPlayerOrder: 0
+  customPlayerOrder: 01000000020000000300000000000000
+  currentRollingPlayer: 0
+  redDicePosition: {fileID: 2119394005}
+  blueDicePosition: {fileID: 927737289}
+  yellowDicePosition: {fileID: 2097667766}
+  greenDicePosition: {fileID: 1614802829}
+  canRollAgain: 1
+  hasRolledThisTurn: 0
+  statusText: {fileID: 1216640807}
+  diceMoveDuration: 1
+  diceMoveCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  isMovingToPlayer: 0
+--- !u!4 &1779782089
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1779782086}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -3.47846, y: -0, z: 7.35698}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1787150529
 GameObject:
   m_ObjectHideFlags: 0
@@ -32980,3 +33035,4 @@ SceneRoots:
   - {fileID: 1350059363}
   - {fileID: 1134461798}
   - {fileID: 1844213772}
+  - {fileID: 1779782089}
