@@ -140,20 +140,45 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
 
     private void RequestInitialSync()
     {
-        if (photonView != null && !photonView.IsMine)
+        if (photonView == null || photonView.IsMine)
         {
-            photonView.RPC("RequestStateSync", photonView.Owner);
+            return;
+        }
+
+        Player targetOwner = photonView.Owner ?? PhotonNetwork.MasterClient;
+        if (targetOwner != null)
+        {
+            photonView.RPC(nameof(RequestStateSync), targetOwner);
+        }
+        else
+        {
+            Debug.LogWarning("RequestInitialSync: No valid owner found for dice PhotonView.");
         }
     }
 
     [PunRPC]
-    private void RequestStateSync()
+    private void RequestStateSync(PhotonMessageInfo info)
     {
-        // Master client gửi trạng thái hiện tại
-        if (photonView.IsMine)
+        if (photonView == null || !photonView.IsMine)
         {
-            RequestStateSync();
+            return;
         }
+
+        Player requestingPlayer = info.Sender;
+        if (requestingPlayer == null)
+        {
+            Debug.LogWarning("RequestStateSync invoked without a valid sender.");
+            return;
+        }
+
+        photonView.RPC(
+            nameof(ReceiveDiceState),
+            requestingPlayer,
+            ToNetworkValue(LastDiceValue),
+            isDiceRolling,
+            currentRollingPlayer,
+            hasRolledThisTurn
+        );
     }
     private void Awake()
     {
@@ -461,7 +486,13 @@ private void OnDiceResultChanged(int? value, PlayerColor playerColor)
 {
     if (playerColor != currentRollingPlayer)
     {
-        return;
+        if (currentRollingPlayer != PlayerColor.None)
+        {
+            Debug.LogWarning(
+                $"DiceController: Sync mismatch on dice result. Expected {currentRollingPlayer}, received {playerColor}. Updating to server state.");
+        }
+
+        currentRollingPlayer = playerColor;
     }
 
     LastDiceValue = value;
