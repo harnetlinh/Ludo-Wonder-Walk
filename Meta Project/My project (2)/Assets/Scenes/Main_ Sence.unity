@@ -16770,6 +16770,79 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1065683496822744044}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1227730671
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1227730674}
+  - component: {fileID: 1227730673}
+  - component: {fileID: 1227730672}
+  m_Layer: 0
+  m_Name: gamestate
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1227730672
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1227730671}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aa584fbee541324448dd18d8409c7a41, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ObservedComponentsFoldoutOpen: 1
+  Group: 0
+  prefixField: -1
+  Synchronization: 3
+  OwnershipTransfer: 0
+  observableSearch: 2
+  ObservedComponents: []
+  sceneViewId: 22
+  InstantiationId: 0
+  isRuntimeInstantiated: 0
+--- !u!114 &1227730673
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1227730671}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ffa88b88d3aabe246b3131d80ff3b25f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  currentTurnIndex: 0
+  currentPlayerColor: 0
+  lastDiceValue: 0
+  isDiceRolling: 0
+  playerOrder: 
+  isGameInitialized: 0
+--- !u!4 &1227730674
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1227730671}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.02877, y: 0.76722, z: 0.23321}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1228947628 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 930487345390145845, guid: 7d52fee3bbc9d6d44a676fa370d1f4dc, type: 3}
@@ -18236,10 +18309,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8deae370f0e0ee1479455db9418182d8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  targetFPS: 72
-  disableVSync: 1
-  renderScale: 0.5
-  autoAdjustQuality: 0
 --- !u!4 &1350059363
 Transform:
   m_ObjectHideFlags: 0
@@ -24838,6 +24907,7 @@ MonoBehaviour:
   connectButton: {fileID: 247980884}
   createRoomButton: {fileID: 412928911}
   joinRoomButton: {fileID: 1250978794}
+  rejoinButton: {fileID: 0}
   leaveRoomButton: {fileID: 418422327}
   spawnCubeButton: {fileID: 803666892}
   spawnSphereButton: {fileID: 1725907190}
@@ -27783,6 +27853,7 @@ MonoBehaviour:
   connectButton: {fileID: 3629991460229880260}
   createRoomButton: {fileID: 5688414779097721279}
   joinRoomButton: {fileID: 3371291365697826583}
+  rejoinButton: {fileID: 0}
   leaveRoomButton: {fileID: 6711222452181693897}
   spawnCubeButton: {fileID: 5110559082231875225}
   spawnSphereButton: {fileID: 3100802355750333537}
@@ -33956,3 +34027,4 @@ SceneRoots:
   - {fileID: 1812566079}
   - {fileID: 1979143794}
   - {fileID: 1350059363}
+  - {fileID: 1227730674}
