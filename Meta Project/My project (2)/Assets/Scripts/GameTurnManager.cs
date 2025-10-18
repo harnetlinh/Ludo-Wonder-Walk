@@ -227,14 +227,11 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
             // Bỏ qua PlayerColor.None và những màu không có trong room
             if (color == PlayerColor.None) continue;
 
-            if (diceController != null)
-            {
-                diceController.RollDiceForPlayer(color);
-                yield return new WaitUntil(() => diceController.LastDiceValue.HasValue);
-                playerRolls[color] = diceController.LastDiceValue ?? 0;
-                diceController.ResetDiceValue();
-            }
+            int rollValue = diceController != null
+                ? diceController.SimulateDiceForInitialization(color)
+                : Random.Range(1, 7);
 
+            playerRolls[color] = Mathf.Clamp(rollValue, 1, 6);
             yield return null;
         }
 

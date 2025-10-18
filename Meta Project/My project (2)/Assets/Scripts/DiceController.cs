@@ -636,6 +636,23 @@ private bool ShouldForceRollForInitialization()
         RollDice();
     }
 
+    public int SimulateDiceForInitialization(PlayerColor playerColor)
+    {
+        int value;
+
+        if (useCustomDiceValues && customDiceSequence.Count > 0)
+        {
+            value = customDiceSequence[diceSequenceIndex++ % customDiceSequence.Count];
+        }
+        else
+        {
+            value = Random.Range(1, 7);
+        }
+
+        Debug.Log($"Simulated initialization roll for {playerColor}: {value}");
+        return value;
+    }
+
     public void ResetDiceValue()
     {
         LastDiceValue = null;
