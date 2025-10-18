@@ -410,20 +410,29 @@ public void RollDice()
         gameStateManager = GameStateManager.Instance;
     }
 
-    if (!IsLocalPlayersTurn())
-    {
-        Debug.LogWarning("Cannot roll dice: not your turn");
-        return;
-    }
+    bool bypassTurnValidation = ShouldForceRollForInitialization();
 
-    if (hasRolledThisTurn)
+    if (!bypassTurnValidation)
     {
-        Debug.LogWarning("Cannot roll dice: already rolled this turn");
-        return;
+        if (!IsLocalPlayersTurn())
+        {
+            Debug.LogWarning("Cannot roll dice: not your turn");
+            return;
+        }
+
+        if (hasRolledThisTurn)
+        {
+            Debug.LogWarning("Cannot roll dice: already rolled this turn");
+            return;
+        }
+    }
+    else if (photonView != null && !photonView.IsMine)
+    {
+        photonView.RequestOwnership();
     }
 
     GameTurnManager turnManager = GameTurnManager.Instance;
-    if (turnManager != null && !turnManager.IsCurrentPlayer(currentRollingPlayer))
+    if (!bypassTurnValidation && turnManager != null && !turnManager.IsCurrentPlayer(currentRollingPlayer))
     {
         Debug.LogWarning(
             $"RollDice detected local turn desync for {currentRollingPlayer}. Forwarding request to master for authoritative validation.");
@@ -599,6 +608,24 @@ private bool IsLocalPlayersTurn()
     }
 
     return localPlayerColor != PlayerColor.None && localPlayerColor == currentRollingPlayer;
+}
+
+
+
+private bool ShouldForceRollForInitialization()
+{
+    if (!PhotonNetwork.IsMasterClient)
+    {
+        return false;
+    }
+
+    GameTurnManager turnManager = GameTurnManager.Instance;
+    if (turnManager == null)
+    {
+        return false;
+    }
+
+    return turnManager.isDeterminingOrder;
 }
 
 
