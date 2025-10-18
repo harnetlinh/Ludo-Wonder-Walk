@@ -220,11 +220,7 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
                                                 PlayerColor.Red, PlayerColor.Blue, PlayerColor.Yellow, PlayerColor.Green
                                             };
 
-        // Kiểm tra null trước khi truy cập diceButton
-        if (diceController != null && diceController.diceButton != null)
-        {
-            diceController.diceButton.interactable = false;
-        }
+        
 
         foreach (PlayerColor color in colorsToProcess)
         {
@@ -403,13 +399,7 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
 
     // Xóa phương thức RollDiceForCurrentPlayer() không cần thiết
 
-    public void RollDiceForCurrentPlayer()
-    {
-        if (!DiceController.Instance.diceButton.interactable) // Chỉ roll nếu người chơi chưa roll
-        {
-            DiceController.Instance.RollDiceForPlayer(CurrentPlayer);
-        }
-    }
+   
 
     public void EndTurn()
     {
@@ -484,7 +474,6 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
         {
             // Nếu có thể di chuyển, khóa nút xúc xắc
             DiceController.Instance.canRollAgain = false;
-            DiceController.Instance.diceButton.interactable = false;
 
             // Cập nhật status text để thông báo cho người chơi
             if (DiceController.Instance.statusText != null)

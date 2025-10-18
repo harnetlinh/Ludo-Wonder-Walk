@@ -9,8 +9,7 @@ using Photon.Realtime;
 public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
 {
     public static DiceController Instance { get; private set; }
-
-    public Button diceButton;
+    
     public TextMeshProUGUI diceResultText;
     private int? lastDiceValue;
     private const int DiceNullSentinel = -1;
@@ -134,8 +133,7 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
                 HandleTurnChanged(gameStateManager.currentTurnIndex, gameStateManager.currentPlayerColor);
             }
         }
-
-        UpdateDiceButtonInteractivity();
+        
     }
 
     private void RequestInitialSync()
@@ -192,7 +190,7 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
             Destroy(gameObject);
         }
 
-        if (diceButton != null)
+        /*if (diceButton != null)
         {
             diceButton.onClick.AddListener(OnDiceClick);
             diceButton.interactable = false;
@@ -200,7 +198,7 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
         else
         {
             Debug.LogWarning("DiceController: 'diceButton' is not assigned in Inspector.");
-        }
+        }*/
 
         // Thiết lập vị trí xúc xắc cho mỗi màu
         if (redDicePosition != null)
@@ -299,7 +297,6 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
             statusText.text = $"{currentRollingPlayer} dang xuc xac...";
         }
         LastDiceValue = null;
-        UpdateDiceButtonInteractivity();
     }
 
     public void FinalizeRoll()
@@ -336,17 +333,7 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
         }
     }
 
-    public void UpdateDiceStatus(bool isHeld)
-    {
-        //if (isHeld)
-        //{
-        //    statusText.text += "\nXúc xắc đang được cầm";
-        //}
-        //else
-        //{
-        //    statusText.text += "\nXúc xắc đã đặt xuống";
-        //}
-    }
+    
 
     public void AutoRollForCurrentPlayer()
     {
@@ -405,23 +392,20 @@ public void RollDice()
     if (!IsLocalPlayersTurn())
     {
         Debug.LogWarning("Cannot roll dice: not your turn");
-        UpdateDiceButtonInteractivity();
         return;
     }
 
     if (hasRolledThisTurn)
     {
         Debug.LogWarning("Cannot roll dice: already rolled this turn");
-        UpdateDiceButtonInteractivity();
         return;
     }
 
     GameTurnManager turnManager = GameTurnManager.Instance;
     if (turnManager != null && !turnManager.IsCurrentPlayer(currentRollingPlayer))
     {
-        Debug.LogWarning("Cannot roll dice: turn data out of sync");
-        UpdateDiceButtonInteractivity();
-        return;
+        Debug.LogWarning(
+            $"RollDice detected local turn desync for {currentRollingPlayer}. Forwarding request to master for authoritative validation.");
     }
 
     if (PhotonNetwork.IsMasterClient)
@@ -469,7 +453,6 @@ private void StartDiceRollProcess()
     gameStateManager.StartDiceRolling(currentRollingPlayer);
 
     PrepareToRoll();
-    UpdateDiceButtonInteractivity();
 
     if (PhotonNetwork.IsMasterClient)
     {
@@ -514,13 +497,11 @@ private void OnDiceResultChanged(int? value, PlayerColor playerColor)
     {
         GameTurnManager.Instance.CheckForPossibleMoves();
     }
-
-    UpdateDiceButtonInteractivity();
+    
 }
 private void HandleLocalPlayerColorAssigned(PlayerColor color)
 {
     localPlayerColor = color;
-    UpdateDiceButtonInteractivity();
 }
 
 private void HandleTurnChanged(int turnIndex, PlayerColor playerColor)
@@ -541,8 +522,7 @@ private void HandleTurnChanged(int turnIndex, PlayerColor playerColor)
             statusText.text = $"Luot cua {playerColor}\nChua xuc xac";
         }
     }
-
-    UpdateDiceButtonInteractivity();
+    
 }
 
 private bool IsLocalPlayersTurn()
@@ -565,29 +545,7 @@ private bool IsLocalPlayersTurn()
     return localPlayerColor != PlayerColor.None && localPlayerColor == currentRollingPlayer;
 }
 
-private void UpdateDiceButtonInteractivity()
-{
-    if (diceButton == null)
-    {
-        return;
-    }
 
-    bool canInteract = !isDiceRolling && !hasRolledThisTurn && IsLocalPlayersTurn();
-    diceButton.interactable = canInteract;
-}
-
-
-
-    //public void AutoRollForCurrentPlayer()
-    //{
-    //    currentRollingPlayer = GetCurrentPlayer();
-    //    Invoke("PerformAutoRoll", autoRollDelay);
-    //}
-
-    //private void PerformAutoRoll()
-    //{
-    //    RollDice();
-    //}
 
     public void RollDiceForPlayer(PlayerColor playerColor)
     {
@@ -642,67 +600,6 @@ private void UpdateDiceButtonInteractivity()
         }
     }
 
-    //private IEnumerator MoveDiceToPosition(Vector3 targetPosition)
-    //{
-    //    isMovingToPlayer = true; // <-- BẬT CỜ: đang di chuyển xúc xắc
-
-    //    if (diceFaceDetector == null)
-    //    {
-    //        isMovingToPlayer = false;
-    //        yield break;
-    //    }
-
-    //    Rigidbody rb = diceFaceDetector.GetComponent<Rigidbody>();
-    //    if (rb != null)
-    //    {
-    //        rb.isKinematic = true;
-    //        rb.linearVelocity = Vector3.zero;
-    //        rb.angularVelocity = Vector3.zero;
-    //    }
-
-    //    Vector3 startPosition = diceFaceDetector.transform.position;
-    //    Quaternion startRotation = diceFaceDetector.transform.rotation;
-    //    float elapsed = 0f;
-
-    //    while (elapsed < diceMoveDuration)
-    //    {
-    //        elapsed += Time.deltaTime;
-    //        float t = diceMoveCurve.Evaluate(elapsed / diceMoveDuration);
-
-    //        diceFaceDetector.transform.position = Vector3.Lerp(startPosition, targetPosition, t);
-    //        diceFaceDetector.transform.rotation = Quaternion.Slerp(startRotation, Quaternion.identity, t);
-
-    //        yield return null;
-    //    }
-
-    //    diceFaceDetector.transform.position = targetPosition;
-    //    diceFaceDetector.transform.rotation = Quaternion.identity;
-
-    //    if (rb != null)
-    //    {
-    //        rb.isKinematic = false;
-    //    }
-
-    //    // Reset trạng thái xúc xắc
-    //    diceFaceDetector.isFirstPickup = true;
-    //    diceFaceDetector.hasLanded = false;
-
-    //    isMovingToPlayer = false; // <-- TẮT CỜ: đã di chuyển xong
-
-
-    //    NetworkDiceSync diceSync = diceFaceDetector.GetComponent<NetworkDiceSync>();
-    //    if (diceSync != null)
-    //    {
-    //        diceSync.ForceNetworkSync();
-    //    }
-    //}
-
-    // Sửa phương thức EnableDiceForCurrentPlayer
-    // Trong DiceController.cs
-
-    // Trong DiceController.cs, sửa phương thức EnableDiceForCurrentPlayer:
-
-    // Trong DiceController.cs, sửa phương thức EnableDiceForCurrentPlayer:
 
     public void EnableDiceForCurrentPlayer()
     {
@@ -746,7 +643,6 @@ private void UpdateDiceButtonInteractivity()
                 ? "Ban da xuc xac trong luot nay"
                 : "Cam xuc xac len de nem";
         }
-        UpdateDiceButtonInteractivity();
     }
 
     [PunRPC]
@@ -848,8 +744,7 @@ private void UpdateDiceButtonInteractivity()
                     ? $"{currentRollingPlayer} đã xúc xắc"
                     : $"Lượt của {currentRollingPlayer}\nChưa xúc xắc");
         }
-
-        UpdateDiceButtonInteractivity();
+        
     }
 
     // RPC để xúc xắc
@@ -877,7 +772,6 @@ private void UpdateDiceButtonInteractivity()
         // Cập nhật text hiển thị
         diceResultText.text = $"{currentRollingPlayer}: {FormatDiceValue(LastDiceValue)}";
         hasRolledThisTurn = LastDiceValue.HasValue;
-        UpdateDiceButtonInteractivity();
 
         if (!GameTurnManager.Instance.isDeterminingOrder)
         {
@@ -899,7 +793,6 @@ private void UpdateDiceButtonInteractivity()
             statusText.text = $"{currentRollingPlayer} dang xuc xac...";
         }
         LastDiceValue = null;
-        UpdateDiceButtonInteractivity();
     }
 
     // RPC để hoàn thành xúc xắc
@@ -1097,8 +990,7 @@ public void EnsurePhysicsForNewTurn()
                     ? $"{currentRollingPlayer} da xuc xac"
                     : $"Luot cua {currentRollingPlayer}\nChua xuc xac");
         }
-
-        UpdateDiceButtonInteractivity();
+        
     }
     // THÊM vào OnDestroy() để hủy đăng ký event
     private void OnDestroy()

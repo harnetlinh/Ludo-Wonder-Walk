@@ -919,7 +919,6 @@ private void OnCollisionEnter(Collision collision)
                 if (DiceController.Instance != null)
                 {
                     DiceController.Instance.hasRolledThisTurn = false; // Cho phép roll lại nếu có quân 6
-                    DiceController.Instance.diceButton.interactable = true; // Mở nút xúc xắc
                 }
 
                 // THÊM: Reset trạng thái xử lý sau một khoảng thời gian

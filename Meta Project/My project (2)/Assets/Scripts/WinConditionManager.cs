@@ -101,11 +101,7 @@ public class WinConditionManager : MonoBehaviour
             }
         }
 
-        // Vô hiệu hóa xúc xắc và các tương tác
-        if (DiceController.Instance != null)
-        {
-            DiceController.Instance.diceButton.interactable = false;
-        }
+        
 
         // Dừng tất cả các di chuyển đang thực hiện
         PieceController[] allPieces = FindObjectsByType<PieceController>(FindObjectsSortMode.None);
@@ -194,11 +190,7 @@ public class WinConditionManager : MonoBehaviour
             GameTurnManager.Instance.InitializePlayerOrder(DiceController.Instance);
         }
 
-        // Kích hoạt lại xúc xắc
-        if (DiceController.Instance != null)
-        {
-            DiceController.Instance.diceButton.interactable = true;
-        }
+        
     }
 
     // Quay về menu chính

@@ -173,13 +173,8 @@ public class DiceFaceDetector : MonoBehaviour
     {
         if (collision.gameObject.CompareTag("Table1"))
         {
-            // CHỈ đánh dấu là đã chạm bàn nếu xúc xắc KHÔNG được cầm
-            // Và đã từng được cầm lên (tức là người chơi đã thực sự ném xúc xắc)
-            GrabDice grabDice = GetComponent<GrabDice>();
-            if (grabDice != null && !grabDice.IsBeingHeld() && !isFirstPickup)
-            {
-                DiceController.Instance.UpdateDiceStatus(false);
-            }
+            
+            
         }
     }
 
@@ -188,14 +183,7 @@ public class DiceFaceDetector : MonoBehaviour
         if (collision.gameObject.CompareTag("Table1"))
         {
             Debug.Log("Dice lifted from table");
-
-            GrabDice grabDice = GetComponent<GrabDice>();
-            // CHỈ cập nhật trạng thái "đang cầm" nếu xúc xắc thực sự được cầm
-            if (grabDice != null && grabDice.IsBeingHeld())
-            {
-                DiceController.Instance.UpdateDiceStatus(true);
-            }
-
+            
             // THÊM KIỂM TRA QUAN TRỌNG: Chỉ chuẩn bị roll nếu:
             // 1. Xúc xắc đã từng được cầm 
             // 2. Chưa roll trong lượt này

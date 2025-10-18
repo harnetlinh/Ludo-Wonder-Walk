@@ -184,7 +184,6 @@ public class GrabDice : MonoBehaviourPun
         if (DiceController.Instance != null && !DiceController.Instance.hasRolledThisTurn)
         {
             DiceController.Instance.PrepareToRoll();
-            DiceController.Instance.UpdateDiceStatus(true);
         }
 
         // Gửi RPC đồng bộ trạng thái cầm
@@ -229,10 +228,7 @@ public class GrabDice : MonoBehaviourPun
             networkDiceSync.OnEndInteraction();
         }
 
-        if (DiceController.Instance != null)
-        {
-            DiceController.Instance.UpdateDiceStatus(false);
-        }
+        
 
         // Gửi RPC đồng bộ trạng thái thả
         if (photonView != null && photonView.IsMine)
