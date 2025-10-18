@@ -14,15 +14,21 @@ public class GameStateManager : MonoBehaviourPunCallbacks
     public int? lastDiceValue = null;
     public bool isDiceRolling = false;
     public List<PlayerColor> playerOrder = new List<PlayerColor>();
+    public Vector3 diceWorldPosition = Vector3.zero;
+    public Quaternion diceWorldRotation = Quaternion.identity;
+    public bool HasDiceTransform => hasDiceTransform;
     public bool isGameInitialized = false;
 
     // Events for UI updates
     public System.Action<int?, PlayerColor> OnDiceResultChanged;
     public System.Action<int, PlayerColor> OnTurnChanged;
     public System.Action<bool> OnGameInitialized;
+    public System.Action<Vector3, Quaternion> OnDiceTransformChanged;
 
     private PhotonView cachedPhotonView;
     private const int DiceNullSentinel = -1;
+    private const string DiceTransformKey = "DiceTransform";
+    private bool hasDiceTransform = false;
 
     private void CachePhotonView()
     {
@@ -115,6 +121,11 @@ public class GameStateManager : MonoBehaviourPunCallbacks
             ["IsGameInitialized"] = isGameInitialized
         };
 
+        if (hasDiceTransform)
+        {
+            props[DiceTransformKey] = SerializeDiceTransform(diceWorldPosition, diceWorldRotation);
+        }
+
         // Save player order as string
         if (playerOrder.Count > 0)
         {
@@ -137,6 +148,9 @@ public class GameStateManager : MonoBehaviourPunCallbacks
     {
         int previousTurnIndex = currentTurnIndex;
         PlayerColor previousPlayerColor = currentPlayerColor;
+        bool previousHasTransform = hasDiceTransform;
+        Vector3 previousDicePosition = diceWorldPosition;
+        Quaternion previousDiceRotation = diceWorldRotation;
 
         if (!PhotonNetwork.InRoom) return;
 
@@ -198,6 +212,21 @@ public class GameStateManager : MonoBehaviourPunCallbacks
         {
             OnTurnChanged?.Invoke(currentTurnIndex, currentPlayerColor);
         }
+
+        if (props.ContainsKey(DiceTransformKey) &&
+            TryDeserializeDiceTransform(props[DiceTransformKey], out Vector3 loadedPosition, out Quaternion loadedRotation))
+        {
+            diceWorldPosition = loadedPosition;
+            diceWorldRotation = loadedRotation;
+            hasDiceTransform = true;
+        }
+
+        if (hasDiceTransform && (!previousHasTransform ||
+            diceWorldPosition != previousDicePosition ||
+            diceWorldRotation != previousDiceRotation))
+        {
+            OnDiceTransformChanged?.Invoke(diceWorldPosition, diceWorldRotation);
+        }
     }
 
     /// <summary>
@@ -229,6 +258,24 @@ public class GameStateManager : MonoBehaviourPunCallbacks
         var view = GetPhotonView();
         if (view == null) return;
         view.RPC("RPC_SyncDiceResult", RpcTarget.All, ToNetworkValue(lastDiceValue), playerColor);
+    }
+
+    public void UpdateDiceTransform(Vector3 position, Quaternion rotation)
+    {
+        diceWorldPosition = position;
+        diceWorldRotation = rotation;
+        hasDiceTransform = true;
+
+        if (PhotonNetwork.IsMasterClient && PhotonNetwork.InRoom)
+        {
+            var props = new ExitGames.Client.Photon.Hashtable
+            {
+                [DiceTransformKey] = SerializeDiceTransform(position, rotation)
+            };
+            PhotonNetwork.CurrentRoom.SetCustomProperties(props);
+        }
+
+        OnDiceTransformChanged?.Invoke(position, rotation);
     }
 
     /// <summary>
@@ -269,6 +316,10 @@ public class GameStateManager : MonoBehaviourPunCallbacks
         var view = GetPhotonView();
         if (view == null) return;
         view.RPC("RPC_SyncTurn", RpcTarget.All, currentTurnIndex, currentPlayerColor);
+        if (hasDiceTransform)
+        {
+            view.RPC("RPC_SyncDiceTransform", RpcTarget.All, diceWorldPosition, diceWorldRotation);
+        }
     }
 
     /// <summary>
@@ -397,6 +448,15 @@ public class GameStateManager : MonoBehaviourPunCallbacks
     }
 
     [PunRPC]
+    private void RPC_SyncDiceTransform(Vector3 position, Quaternion rotation)
+    {
+        diceWorldPosition = position;
+        diceWorldRotation = rotation;
+        hasDiceTransform = true;
+        OnDiceTransformChanged?.Invoke(position, rotation);
+    }
+
+    [PunRPC]
     private void RPC_SyncPlayerOrder(int[] orderArray, int startIndex)
     {
         playerOrder.Clear();
@@ -456,6 +516,11 @@ public class GameStateManager : MonoBehaviourPunCallbacks
                 // Send current turn
                 view.RPC("RPC_SyncTurn", newPlayer, currentTurnIndex, currentPlayerColor);
             }
+
+            if (hasDiceTransform)
+            {
+                view.RPC("RPC_SyncDiceTransform", newPlayer, diceWorldPosition, diceWorldRotation);
+            }
         }
     }
 
@@ -511,7 +576,62 @@ public class GameStateManager : MonoBehaviourPunCallbacks
         {
             view.RPC("RPC_SyncTurn", RpcTarget.Others, currentTurnIndex, currentPlayerColor);
         }
+
+        if (hasDiceTransform)
+        {
+            view.RPC("RPC_SyncDiceTransform", RpcTarget.Others, diceWorldPosition, diceWorldRotation);
+        }
     }
 
     #endregion
+
+    private static float[] SerializeDiceTransform(Vector3 position, Quaternion rotation)
+    {
+        return new float[]
+        {
+            position.x, position.y, position.z,
+            rotation.x, rotation.y, rotation.z, rotation.w
+        };
+    }
+
+    private static bool TryDeserializeDiceTransform(object rawData, out Vector3 position, out Quaternion rotation)
+    {
+        position = Vector3.zero;
+        rotation = Quaternion.identity;
+
+        float[] data = null;
+
+        if (rawData is float[] floatArray && floatArray.Length == 7)
+        {
+            data = floatArray;
+        }
+        else if (rawData is object[] objectArray && objectArray.Length == 7)
+        {
+            data = new float[7];
+            for (int i = 0; i < 7; i++)
+            {
+                if (objectArray[i] is float f)
+                {
+                    data[i] = f;
+                }
+                else if (objectArray[i] is double d)
+                {
+                    data[i] = (float)d;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+        }
+
+        if (data == null)
+        {
+            return false;
+        }
+
+        position = new Vector3(data[0], data[1], data[2]);
+        rotation = new Quaternion(data[3], data[4], data[5], data[6]);
+        return true;
+    }
 }

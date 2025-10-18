@@ -10,7 +10,7 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
     public List<PlayerColor> playerOrder = new List<PlayerColor>();
     public int currentPlayerIndex = 0;
 
-    public bool autoPlayAllPlayers = true; // Thêm biến điều khiển chế độ test
+    public bool autoPlayAllPlayers = false; // Thêm biến điều khiển chế độ test
     public bool isDeterminingOrder = false; // Thêm biến này
 
     public bool isInitialized = false;
@@ -244,10 +244,29 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
             playerOrder.Add(entry.Key);
         }
 
+        currentPlayerIndex = 0;
+
+        if (PhotonNetwork.IsMasterClient)
+        {
+            if (gameStateManager == null)
+            {
+                gameStateManager = GameStateManager.Instance;
+            }
+
+            if (gameStateManager != null && playerOrder.Count > 0)
+            {
+                gameStateManager.SetPlayerOrder(new List<PlayerColor>(playerOrder));
+            }
+            else if (gameStateManager == null)
+            {
+                Debug.LogError("GameTurnManager: Unable to sync player order with GameStateManager because instance is missing.");
+            }
+        }
+
         isDeterminingOrder = false;
 
         // THÊM: Đồng bộ với các client khác
-        if (isNetworked && photonView.IsMine)
+        if (playerOrder.Count > 0 && isNetworked && photonView.IsMine)
         {
             int[] playerOrderArray = playerOrder.Select(color => (int)color).ToArray();
             photonView.RPC("NetworkSyncPlayerOrder", RpcTarget.Others, playerOrderArray, currentPlayerIndex);

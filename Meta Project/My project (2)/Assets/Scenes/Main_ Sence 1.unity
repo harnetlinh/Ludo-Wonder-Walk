@@ -21565,13 +21565,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4d5350e632e0d3542abb1122bdca02a0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  diceButton: {fileID: 358267189}
   diceResultText: {fileID: 49654675}
   autoRollDelay: 1
   diceFaceDetector: {fileID: 8332235010527911185}
   isDiceRolling: 0
-  useCustomDiceValues: 1
-  customDiceSequence: 060000000600000006000000060000000600000001000000010000000600000006000000010000000100000001000000060000000100000001000000010000000600000001000000010000000100000006000000010000000100000001000000060000000100000001000000010000000600000001000000010000000100000006000000010000000100000001000000060000000100000001000000010000000600000001000000010000000100000006000000
+  useCustomDiceValues: 0
+  customDiceSequence: 
   diceSequenceIndex: 0
   useCustomPlayerOrder: 0
   customPlayerOrder: 01000000020000000300000000000000
@@ -22021,6 +22020,8 @@ MonoBehaviour:
   currentPlayerColor: 0
   isDiceRolling: 0
   playerOrder: 
+  diceWorldPosition: {x: 0, y: 0, z: 0}
+  diceWorldRotation: {x: 0, y: 0, z: 0, w: 1}
   isGameInitialized: 0
 --- !u!4 &1844213772
 Transform:
@@ -31758,9 +31759,12 @@ MonoBehaviour:
   currentFaceValue: 0
   checkInterval: 0.1
   velocityThreshold: 0.01
-  isFirstPickup: 1
+  isFirstPickup: 0
   hasLanded: 0
   requiredStoppedDuration: 0.5
+  minSpeedToConfirmRoll: 0.35
+  quickDropTimeThreshold: 0.2
+  autoArmDelay: 0.6
 --- !u!65 &8332235010527911186
 BoxCollider:
   m_ObjectHideFlags: 0

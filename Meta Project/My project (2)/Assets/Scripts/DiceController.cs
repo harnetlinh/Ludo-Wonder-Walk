@@ -69,6 +69,7 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
     private PlayerColor localPlayerColor = PlayerColor.None;
     // Thêm vào đầu class
     private GameStateManager gameStateManager;
+    private Coroutine diceMoveRoutine;
 
     private static int? NormalizeDiceValue(int? value)
     {
@@ -127,10 +128,20 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
             gameStateManager = GameStateManager.Instance;
             gameStateManager.OnDiceResultChanged += OnDiceResultChanged;
             gameStateManager.OnTurnChanged += HandleTurnChanged;
+            gameStateManager.OnDiceTransformChanged += HandleDiceTransformChanged;
 
             if (gameStateManager.isGameInitialized && gameStateManager.playerOrder.Count > 0)
             {
                 HandleTurnChanged(gameStateManager.currentTurnIndex, gameStateManager.currentPlayerColor);
+            }
+
+            if (!gameStateManager.HasDiceTransform && PhotonNetwork.IsMasterClient && diceFaceDetector != null)
+            {
+                gameStateManager.UpdateDiceTransform(diceFaceDetector.transform.position, diceFaceDetector.transform.rotation);
+            }
+            else if (gameStateManager.HasDiceTransform)
+            {
+                HandleDiceTransformChanged(gameStateManager.diceWorldPosition, gameStateManager.diceWorldRotation);
             }
         }
         
@@ -249,6 +260,16 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
                 rb.linearVelocity = Vector3.zero;
                 rb.angularVelocity = Vector3.zero;
                 rb.isKinematic = false;
+            }
+
+            if (gameStateManager == null)
+            {
+                gameStateManager = GameStateManager.Instance;
+            }
+
+            if (PhotonNetwork.IsMasterClient && gameStateManager != null)
+            {
+                gameStateManager.UpdateDiceTransform(diceFaceDetector.transform.position, diceFaceDetector.transform.rotation);
             }
         }
     }
@@ -523,6 +544,41 @@ private void HandleTurnChanged(int turnIndex, PlayerColor playerColor)
         }
     }
     
+    if (PhotonNetwork.IsMasterClient)
+    {
+        MoveDiceToCurrentPlayer();
+    }
+}
+
+private void HandleDiceTransformChanged(Vector3 position, Quaternion rotation)
+{
+    if (diceFaceDetector == null)
+    {
+        return;
+    }
+
+    if (diceMoveRoutine != null)
+    {
+        StopCoroutine(diceMoveRoutine);
+        diceMoveRoutine = null;
+    }
+
+    isMovingToPlayer = false;
+    diceFaceDetector.transform.SetPositionAndRotation(position, rotation);
+
+    Rigidbody rb = diceFaceDetector.GetComponent<Rigidbody>();
+    if (rb != null)
+    {
+        rb.linearVelocity = Vector3.zero;
+        rb.angularVelocity = Vector3.zero;
+        rb.isKinematic = false;
+        rb.useGravity = true;
+        rb.WakeUp();
+    }
+
+    diceFaceDetector.isFirstPickup = true;
+    diceFaceDetector.hasLanded = false;
+    diceFaceDetector.ResetRollTrackingState();
 }
 
 private bool IsLocalPlayersTurn()
@@ -592,11 +648,13 @@ private bool IsLocalPlayersTurn()
     public void MoveDiceToCurrentPlayer()
     {
         if (diceFaceDetector == null) return;
+        if (isMovingToPlayer) return;
 
         PlayerColor currentPlayer = GetCurrentPlayer();
-        if (playerDicePositions.ContainsKey(currentPlayer))
+        if (playerDicePositions.TryGetValue(currentPlayer, out Vector3 targetPosition))
         {
-            StartCoroutine(MoveDiceToPosition(playerDicePositions[currentPlayer]));
+            bool broadcast = photonView != null && photonView.IsMine && PhotonNetwork.IsMasterClient;
+            StartDiceMove(targetPosition, Quaternion.identity, broadcast);
         }
     }
 
@@ -863,72 +921,113 @@ private bool IsLocalPlayersTurn()
     public void ForceDiceSync() { }
     public void SyncDiceForNewTurn() { }
 
-    // Sửa phương thức MoveDiceToCurrentPlayer để đồng bộ tốt hơn
-    private IEnumerator MoveDiceToPosition(Vector3 targetPosition)
-{
-    isMovingToPlayer = true;
-
-    if (diceFaceDetector == null)
+    private void StartDiceMove(Vector3 targetPosition, Quaternion targetRotation, bool broadcastToOthers)
     {
+        if (diceFaceDetector == null)
+        {
+            return;
+        }
+
+        if (diceMoveRoutine != null)
+        {
+            StopCoroutine(diceMoveRoutine);
+            diceMoveRoutine = null;
+        }
+
+        diceMoveRoutine = StartCoroutine(MoveDiceToPositionRoutine(targetPosition, targetRotation, broadcastToOthers));
+    }
+
+    private IEnumerator MoveDiceToPositionRoutine(Vector3 targetPosition, Quaternion targetRotation, bool broadcastToOthers)
+    {
+        isMovingToPlayer = true;
+
+        if (diceFaceDetector == null)
+        {
+            isMovingToPlayer = false;
+            yield break;
+        }
+
+        if (broadcastToOthers && photonView != null && PhotonNetwork.InRoom)
+        {
+            photonView.RPC(nameof(RPC_BeginDiceMove), RpcTarget.Others, targetPosition, targetRotation);
+        }
+
+        bool isOwner = photonView == null || photonView.IsMine;
+
+        NetworkDiceSync diceSync = diceFaceDetector.GetComponent<NetworkDiceSync>();
+        if (isOwner && diceSync != null)
+        {
+            diceSync.RequestOwnership();
+            diceSync.SetKinematic(true, true);
+        }
+
+        Rigidbody rb = diceFaceDetector.GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            rb.isKinematic = true;
+            rb.useGravity = false;
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+        }
+
+        Vector3 startPosition = diceFaceDetector.transform.position;
+        Quaternion startRotation = diceFaceDetector.transform.rotation;
+        float elapsed = 0f;
+
+        while (elapsed < diceMoveDuration)
+        {
+            elapsed += Time.deltaTime;
+            float normalizedTime = Mathf.Clamp01(elapsed / diceMoveDuration);
+            float t = diceMoveCurve.Evaluate(normalizedTime);
+
+            diceFaceDetector.transform.position = Vector3.Lerp(startPosition, targetPosition, t);
+            diceFaceDetector.transform.rotation = Quaternion.Slerp(startRotation, targetRotation, t);
+
+            yield return null;
+        }
+
+        diceFaceDetector.transform.SetPositionAndRotation(targetPosition, targetRotation);
+
+        if (rb != null)
+        {
+            rb.isKinematic = false;
+            rb.useGravity = true;
+            rb.WakeUp();
+        }
+
+        if (isOwner && diceSync != null)
+        {
+            diceSync.SetKinematic(false, true);
+            diceSync.EnsurePhysicsActivation();
+        }
+
+        diceFaceDetector.isFirstPickup = true;
+        diceFaceDetector.hasLanded = false;
+        diceFaceDetector.ResetRollTrackingState();
         isMovingToPlayer = false;
-        yield break;
+        diceMoveRoutine = null;
+
+        if (broadcastToOthers && PhotonNetwork.IsMasterClient)
+        {
+            if (gameStateManager == null)
+            {
+                gameStateManager = GameStateManager.Instance;
+            }
+
+            if (gameStateManager != null)
+            {
+                gameStateManager.UpdateDiceTransform(targetPosition, targetRotation);
+            }
+        }
+
+        Debug.Log("Di chuyển xúc xắc hoàn tất - Vật lý đã được kích hoạt");
     }
 
-    NetworkDiceSync diceSync = diceFaceDetector.GetComponent<NetworkDiceSync>();
-    if (diceSync != null)
+    [PunRPC]
+    private void RPC_BeginDiceMove(Vector3 targetPosition, Quaternion targetRotation)
     {
-        diceSync.RequestOwnership();
-        diceSync.SetKinematic(true, true); // Tạm thời kinematic để di chuyển
+        StartDiceMove(targetPosition, targetRotation, false);
     }
-
-    Rigidbody rb = diceFaceDetector.GetComponent<Rigidbody>();
-    if (rb != null)
-    {
-        rb.isKinematic = true;
-        rb.useGravity = false; // Tắt gravity khi di chuyển
-        rb.linearVelocity = Vector3.zero;
-        rb.angularVelocity = Vector3.zero;
-    }
-
-    Vector3 startPosition = diceFaceDetector.transform.position;
-    Quaternion startRotation = diceFaceDetector.transform.rotation;
-    float elapsed = 0f;
-
-    while (elapsed < diceMoveDuration)
-    {
-        elapsed += Time.deltaTime;
-        float t = diceMoveCurve.Evaluate(elapsed / diceMoveDuration);
-
-        diceFaceDetector.transform.position = Vector3.Lerp(startPosition, targetPosition, t);
-        diceFaceDetector.transform.rotation = Quaternion.Slerp(startRotation, Quaternion.identity, t);
-
-        yield return null;
-    }
-
-    diceFaceDetector.transform.position = targetPosition;
-    diceFaceDetector.transform.rotation = Quaternion.identity;
-
-    // QUAN TRỌNG: KHÔI PHỤC VẬT LÝ SAU KHI DI CHUYỂN
-    if (diceSync != null)
-    {
-        diceSync.SetKinematic(false, true); // Khôi phục vật lý
-        diceSync.EnsurePhysicsActivation();
-    }
-
-    if (rb != null)
-    {
-        rb.isKinematic = false;
-        rb.useGravity = true; // Bật gravity lại
-        rb.WakeUp();
-    }
-
-    // Reset trạng thái
-    diceFaceDetector.isFirstPickup = true;
-    diceFaceDetector.hasLanded = false;
-    isMovingToPlayer = false;
-    
-    Debug.Log("Di chuyển xúc xắc hoàn tất - Vật lý đã được kích hoạt");
-}
 
 // THÊM: Phương thức đảm bảo vật lý được kích hoạt khi bắt đầu lượt mới
 public void EnsurePhysicsForNewTurn()
@@ -999,6 +1098,7 @@ public void EnsurePhysicsForNewTurn()
         {
             gameStateManager.OnDiceResultChanged -= OnDiceResultChanged;
             gameStateManager.OnTurnChanged -= HandleTurnChanged;
+            gameStateManager.OnDiceTransformChanged -= HandleDiceTransformChanged;
         }
 
         if (PhotonManager.Instance != null)
