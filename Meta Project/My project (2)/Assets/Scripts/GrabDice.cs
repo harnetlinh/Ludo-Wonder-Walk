@@ -181,9 +181,11 @@ public class GrabDice : MonoBehaviourPun
         }
 
         // Thông báo cho DiceController
-        if (DiceController.Instance != null && !DiceController.Instance.hasRolledThisTurn)
+        if (DiceController.Instance != null &&
+            !DiceController.Instance.hasRolledThisTurn &&
+            !DiceController.Instance.isDiceRolling)
         {
-            DiceController.Instance.PrepareToRoll();
+            DiceController.Instance.RollDice();
         }
 
         // Gửi RPC đồng bộ trạng thái cầm

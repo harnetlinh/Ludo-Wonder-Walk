@@ -135,6 +135,9 @@ public class GameStateManager : MonoBehaviourPunCallbacks
     /// </summary>
     public void LoadGameStateFromRoomProperties()
     {
+        int previousTurnIndex = currentTurnIndex;
+        PlayerColor previousPlayerColor = currentPlayerColor;
+
         if (!PhotonNetwork.InRoom) return;
 
         var props = PhotonNetwork.CurrentRoom.CustomProperties;
@@ -189,7 +192,12 @@ public class GameStateManager : MonoBehaviourPunCallbacks
         
         // Notify other systems
         OnDiceResultChanged?.Invoke(lastDiceValue, currentPlayerColor);
-        OnTurnChanged?.Invoke(currentTurnIndex, currentPlayerColor);
+
+        bool turnChanged = currentTurnIndex != previousTurnIndex || currentPlayerColor != previousPlayerColor;
+        if (turnChanged)
+        {
+            OnTurnChanged?.Invoke(currentTurnIndex, currentPlayerColor);
+        }
     }
 
     /// <summary>

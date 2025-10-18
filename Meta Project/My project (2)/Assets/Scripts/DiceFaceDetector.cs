@@ -188,11 +188,14 @@ public class DiceFaceDetector : MonoBehaviour
             // 1. Xúc xắc đã từng được cầm 
             // 2. Chưa roll trong lượt này
             // 3. Dice KHÔNG đang di chuyển giữa các người chơi
+            DiceController diceController = DiceController.Instance;
             if (!isFirstPickup && 
-                !DiceController.Instance.hasRolledThisTurn &&
-                !DiceController.Instance.IsDiceMoving()) // <-- THÊM ĐIỀU KIỆN NÀY
+                diceController != null &&
+                !diceController.hasRolledThisTurn &&
+                !diceController.isDiceRolling &&
+                !diceController.IsDiceMoving()) // <-- THÊM ĐIỀU KIỆN NÀY
             {
-                DiceController.Instance.PrepareToRoll();
+                diceController.RollDice();
             }
         }
     }
