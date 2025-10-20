@@ -191,18 +191,107 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
         return true;
     }
 
+    private PlayerColor SyncLocalTurnState()
+    {
+        if (gameStateManager == null)
+        {
+            gameStateManager = GameStateManager.Instance;
+        }
+
+        if (gameStateManager != null &&
+            gameStateManager.playerOrder != null &&
+            gameStateManager.playerOrder.Count > 0)
+        {
+            if (playerOrder == null || !playerOrder.SequenceEqual(gameStateManager.playerOrder))
+            {
+                playerOrder = new List<PlayerColor>(gameStateManager.playerOrder);
+            }
+
+            int clampedIndex = Mathf.Clamp(gameStateManager.currentTurnIndex, 0, playerOrder.Count - 1);
+            currentPlayerIndex = clampedIndex;
+
+            if (gameStateManager.isGameInitialized && !isInitialized)
+            {
+                isInitialized = true;
+            }
+
+            if (gameStateManager.currentPlayerColor != PlayerColor.None)
+            {
+                return gameStateManager.currentPlayerColor;
+            }
+
+            if (playerOrder.Count > currentPlayerIndex)
+            {
+                return playerOrder[currentPlayerIndex];
+            }
+
+            return PlayerColor.None;
+        }
+
+        if (playerOrder != null && playerOrder.Count > 0)
+        {
+            currentPlayerIndex = Mathf.Clamp(currentPlayerIndex, 0, playerOrder.Count - 1);
+            return playerOrder[currentPlayerIndex];
+        }
+
+        return PlayerColor.None;
+    }
+
+    public void ApplySyncedTurn(IList<PlayerColor> syncedOrder, int turnIndex, PlayerColor activeColor)
+    {
+        if (syncedOrder != null && syncedOrder.Count > 0)
+        {
+            if (playerOrder == null ||
+                playerOrder.Count != syncedOrder.Count ||
+                !playerOrder.SequenceEqual(syncedOrder))
+            {
+                playerOrder = new List<PlayerColor>(syncedOrder);
+            }
+
+            int targetIndex = Mathf.Clamp(turnIndex, 0, playerOrder.Count - 1);
+            currentPlayerIndex = targetIndex;
+
+            if (activeColor != PlayerColor.None)
+            {
+                int colorIndex = playerOrder.IndexOf(activeColor);
+                if (colorIndex >= 0)
+                {
+                    currentPlayerIndex = colorIndex;
+                }
+            }
+        }
+        else
+        {
+            if (playerOrder == null)
+            {
+                playerOrder = new List<PlayerColor>();
+            }
+            else
+            {
+                playerOrder.Clear();
+            }
+
+            currentPlayerIndex = Mathf.Max(0, turnIndex);
+        }
+
+        pieceMovedThisTurn = false;
+
+        if (!isInitialized && playerOrder.Count > 0)
+        {
+            isInitialized = true;
+        }
+
+        if (gameStateManager == null)
+        {
+            gameStateManager = GameStateManager.Instance;
+        }
+    }
+
     public PlayerColor CurrentPlayer
     {
         get
         {
-            if (playerOrder == null || playerOrder.Count == 0 || currentPlayerIndex < 0 ||
-                currentPlayerIndex >= playerOrder.Count)
-            {
-                //Debug.LogError("Player order is not initialized or invalid currentPlayerIndex!");
-                return PlayerColor.Red; // Hoặc giá trị mặc định khác
-            }
-
-            return playerOrder[currentPlayerIndex];
+            return SyncLocalTurnState();
         }
     }
 
@@ -295,7 +384,24 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
 // THÊM: Kiểm tra xem player color có trong lượt chơi không
     public bool IsColorInGame(PlayerColor color)
     {
-        return playerOrder.Contains(color);
+        if (color == PlayerColor.None)
+        {
+            return false;
+        }
+
+        if (gameStateManager != null &&
+            gameStateManager.playerOrder != null &&
+            gameStateManager.playerOrder.Count > 0)
+        {
+            if (playerOrder == null || !playerOrder.SequenceEqual(gameStateManager.playerOrder))
+            {
+                playerOrder = new List<PlayerColor>(gameStateManager.playerOrder);
+            }
+
+            return gameStateManager.playerOrder.Contains(color);
+        }
+
+        return playerOrder != null && playerOrder.Contains(color);
     }
 
 
@@ -420,26 +526,44 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
     public void EndTurn()
     {
         pieceMovedThisTurn = false;
-        // Nếu có PUN và là master client, gửi RPC
-        if (isNetworked && photonView.IsMine)
+
+        if (isNetworked && PhotonNetwork.InRoom)
         {
-            photonView.RPC("NetworkEndTurn", RpcTarget.All);
+            if (PhotonNetwork.IsMasterClient && photonView != null && photonView.IsMine)
+            {
+                photonView.RPC("NetworkEndTurn", RpcTarget.All);
+            }
+            else
+            {
+                Debug.Log("EndTurn invoked on non-master client; waiting for master to advance turn.");
+            }
+            return;
         }
-        else
-        {
-            // Chạy local nếu không có PUN
-            EndTurnLocal();
-        }
+
+        // Chạy local nếu không có PUN
+        EndTurnLocal();
     }
 
     // SỬA: Phương thức IsCurrentPlayer để kiểm tra cả việc màu có trong game không
     public bool IsCurrentPlayer(PlayerColor color)
     {
-        if (!isInitialized || playerOrder.Count == 0 || !IsColorInGame(color))
+        if (color == PlayerColor.None)
         {
             return false;
         }
-        return CurrentPlayer == color;
+
+        if (!isInitialized && (playerOrder == null || playerOrder.Count == 0))
+        {
+            return false;
+        }
+
+        if (!IsColorInGame(color))
+        {
+            return false;
+        }
+
+        PlayerColor activeColor = SyncLocalTurnState();
+        return activeColor != PlayerColor.None && activeColor == color;
     }
     /// <summary>
     /// Forcefully aligns the current player index with the provided color.
@@ -471,7 +595,12 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
         }
 
         int diceValue = diceValueNullable.Value;
-        PlayerColor currentPlayer = CurrentPlayer;
+        PlayerColor currentPlayer = SyncLocalTurnState();
+        if (currentPlayer == PlayerColor.None)
+        {
+            Debug.LogWarning("CheckForPossibleMoves: Current player is undefined, cannot evaluate moves.");
+            return;
+        }
 
         Debug.Log($"CheckForPossibleMoves: Player {currentPlayer}, Dice value: {diceValue}");
 
@@ -480,22 +609,39 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
 
         Debug.Log($"Can move: {canMove}");
 
+        DiceController diceController = DiceController.Instance;
+        if (diceController != null)
+        {
+            if (canMove)
+            {
+                diceController.canRollAgain = false;
+
+                if (diceController.statusText != null)
+                {
+                    diceController.statusText.text = $"Lượt của {currentPlayer}\nHãy di chuyển quân cờ!";
+                }
+            }
+            else if (diceController.statusText != null)
+            {
+                diceController.statusText.text = $"Lượt của {currentPlayer}\nKhông có nước đi hợp lệ";
+            }
+        }
+
+        if (!PhotonNetwork.IsMasterClient)
+        {
+            return;
+        }
+
         if (!canMove)
         {
             // Nếu không thể di chuyển, chuyển lượt sau 2 giây (tăng thời gian để người chơi thấy)
             Debug.Log("No valid moves available, ending turn in 2 seconds");
-            Invoke("EndTurn", 2f);
+            diceController?.RequestReturnOwnershipToMaster(0.3f);
+            Invoke(nameof(EndTurn), 2f);
         }
         else
         {
-            // Nếu có thể di chuyển, khóa nút xúc xắc
-            DiceController.Instance.canRollAgain = false;
-
-            // Cập nhật status text để thông báo cho người chơi
-            if (DiceController.Instance.statusText != null)
-            {
-                DiceController.Instance.statusText.text = $"Lượt của {currentPlayer}\nHãy di chuyển quân cờ!";
-            }
+            Debug.Log("Valid moves available - waiting for player to finish their move.");
         }
     }
 
@@ -509,7 +655,11 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
         }
 
         int diceValue = diceValueNullable.Value;
-        PlayerColor currentPlayer = CurrentPlayer;
+        PlayerColor currentPlayer = SyncLocalTurnState();
+        if (currentPlayer == PlayerColor.None)
+        {
+            return false;
+        }
 
         // Kiểm tra nếu có thể xuất quân (xúc xắc = 6)
         if (diceValue == 6 && HasPiecesInStable(currentPlayer))
@@ -582,8 +732,15 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
     public void PieceMoved()
     {
         pieceMovedThisTurn = true;
+        if (!PhotonNetwork.IsMasterClient)
+        {
+            return;
+        }
+
+        DiceController diceController = DiceController.Instance;
+        diceController?.RequestReturnOwnershipToMaster(0.3f);
         // Gọi khi người chơi đã di chuyển quân cờ xong
-        Invoke("EndTurn", 1f);
+        Invoke(nameof(EndTurn), 1f);
     }
 
 
@@ -719,6 +876,8 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
         // Sử dụng GameStateManager để chuyển lượt (chỉ Master Client)
         if (PhotonNetwork.IsMasterClient)
         {
+            DiceController diceController = DiceController.Instance;
+            diceController?.ReturnOwnershipToMaster();
             gameStateManager.NextTurn();
         }
 
@@ -765,7 +924,14 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
         }
 
         // Sử dụng thông tin từ GameStateManager thay vì local state
-        PlayerColor currentPlayer = gameStateManager.currentPlayerColor;
+        PlayerColor currentPlayer = SyncLocalTurnState();
+        if (currentPlayer == PlayerColor.None)
+        {
+            Debug.LogWarning("StartTurnLocal: Current player could not be resolved.");
+            return;
+        }
+
+        pieceMovedThisTurn = false;
 
         // Kiểm tra player có online không
         if (!IsPlayerOnline(currentPlayer))
@@ -842,14 +1008,19 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
     {
         if (!PhotonNetwork.IsMasterClient) // Chỉ các client khác mới nhận
         {
-            playerOrder.Clear();
+            List<PlayerColor> syncedOrder = new List<PlayerColor>(playerOrderArray.Length);
             foreach (int colorValue in playerOrderArray)
             {
-                playerOrder.Add((PlayerColor)colorValue);
+                syncedOrder.Add((PlayerColor)colorValue);
             }
 
-            currentPlayerIndex = startPlayerIndex;
-            isInitialized = true;
+            PlayerColor activeColor = PlayerColor.None;
+            if (syncedOrder.Count > 0 && startPlayerIndex >= 0 && startPlayerIndex < syncedOrder.Count)
+            {
+                activeColor = syncedOrder[startPlayerIndex];
+            }
+
+            ApplySyncedTurn(syncedOrder, startPlayerIndex, activeColor);
 
             Debug.Log($"Đã nhận player order từ Master Client: {string.Join(", ", playerOrder)}");
 

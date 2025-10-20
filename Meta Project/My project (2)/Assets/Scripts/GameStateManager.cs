@@ -420,18 +420,14 @@ public class GameStateManager : MonoBehaviourPunCallbacks
 
         Debug.Log($"📢 Received turn change: {playerColor} (Index: {turnIndex})");
 
-        // Update UI
-        OnTurnChanged?.Invoke(turnIndex, playerColor);
-
-        // Update GameTurnManager
+        // Update GameTurnManager before notifying listeners so dependent systems see fresh state
         if (GameTurnManager.Instance != null)
         {
-            GameTurnManager.Instance.currentPlayerIndex = turnIndex;
-            if (GameTurnManager.Instance.playerOrder.Count > turnIndex)
-            {
-                GameTurnManager.Instance.playerOrder = new List<PlayerColor>(playerOrder);
-            }
+            GameTurnManager.Instance.ApplySyncedTurn(playerOrder, turnIndex, playerColor);
         }
+
+        // Update UI
+        OnTurnChanged?.Invoke(turnIndex, playerColor);
 
         // Update DiceController
         if (DiceController.Instance != null)
@@ -476,9 +472,7 @@ public class GameStateManager : MonoBehaviourPunCallbacks
         // Update GameTurnManager
         if (GameTurnManager.Instance != null)
         {
-            GameTurnManager.Instance.playerOrder = new List<PlayerColor>(playerOrder);
-            GameTurnManager.Instance.currentPlayerIndex = startIndex;
-            GameTurnManager.Instance.isInitialized = true;
+            GameTurnManager.Instance.ApplySyncedTurn(playerOrder, startIndex, currentPlayerColor);
         }
 
         // Notify UI

@@ -113,7 +113,11 @@ public class DiceFaceDetector : MonoBehaviour
                             {
                                 // Client gửi kết quả lên master
                                 DiceController diceController = DiceController.Instance;
-                                if (diceController != null && diceController.photonView != null && hasSentRollRequest)
+                                if (diceController != null &&
+                                    diceController.photonView != null &&
+                                    hasSentRollRequest &&
+                                    localPhotonView != null &&
+                                    localPhotonView.IsMine)
                                 {
                                     diceController.photonView.RPC(
                                         "RPC_ReportDiceResult", 

@@ -180,14 +180,6 @@ public class GrabDice : MonoBehaviourPun
             diceDetector.isFirstPickup = false;
         }
 
-        // Thông báo cho DiceController
-        if (DiceController.Instance != null &&
-            !DiceController.Instance.hasRolledThisTurn &&
-            !DiceController.Instance.isDiceRolling)
-        {
-            DiceController.Instance.RollDice();
-        }
-
         // Gửi RPC đồng bộ trạng thái cầm
         if (photonView != null && photonView.IsMine)
         {
@@ -240,6 +232,8 @@ public class GrabDice : MonoBehaviourPun
             photonView.RPC("RPC_UpdateGrabbedPosition", RpcTarget.Others,
                 transform.position, transform.rotation);
         }
+
+        // Ownership will be returned to the master once the turn flow requests it.
     }
 
     private void Update()

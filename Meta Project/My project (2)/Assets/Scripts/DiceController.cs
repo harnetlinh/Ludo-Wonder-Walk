@@ -70,6 +70,7 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
     // Thêm vào đầu class
     private GameStateManager gameStateManager;
     private Coroutine diceMoveRoutine;
+    private Coroutine ownershipReturnRoutine;
 
     private static int? NormalizeDiceValue(int? value)
     {
@@ -322,39 +323,65 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
 
     public void FinalizeRoll()
     {
-        // Nếu có PUN và là master client, gửi RPC
-        if (isNetworked && photonView.IsMine && PhotonNetwork.InRoom)
+        if (diceFaceDetector == null || !diceFaceDetector.IsDiceStopped())
         {
-            photonView.RPC("NetworkFinalizeRoll", RpcTarget.All);
+            return;
+        }
+
+        int faceValue = diceFaceDetector.GetCurrentFaceValue();
+
+        if (isNetworked && PhotonNetwork.InRoom)
+        {
+            if (PhotonNetwork.IsMasterClient)
+            {
+                SubmitRollResult(faceValue, currentRollingPlayer);
+            }
+            return;
+        }
+
+        ApplyLocalRollResult(faceValue, currentRollingPlayer);
+    }
+
+    private void ApplyLocalRollResult(int? value, PlayerColor playerColor)
+    {
+        LastDiceValue = NormalizeDiceValue(value);
+        if (diceResultText != null)
+        {
+            diceResultText.text = $"{playerColor}: {FormatDiceValue(LastDiceValue)}";
+        }
+
+        isDiceRolling = false;
+        hasRolledThisTurn = LastDiceValue.HasValue;
+
+        if (statusText != null)
+        {
+            statusText.text = LastDiceValue.HasValue
+                ? $"{playerColor} xuc ra so {FormatDiceValue(LastDiceValue)}"
+                : $"Luot cua {playerColor} Chua xuc xac";
+        }
+
+        if (GameTurnManager.Instance != null && !GameTurnManager.Instance.isDeterminingOrder)
+        {
+            GameTurnManager.Instance.CheckForPossibleMoves();
+        }
+    }
+
+    private void SubmitRollResult(int faceValue, PlayerColor playerColor)
+    {
+        if (gameStateManager == null)
+        {
+            gameStateManager = GameStateManager.Instance;
+        }
+
+        if (gameStateManager != null)
+        {
+            gameStateManager.SetDiceResult(faceValue, playerColor);
         }
         else
         {
-            // Chạy local nếu không có PUN
-            FinalizeRollLocal();
+            ApplyLocalRollResult(faceValue, playerColor);
         }
     }
-
-    private void FinalizeRollLocal()
-    {
-        if (isDiceRolling && diceFaceDetector != null && diceFaceDetector.IsDiceStopped())
-        {
-            LastDiceValue = diceFaceDetector.GetCurrentFaceValue();
-            diceResultText.text = $"{currentRollingPlayer}: {FormatDiceValue(LastDiceValue)}";
-            if (statusText != null)
-            {
-                statusText.text = $"{currentRollingPlayer} xúc ra số {FormatDiceValue(LastDiceValue)}";
-            }
-            isDiceRolling = false;
-            hasRolledThisTurn = LastDiceValue.HasValue;
-
-            if (!GameTurnManager.Instance.isDeterminingOrder)
-            {
-                GameTurnManager.Instance.CheckForPossibleMoves();
-            }
-        }
-    }
-
-    
 
     public void AutoRollForCurrentPlayer()
     {
@@ -378,25 +405,19 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
 
     private void SimulateDiceStop()
     {
+        int simulatedValue;
+
         if (useCustomDiceValues && customDiceSequence.Count > 0)
         {
-            LastDiceValue = customDiceSequence[diceSequenceIndex % customDiceSequence.Count];
+            simulatedValue = customDiceSequence[diceSequenceIndex % customDiceSequence.Count];
             diceSequenceIndex++;
         }
         else
         {
-            LastDiceValue = Random.Range(1, 7);
+            simulatedValue = Random.Range(1, 7);
         }
 
-        diceResultText.text = $"{currentRollingPlayer}: {FormatDiceValue(LastDiceValue)}";
-        isDiceRolling = false;
-        hasRolledThisTurn = LastDiceValue.HasValue;
-
-        if (!GameTurnManager.Instance.isDeterminingOrder)
-        {
-            //HighlightManager.Instance.ClearAllHighlights();
-            GameTurnManager.Instance.CheckForPossibleMoves();
-        }
+        SubmitRollResult(simulatedValue, currentRollingPlayer);
     }
 
 
@@ -484,13 +505,9 @@ private void StartDiceRollProcess()
 
     PrepareToRoll();
 
-    if (PhotonNetwork.IsMasterClient)
+    if (PhotonNetwork.IsMasterClient && photonView != null && !photonView.IsMine)
     {
-        int diceValue = useCustomDiceValues && customDiceSequence.Count > 0
-            ? customDiceSequence[diceSequenceIndex++ % customDiceSequence.Count]
-            : Random.Range(1, 7);
-
-        gameStateManager.SetDiceResult(diceValue, currentRollingPlayer);
+        photonView.RequestOwnership();
     }
 }
 
@@ -536,6 +553,8 @@ private void HandleLocalPlayerColorAssigned(PlayerColor color)
 
 private void HandleTurnChanged(int turnIndex, PlayerColor playerColor)
 {
+    CancelPendingOwnershipReturn();
+
     currentRollingPlayer = playerColor;
     hasRolledThisTurn = false;
     isDiceRolling = false;
@@ -693,6 +712,11 @@ private bool ShouldForceRollForInitialization()
     {
         if (diceFaceDetector == null) return;
         if (isMovingToPlayer) return;
+
+        if (PhotonNetwork.IsMasterClient && photonView != null && !photonView.IsMine)
+        {
+            photonView.RequestOwnership();
+        }
 
         PlayerColor currentPlayer = GetCurrentPlayer();
         if (playerDicePositions.TryGetValue(currentPlayer, out Vector3 targetPosition))
@@ -898,26 +922,6 @@ private bool ShouldForceRollForInitialization()
     }
 
     // RPC để hoàn thành xúc xắc
-    [PunRPC]
-    public void NetworkFinalizeRoll()
-    {
-        if (isDiceRolling && diceFaceDetector != null && diceFaceDetector.IsDiceStopped())
-        {
-            LastDiceValue = diceFaceDetector.GetCurrentFaceValue();
-            diceResultText.text = $"{currentRollingPlayer}: {FormatDiceValue(LastDiceValue)}";
-            if (statusText != null)
-            {
-                statusText.text = $"{currentRollingPlayer} xúc ra số {FormatDiceValue(LastDiceValue)}";
-            }
-            isDiceRolling = false;
-            hasRolledThisTurn = LastDiceValue.HasValue;
-
-            if (!GameTurnManager.Instance.isDeterminingOrder)
-            {
-                GameTurnManager.Instance.CheckForPossibleMoves();
-            }
-        }
-    }
 
     [PunRPC]
     private void RPC_ReportDiceResult(int reportedValue, PlayerColor reportingColor, PhotonMessageInfo info)
@@ -951,7 +955,7 @@ private bool ShouldForceRollForInitialization()
 
         if (gameStateManager != null)
         {
-            gameStateManager.SetDiceResult(reportedValue, reportingColor);
+            SubmitRollResult(reportedValue, reportingColor);
         }
         else
         {
@@ -996,12 +1000,26 @@ private bool ShouldForceRollForInitialization()
             photonView.RPC(nameof(RPC_BeginDiceMove), RpcTarget.Others, targetPosition, targetRotation);
         }
 
-        bool isOwner = photonView == null || photonView.IsMine;
-
         NetworkDiceSync diceSync = diceFaceDetector.GetComponent<NetworkDiceSync>();
-        if (isOwner && diceSync != null)
+        if (diceSync != null)
         {
             diceSync.RequestOwnership();
+        }
+
+        if (photonView != null && !photonView.IsMine)
+        {
+            float ownershipWait = 0f;
+            while (!photonView.IsMine && ownershipWait < 0.5f)
+            {
+                ownershipWait += Time.deltaTime;
+                yield return null;
+            }
+        }
+
+        bool hasOwnership = photonView == null || photonView.IsMine;
+
+        if (hasOwnership && diceSync != null)
+        {
             diceSync.SetKinematic(true, true);
         }
 
@@ -1039,7 +1057,7 @@ private bool ShouldForceRollForInitialization()
             rb.WakeUp();
         }
 
-        if (isOwner && diceSync != null)
+        if (hasOwnership && diceSync != null)
         {
             diceSync.SetKinematic(false, true);
             diceSync.EnsurePhysicsActivation();
@@ -1065,6 +1083,82 @@ private bool ShouldForceRollForInitialization()
         }
 
         Debug.Log("Di chuyển xúc xắc hoàn tất - Vật lý đã được kích hoạt");
+    }
+
+    private void CancelPendingOwnershipReturn()
+    {
+        if (ownershipReturnRoutine != null)
+        {
+            StopCoroutine(ownershipReturnRoutine);
+            ownershipReturnRoutine = null;
+        }
+    }
+
+    public void RequestReturnOwnershipToMaster(float delaySeconds = 0f)
+    {
+        if (photonView == null || !PhotonNetwork.InRoom || PhotonNetwork.MasterClient == null)
+        {
+            return;
+        }
+
+        CancelPendingOwnershipReturn();
+
+        if (delaySeconds <= 0f)
+        {
+            ReturnOwnershipToMaster();
+        }
+        else
+        {
+            ownershipReturnRoutine = StartCoroutine(ReturnOwnershipDelayed(delaySeconds));
+        }
+    }
+
+    private IEnumerator ReturnOwnershipDelayed(float delaySeconds)
+    {
+        yield return new WaitForSeconds(delaySeconds);
+        ReturnOwnershipToMaster();
+    }
+
+    public void ReturnOwnershipToMaster()
+    {
+        CancelPendingOwnershipReturn();
+
+        if (photonView == null || !PhotonNetwork.InRoom || PhotonNetwork.MasterClient == null)
+        {
+            return;
+        }
+
+        int masterActorNumber = PhotonNetwork.MasterClient.ActorNumber;
+
+        if (photonView.OwnerActorNr == masterActorNumber)
+        {
+            return;
+        }
+
+        if (photonView.IsMine || PhotonNetwork.IsMasterClient)
+        {
+            photonView.TransferOwnership(masterActorNumber);
+        }
+        else if (photonView.Owner != null)
+        {
+            photonView.RPC(nameof(RPC_RequestOwnershipReturnToMaster), photonView.Owner, masterActorNumber);
+        }
+    }
+
+    [PunRPC]
+    private void RPC_RequestOwnershipReturnToMaster(int masterActorNumber, PhotonMessageInfo info)
+    {
+        if (photonView == null)
+        {
+            return;
+        }
+
+        if (!photonView.IsMine)
+        {
+            return;
+        }
+
+        photonView.TransferOwnership(masterActorNumber);
     }
 
     [PunRPC]
