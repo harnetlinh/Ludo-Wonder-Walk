@@ -540,11 +540,8 @@ public class PieceController : MonoBehaviourPun, IPunObservable
         {
             GameTurnManager.Instance.PieceMoved();
 
-            // Di chuyển xúc xắc đến người chơi tiếp theo sau khi di chuyển xong
-            if (DiceController.Instance != null)
-            {
-                DiceController.Instance.MoveDiceToCurrentPlayer();
-            }
+            // THÊM: Reset dice value để tránh di chuyển nhiều lần
+            
         }
     }
 

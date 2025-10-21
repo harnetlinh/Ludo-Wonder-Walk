@@ -540,7 +540,16 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
             }
             return;
         }
-
+        if (DiceController.Instance != null)
+        {
+            // Reset trạng thái đã xúc xắc trong lượt này
+                
+            DiceController.Instance.ResetDiceValue();
+            DiceController.Instance.hasRolledThisTurn = false;
+            
+            // Di chuyển xúc xắc đến người chơi tiếp theo sau khi di chuyển xong
+            DiceController.Instance.MoveDiceToCurrentPlayer();
+        }
         // Chạy local nếu không có PUN
         EndTurnLocal();
     }
@@ -824,6 +833,7 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
 
         DiceController diceController = DiceController.Instance;
         diceController?.RequestReturnOwnershipToMaster(0.3f);
+        
         // Gọi khi người chơi đã di chuyển quân cờ xong
         Invoke(nameof(EndTurn), 1f);
     }
