@@ -2,7 +2,7 @@
 2. client cầm dice --> owner ship dice chuyển sang phía client --> đồng bộ dice cho master và các client khác
 3. khi thả dice --> dice dừng hẳn --> nhận diện mặt trên cùng của dice --> player nhận số roll là số đó master nhận được số đã roll ra từ client
 3.1. Nếu như số vừa roll ra là 6 hoặc là có quân cờ trên bàn cờ có thể đi thì đợi tới khi đi xong --> client trả owner ship dice cho master --> master xác nhạn là đã đi xong --> chuyển tới lượt và di chuyển dice tới vị trí của màu tiếp theo
-3.2. Nếu như roll ra số mà ko có quân nào đi thì --> client trả owner ship dice cho master --> master xác nhạn là đã đi xong --> chuyển tới lượt và di chuyển dice tới vị trí của màu tiếp theo
+3.2. Nếu như roll ra số mà ko có quân nào đi thì --> client trả owner ship dice cho master -- thông báo cho master là ko có quân nào đi được --> master xác nhạn là đã đi xong --> chuyển tới lượt và di chuyển dice tới vị trí của màu tiếp theo
 
 
 

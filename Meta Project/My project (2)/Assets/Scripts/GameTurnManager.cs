@@ -24,6 +24,8 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
     // Thêm vào class GameTurnManager
     private bool pieceMovedThisTurn = false;
     private bool isInitializing = false; // THÊM: Cờ bảo vệ tránh khởi tạo nhiều lần
+    private bool noMovesNotifiedThisTurn = false;
+    private const float NoMoveEndTurnDelaySeconds = 2f;
 
 // Thêm vào đầu class
     private GameStateManager gameStateManager;
@@ -275,6 +277,7 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
         }
 
         pieceMovedThisTurn = false;
+        noMovesNotifiedThisTurn = false;
 
         if (!isInitialized && playerOrder.Count > 0)
         {
@@ -620,11 +623,22 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
                 {
                     diceController.statusText.text = $"Lượt của {currentPlayer}\nHãy di chuyển quân cờ!";
                 }
+
+                noMovesNotifiedThisTurn = false;
             }
-            else if (diceController.statusText != null)
+            else
             {
-                diceController.statusText.text = $"Lượt của {currentPlayer}\nKhông có nước đi hợp lệ";
+                if (diceController.statusText != null)
+                {
+                    diceController.statusText.text = $"Lượt của {currentPlayer}\nKhông có nước đi hợp lệ";
+                }
             }
+        }
+
+        if (!canMove)
+        {
+            HandleNoMovesAvailable(currentPlayer, diceValue, diceController);
+            return;
         }
 
         if (!PhotonNetwork.IsMasterClient)
@@ -632,20 +646,93 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
             return;
         }
 
-        if (!canMove)
+        Debug.Log("Valid moves available - waiting for player to finish their move.");
+    }
+
+    private void HandleNoMovesAvailable(PlayerColor currentPlayer, int diceValue, DiceController diceController)
+    {
+        if (noMovesNotifiedThisTurn)
         {
-            // Nếu không thể di chuyển, chuyển lượt sau 2 giây (tăng thời gian để người chơi thấy)
-            Debug.Log("No valid moves available, ending turn in 2 seconds");
-            diceController?.RequestReturnOwnershipToMaster(0.3f);
-            Invoke(nameof(EndTurn), 2f);
+            Debug.Log($"No-move condition already processed for {currentPlayer} this turn.");
+            return;
+        }
+
+        noMovesNotifiedThisTurn = true;
+
+        if (diceController != null)
+        {
+            diceController.canRollAgain = false;
+            diceController.RequestReturnOwnershipToMaster(0.3f);
+        }
+
+        bool shouldNotifyMaster = isNetworked && PhotonNetwork.InRoom && !PhotonNetwork.IsMasterClient;
+
+        if (!shouldNotifyMaster)
+        {
+            Debug.Log("No valid moves available, ending turn shortly.");
+            CancelInvoke(nameof(EndTurn));
+            Invoke(nameof(EndTurn), NoMoveEndTurnDelaySeconds);
+            return;
+        }
+
+        if (photonView != null)
+        {
+            Debug.Log($"Reporting no valid moves for {currentPlayer} (dice {diceValue}) to master client.");
+            photonView.RPC(nameof(RPC_ReportNoMovesAvailable), RpcTarget.MasterClient, (int)currentPlayer, diceValue);
         }
         else
         {
-            Debug.Log("Valid moves available - waiting for player to finish their move.");
+            Debug.LogWarning("PhotonView missing when attempting to report no moves; ending turn locally as fallback.");
+            CancelInvoke(nameof(EndTurn));
+            Invoke(nameof(EndTurn), NoMoveEndTurnDelaySeconds);
         }
     }
 
-    // Cập nhật phương thức CanCurrentPlayerMove
+    [PunRPC]
+    private void RPC_ReportNoMovesAvailable(int reportedColorValue, int diceValue, PhotonMessageInfo info)
+    {
+        if (!PhotonNetwork.IsMasterClient || photonView == null || !photonView.IsMine)
+        {
+            Debug.LogWarning("RPC_ReportNoMovesAvailable ignored on non-master instance.");
+            return;
+        }
+
+        PlayerColor reportedColor = (PlayerColor)reportedColorValue;
+        string reporterName = info.Sender != null ? info.Sender.NickName : "Unknown";
+        Debug.Log($"Received no-move report from {reporterName} for {reportedColor} with dice {diceValue}.");
+
+        bool isCurrentPlayer = IsCurrentPlayer(reportedColor);
+        if (!isCurrentPlayer)
+        {
+            if (ForceSetCurrentPlayer(reportedColor))
+            {
+                Debug.LogWarning($"Turn desync detected while handling no-move report. Aligning turn to {reportedColor}.");
+            }
+            else
+            {
+                Debug.LogWarning($"Ignoring no-move report for {reportedColor}: color not present in current turn order.");
+                return;
+            }
+        }
+
+        noMovesNotifiedThisTurn = true;
+
+        DiceController diceController = DiceController.Instance;
+        if (diceController != null)
+        {
+            diceController.ReturnOwnershipToMaster();
+
+            if (diceController.statusText != null)
+            {
+                diceController.statusText.text = $"Lượt của {reportedColor}\nKhông có nước đi hợp lệ";
+            }
+        }
+
+        CancelInvoke(nameof(EndTurn));
+        Invoke(nameof(EndTurn), NoMoveEndTurnDelaySeconds);
+    }
+
+    // C?p nh?t phuong th?c CanCurrentPlayerMove
     public bool CanCurrentPlayerMove()
     {
         int? diceValueNullable = DiceController.Instance.LastDiceValue;
@@ -932,6 +1019,7 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
         }
 
         pieceMovedThisTurn = false;
+        noMovesNotifiedThisTurn = false;
 
         // Kiểm tra player có online không
         if (!IsPlayerOnline(currentPlayer))
