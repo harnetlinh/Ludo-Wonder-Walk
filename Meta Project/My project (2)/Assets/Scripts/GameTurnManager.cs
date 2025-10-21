@@ -25,7 +25,7 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
     private bool pieceMovedThisTurn = false;
     private bool isInitializing = false; // THÊM: Cờ bảo vệ tránh khởi tạo nhiều lần
     private bool noMovesNotifiedThisTurn = false;
-    private const float NoMoveEndTurnDelaySeconds = 2f;
+    private const float NoMoveEndTurnDelaySeconds = 0.25f;
 
 // Thêm vào đầu class
     private GameStateManager gameStateManager;
@@ -528,8 +528,6 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
 
     public void EndTurn()
     {
-        pieceMovedThisTurn = false;
-
         if (isNetworked && PhotonNetwork.InRoom)
         {
             if (PhotonNetwork.IsMasterClient && photonView != null && photonView.IsMine)
