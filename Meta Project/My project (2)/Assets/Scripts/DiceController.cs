@@ -572,10 +572,6 @@ private void HandleTurnChanged(int turnIndex, PlayerColor playerColor)
         }
     }
     
-    if (PhotonNetwork.IsMasterClient)
-    {
-        MoveDiceToCurrentPlayer();
-    }
 }
 
 private void HandleDiceTransformChanged(Vector3 position, Quaternion rotation)
@@ -708,7 +704,7 @@ private bool ShouldForceRollForInitialization()
 
 
     // Thêm phương thức di chuyển xúc xắc đến vị trí người chơi hiện tại
-    public void MoveDiceToCurrentPlayer()
+    public void MoveDiceToCurrentPlayer(PlayerColor targetPlayer = PlayerColor.None)
     {
         if (diceFaceDetector == null) return;
         if (isMovingToPlayer) return;
@@ -718,12 +714,29 @@ private bool ShouldForceRollForInitialization()
             photonView.RequestOwnership();
         }
 
-        PlayerColor currentPlayer = GetCurrentPlayer();
-        if (playerDicePositions.TryGetValue(currentPlayer, out Vector3 targetPosition))
+        PlayerColor resolvedPlayer = targetPlayer != PlayerColor.None
+            ? targetPlayer
+            : GetCurrentPlayer();
+
+        if (resolvedPlayer == PlayerColor.None)
         {
-            bool broadcast = photonView != null && photonView.IsMine && PhotonNetwork.IsMasterClient;
-            StartDiceMove(targetPosition, Quaternion.identity, broadcast);
+            Debug.LogWarning("MoveDiceToCurrentPlayer: target player could not be resolved, skipping dice move.");
+            return;
         }
+
+        if (!playerDicePositions.TryGetValue(resolvedPlayer, out Vector3 targetPosition))
+        {
+            Debug.LogWarning($"MoveDiceToCurrentPlayer: No configured dice position for {resolvedPlayer}, skipping dice move.");
+            return;
+        }
+
+        bool broadcast = photonView != null && photonView.IsMine && PhotonNetwork.IsMasterClient;
+        StartDiceMove(targetPosition, Quaternion.identity, broadcast);
+    }
+
+    public void MoveDiceToCurrentPlayer()
+    {
+        MoveDiceToCurrentPlayer(PlayerColor.None);
     }
 
 
@@ -758,7 +771,7 @@ private bool ShouldForceRollForInitialization()
         hasRolledThisTurn = false;
 
         // Di chuyển xúc xắc đến vị trí người chơi hiện tại
-        MoveDiceToCurrentPlayer();
+        MoveDiceToCurrentPlayer(currentRollingPlayer);
 
         // Cập nhật thông báo cho tất cả client
         photonView.RPC("RPC_UpdateDiceStatus", RpcTarget.All, $"Luot cua {currentRollingPlayer}\nChua xuc xac");

@@ -320,6 +320,11 @@ public class GameStateManager : MonoBehaviourPunCallbacks
         {
             view.RPC("RPC_SyncDiceTransform", RpcTarget.All, diceWorldPosition, diceWorldRotation);
         }
+
+        if (DiceController.Instance != null)
+        {
+            DiceController.Instance.MoveDiceToCurrentPlayer(currentPlayerColor);
+        }
     }
 
     /// <summary>
