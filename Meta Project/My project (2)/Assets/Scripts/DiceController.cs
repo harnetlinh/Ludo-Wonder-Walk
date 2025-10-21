@@ -55,6 +55,8 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
     [Header("Dice Movement Settings")]
     public float diceMoveDuration = 1.0f;
     public AnimationCurve diceMoveCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
+    public float diceMoveSmoothingTime = 0.18f;
+    public float diceMoveArcHeight = 0.15f;
     public bool isMovingToPlayer = false; // <-- THÊM DÒNG NÀY
 
     // PUN Network Variables
@@ -1048,15 +1050,50 @@ private bool ShouldForceRollForInitialization()
         Vector3 startPosition = diceFaceDetector.transform.position;
         Quaternion startRotation = diceFaceDetector.transform.rotation;
         float elapsed = 0f;
+        float duration = Mathf.Max(0.01f, diceMoveDuration);
+        float smoothingTime = Mathf.Max(0f, diceMoveSmoothingTime);
+        Vector3 smoothVelocity = Vector3.zero;
 
-        while (elapsed < diceMoveDuration)
+        while (elapsed < duration)
         {
             elapsed += Time.deltaTime;
-            float normalizedTime = Mathf.Clamp01(elapsed / diceMoveDuration);
+            float normalizedTime = Mathf.Clamp01(elapsed / duration);
             float t = diceMoveCurve.Evaluate(normalizedTime);
 
-            diceFaceDetector.transform.position = Vector3.Lerp(startPosition, targetPosition, t);
-            diceFaceDetector.transform.rotation = Quaternion.Slerp(startRotation, targetRotation, t);
+            Vector3 lerpPosition = Vector3.Lerp(startPosition, targetPosition, t);
+            if (diceMoveArcHeight > 0f)
+            {
+                float arcOffset = Mathf.Sin(Mathf.PI * normalizedTime) * diceMoveArcHeight;
+                lerpPosition += Vector3.up * arcOffset;
+            }
+            if (smoothingTime > 0f)
+            {
+                diceFaceDetector.transform.position = Vector3.SmoothDamp(
+                    diceFaceDetector.transform.position,
+                    lerpPosition,
+                    ref smoothVelocity,
+                    smoothingTime,
+                    float.PositiveInfinity,
+                    Time.deltaTime);
+            }
+            else
+            {
+                diceFaceDetector.transform.position = lerpPosition;
+            }
+
+            Quaternion lerpRotation = Quaternion.Slerp(startRotation, targetRotation, t);
+            if (smoothingTime > 0f)
+            {
+                float rotationBlend = Mathf.Clamp01(Time.deltaTime / Mathf.Max(0.0001f, smoothingTime));
+                diceFaceDetector.transform.rotation = Quaternion.Slerp(
+                    diceFaceDetector.transform.rotation,
+                    lerpRotation,
+                    rotationBlend);
+            }
+            else
+            {
+                diceFaceDetector.transform.rotation = lerpRotation;
+            }
 
             yield return null;
         }

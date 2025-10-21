@@ -21582,7 +21582,7 @@ MonoBehaviour:
   canRollAgain: 0
   hasRolledThisTurn: 0
   statusText: {fileID: 1216640807}
-  diceMoveDuration: 1
+  diceMoveDuration: 2
   diceMoveCurve:
     serializedVersion: 2
     m_Curve:
@@ -21607,6 +21607,8 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+  diceMoveSmoothingTime: 0.01
+  diceMoveArcHeight: 0.15
   isMovingToPlayer: 0
 --- !u!4 &1779782089
 Transform:
