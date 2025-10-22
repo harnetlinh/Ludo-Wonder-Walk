@@ -9,6 +9,7 @@ public class DragObject : MonoBehaviourPun
     private bool isDragging = false;
     private GameObject draggedObject;
     private Rigidbody draggedRigidbody;
+    private PieceController draggedPieceController;
     private bool wasKinematic;
     private float originalLinearDamping;
     private PlayerColor draggedPieceColor;
@@ -82,6 +83,7 @@ public class DragObject : MonoBehaviourPun
                         {
                             draggedObject = hit.collider.gameObject;
                             draggedRigidbody = draggedObject.GetComponent<Rigidbody>();
+                            draggedPieceController = pieceController;
                             originalPosition = draggedObject.transform.position;
 
                             if (draggedRigidbody != null)
@@ -95,6 +97,12 @@ public class DragObject : MonoBehaviourPun
 
                             StartDragging(draggedObject);
                             isDragging = true;
+
+                            // Mark the piece as held so its own logic is suppressed while dragging
+                            if (draggedPieceController != null)
+                            {
+                                draggedPieceController.SetGrabbedState(true);
+                            }
                             
                             // Gửi RPC để thông báo bắt đầu drag
                             if (photonView != null)
@@ -150,9 +158,16 @@ public class DragObject : MonoBehaviourPun
                     photonView.RPC("NetworkEndDrag", RpcTarget.All, draggedObject.transform.position, isValidDrop);
                 }
 
+                // Release held state on the piece
+                if (draggedPieceController != null)
+                {
+                    draggedPieceController.SetGrabbedState(false);
+                }
+
                 isDragging = false;
                 draggedObject = null;
                 draggedRigidbody = null;
+                draggedPieceController = null;
             }
         }
     }

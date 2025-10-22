@@ -35,6 +35,9 @@ public class PieceController : MonoBehaviourPun, IPunObservable
     protected Color originalColor;
     private Vector3 targetPosition;
     private bool hasValidMove = false;
+    
+    // Only treat a drop as valid once the piece physically touches the table
+    private bool isTouchingTable = false;
 
     public int lastCountryPointIndex = -1;
 
@@ -295,14 +298,15 @@ public class PieceController : MonoBehaviourPun, IPunObservable
     {
         isDragging = false;
 
-        if (IsValidDropPosition())
+        // Only process drop after actual contact with the table
+        if (isTouchingTable)
         {
-            Debug.Log($"Valid drop position for {playerColor} piece");
+            Debug.Log($"Valid drop (actual contact) for {playerColor} piece");
             ProcessValidDrop();
         }
         else
         {
-            Debug.Log($"Invalid drop position for {playerColor} piece");
+            Debug.Log($"Drop ignored: not touching table (release without contact) for {playerColor}");
         }
 
         Debug.Log($"Stopped dragging {playerColor} piece");
@@ -374,6 +378,13 @@ public class PieceController : MonoBehaviourPun, IPunObservable
 
     public void Move(int steps)
     {
+        // Block programmatic moves while the piece is being held (mouse/VR)
+        if (isVRGrabbed || isDragging)
+        {
+            Debug.Log($"Ignoring Move({steps}) for {playerColor}: piece is currently held (isVRGrabbed={isVRGrabbed}, isDragging={isDragging})");
+            return;
+        }
+
         if (isMoving) return;
 
         if (isOnlineMode && photonView != null && !photonView.IsMine)
@@ -411,6 +422,11 @@ public class PieceController : MonoBehaviourPun, IPunObservable
     protected virtual void MoveLocal(int steps)
     {
         Debug.Log($"MoveLocal called for {playerColor} piece, steps: {steps}");
+        if (isVRGrabbed || isDragging)
+        {
+            Debug.Log($"Ignoring MoveLocal for {playerColor}: piece is currently held (isVRGrabbed={isVRGrabbed}, isDragging={isDragging})");
+            return;
+        }
         // THÊM: Kiểm tra steps hợp lệ
         if (steps <= 0)
         {
@@ -837,9 +853,10 @@ public class PieceController : MonoBehaviourPun, IPunObservable
 
     private void OnCollisionExit(Collision collision)
     {
-        if (collision.gameObject.CompareTag("Table"))
-        {
-
+    if (collision.gameObject.CompareTag("Table"))
+    {
+            // No longer touching the table
+            isTouchingTable = false;
             if (GameTurnManager.Instance.IsCurrentPlayer(playerColor) &&
                 DiceController.Instance.LastDiceValue == 6 &&
                 currentPathIndex == -1)
@@ -857,6 +874,15 @@ private void OnCollisionEnter(Collision collision)
 {
     if (collision.gameObject.CompareTag("Table"))
     {
+        // Mark as actually touching the table
+        isTouchingTable = true;
+
+        // Do not process any board logic while the piece is being held (VR or mouse)
+        if (isVRGrabbed || isDragging)
+        {
+            Debug.Log($"Ignoring collision logic for {playerColor} piece: currently held (isVRGrabbed={isVRGrabbed}, isDragging={isDragging})");
+            return;
+        }
         // KIỂM TRA: Nếu dice đang di chuyển, bỏ qua xử lý lượt
         if (DiceController.Instance != null && DiceController.Instance.IsDiceMoving())
         {
