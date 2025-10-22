@@ -494,7 +494,22 @@ public class PieceController : MonoBehaviourPun, IPunObservable
             transform.rotation = Quaternion.identity;
 
             // Kiểm tra và đá quân đối thủ tại điểm hiện tại
-            CheckAndKickOpponentPieces(currentPathIndex);
+            // Online: yêu cầu Master kiểm tra và phát RPC đá quân để tránh desync
+            if (isOnlineMode && PhotonNetwork.IsConnected)
+            {
+                if (PhotonNetwork.IsMasterClient)
+                {
+                    CheckAndKickOpponentPieces(currentPathIndex);
+                }
+                else
+                {
+                    photonView.RPC("RPC_RequestKickCheck", RpcTarget.MasterClient, currentPathIndex);
+                }
+            }
+            else
+            {
+                CheckAndKickOpponentPieces(currentPathIndex);
+            }
 
             // Kiểm tra nếu quân cờ đã về đích
             if (WinConditionManager.Instance.IsPieceFinished(currentPathIndex, playerColor))
@@ -626,19 +641,27 @@ public class PieceController : MonoBehaviourPun, IPunObservable
 
     private void KickPieceToStable(PieceController piece)
     {
-        if (isOnlineMode && piece.photonView != null && !piece.photonView.IsMine)
+        // Online: phát RPC để mọi client đồng bộ về -1, tránh race với SmoothSync
+        if (isOnlineMode && PhotonNetwork.IsConnected)
         {
-            piece.photonView.RequestOwnership();
+            if (piece != null && piece.photonView != null)
+            {
+                piece.photonView.RPC("NetworkKickToStable", RpcTarget.All);
+            }
+            return;
         }
 
-        piece.currentPathIndex = -1;
-
-        if (piece.stablePointIndex >= 0)
+        // Offline fallback: cập nhật trực tiếp
+        if (piece != null)
         {
-            List<Transform> stablePoints = HorseRacePathManager.Instance.GetStablePoints(piece.playerColor);
-            if (piece.stablePointIndex < stablePoints.Count)
+            piece.currentPathIndex = -1;
+            if (piece.stablePointIndex >= 0)
             {
-                StartCoroutine(MovePieceToStableSmoothly(piece, stablePoints[piece.stablePointIndex].position));
+                List<Transform> stablePoints = HorseRacePathManager.Instance.GetStablePoints(piece.playerColor);
+                if (piece.stablePointIndex < stablePoints.Count)
+                {
+                    StartCoroutine(MovePieceToStableSmoothly(piece, stablePoints[piece.stablePointIndex].position));
+                }
             }
         }
     }
@@ -789,7 +812,9 @@ public class PieceController : MonoBehaviourPun, IPunObservable
     [PunRPC]
     public void NetworkKickToStable()
     {
+        // Đặt cả currentPathIndex và networkPathIndex về -1 để tránh SmoothSync ghi đè lại
         currentPathIndex = -1;
+        networkPathIndex = -1;
         if (stablePointIndex >= 0)
         {
             List<Transform> stablePoints = HorseRacePathManager.Instance.GetStablePoints(playerColor);
@@ -798,6 +823,16 @@ public class PieceController : MonoBehaviourPun, IPunObservable
                 StartCoroutine(MovePieceToStableSmoothly(this, stablePoints[stablePointIndex].position));
             }
         }
+    }
+
+    // RPC: Master xử lý kiểm tra và đá quân để đảm bảo tính nhất quán giữa các client
+    [PunRPC]
+    private void RPC_RequestKickCheck(int pathIndex)
+    {
+        if (!PhotonNetwork.IsMasterClient)
+            return;
+
+        CheckAndKickOpponentPieces(pathIndex);
     }
 
     private void OnCollisionExit(Collision collision)

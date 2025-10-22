@@ -134,6 +134,7 @@ MonoBehaviour:
   - RPC_SyncDiceTransform
   - RPC_RequestOwnershipReturnToMaster
   - RPC_ReportNoMovesAvailable
+  - RPC_ReportPieceMoved
   DisableAutoOpenWizard: 1
   ShowSettings: 1
   DevRegionSetOnce: 1

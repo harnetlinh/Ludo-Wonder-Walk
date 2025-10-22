@@ -20066,7 +20066,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   playerColor: 1
-  currentPathIndex: -1
+  currentPathIndex: 15
   isMoving: 0
   moveSpeed: 5
   isOnlineMode: 1
@@ -21270,7 +21270,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   playerColor: 2
-  currentPathIndex: -1
+  currentPathIndex: 18
   isMoving: 0
   moveSpeed: 5
   isOnlineMode: 1
