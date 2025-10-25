@@ -135,6 +135,17 @@ MonoBehaviour:
   - RPC_RequestOwnershipReturnToMaster
   - RPC_ReportNoMovesAvailable
   - RPC_ReportPieceMoved
+  - RPC_RequestKickCheck
+  - RPC_HandlePieceMoved
+  - RPC_ApplyDiceReset
+  - RPC_ApplyMovementLock
+  - RPC_ConfirmPieceAction
+  - RPC_ReceiveMovementLockSnapshot
+  - RPC_ReportPieceDeployment
+  - RPC_ReportPieceMovement
+  - RPC_RequestTurnStateResync
+  - RPC_SetTurnStage
+  - RPC_HandleExtraRollAfterSix
   DisableAutoOpenWizard: 1
   ShowSettings: 1
   DevRegionSetOnce: 1

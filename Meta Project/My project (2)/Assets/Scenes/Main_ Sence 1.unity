@@ -10993,6 +10993,7 @@ GameObject:
   - component: {fileID: 846720860}
   - component: {fileID: 846720862}
   - component: {fileID: 846720863}
+  - component: {fileID: 846720864}
   m_Layer: 0
   m_Name: manager
   m_TagString: Untagged
@@ -11071,6 +11072,29 @@ MonoBehaviour:
   titleText: {fileID: 605399268}
   descriptionText: {fileID: 954736319}
   factImage: {fileID: 1787150531}
+--- !u!114 &846720864
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 846720856}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aa584fbee541324448dd18d8409c7a41, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ObservedComponentsFoldoutOpen: 1
+  Group: 0
+  prefixField: -1
+  Synchronization: 1
+  OwnershipTransfer: 0
+  observableSearch: 2
+  ObservedComponents:
+  - {fileID: 846720858}
+  sceneViewId: 24
+  InstantiationId: 0
+  isRuntimeInstantiated: 0
 --- !u!4 &863919028 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 6273802573030695725, guid: c4ddddf582cf11e4fa92d3d5e3ee5855, type: 3}
@@ -20066,7 +20090,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   playerColor: 1
-  currentPathIndex: 15
+  currentPathIndex: -1
   isMoving: 0
   moveSpeed: 5
   isOnlineMode: 1
@@ -21545,8 +21569,8 @@ MonoBehaviour:
   ObservedComponentsFoldoutOpen: 1
   Group: 0
   prefixField: -1
-  Synchronization: 3
-  OwnershipTransfer: 1
+  Synchronization: 1
+  OwnershipTransfer: 0
   observableSearch: 2
   ObservedComponents:
   - {fileID: 1779782088}
@@ -22055,8 +22079,8 @@ MonoBehaviour:
   ObservedComponentsFoldoutOpen: 1
   Group: 0
   prefixField: -1
-  Synchronization: 3
-  OwnershipTransfer: 1
+  Synchronization: 1
+  OwnershipTransfer: 0
   observableSearch: 2
   ObservedComponents: []
   sceneViewId: 22

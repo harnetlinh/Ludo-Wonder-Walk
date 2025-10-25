@@ -6,6 +6,11 @@
 
 
 
+4. khi dice roll ra 6 --> player (client hoặc master) xuất quân --> khóa peice di chuyển phía màu đó ở toàn bộ player --> reset giá trị dice và cho phép player roll tiếp --> player roll (nếu không ra 6) --> cho đi piece --> khóa peice di chuyển phía màu đó ở toàn bộ player  --> đợi piece đi xong bước cuối cùng  --> khóa peice di chuyển phía màu đó ở toàn bộ player --> thông báo cho master endturn --> endturn và  master chuyển lượt ngay lập tức 
+4.1 nếu piece có thể di chuyển quân dù ko roll ra 6 --> cho đi piece --> khóa peice di chuyển phía màu đó ở toàn bộ player  --> đợi piece đi xong bước cuối cùng   --> khóa peice di chuyển phía màu đó ở toàn bộ player --> thông báo cho master endturn --> endturn và  master chuyển lượt ngay lập tức 
+
+
+
 ┌──────────────┐
 │    START     │
 └──────┬───────┘
@@ -30,7 +35,7 @@
                    │
                    ▼
           ┌─────────────────────┐
-          │Client thả dice?    │
+          │Client thả dice?     │
           └──────┬──────────────┘
                  │Không
                  │  └─► Tiếp tục theo dõi.

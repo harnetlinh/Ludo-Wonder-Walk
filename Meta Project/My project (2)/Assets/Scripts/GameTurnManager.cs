@@ -823,21 +823,74 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
     //    return false;
     //}
 
+
     public void PieceMoved()
     {
         pieceMovedThisTurn = true;
-        if (!PhotonNetwork.IsMasterClient)
+        bool inRoom = isNetworked && PhotonNetwork.InRoom;
+
+        if (!inRoom || PhotonNetwork.IsMasterClient)
         {
+            CompleteTurnAfterPieceMoved();
             return;
         }
 
+        if (photonView == null)
+        {
+            Debug.LogWarning("PieceMoved called on client without PhotonView, falling back to local completion.");
+            CompleteTurnAfterPieceMoved();
+            return;
+        }
+
+        PlayerColor reportedColor = SyncLocalTurnState();
+        if (reportedColor == PlayerColor.None)
+        {
+            Debug.LogWarning("PieceMoved could not resolve current player color; defaulting to master completion.");
+            photonView.RPC(nameof(RPC_ReportPieceMoved), RpcTarget.MasterClient, (int)PlayerColor.None);
+            return;
+        }
+
+        photonView.RPC(nameof(RPC_ReportPieceMoved), RpcTarget.MasterClient, (int)reportedColor);
+        Debug.Log($"Reported piece movement for {reportedColor} to master client.");
+    }
+
+    private void CompleteTurnAfterPieceMoved()
+    {
         DiceController diceController = DiceController.Instance;
         diceController?.RequestReturnOwnershipToMaster(0.3f);
-        
-        // Gọi khi người chơi đã di chuyển quân cờ xong
+
+        CancelInvoke(nameof(EndTurn));
         Invoke(nameof(EndTurn), 1f);
     }
 
+    [PunRPC]
+    private void RPC_ReportPieceMoved(int reportedColorValue, PhotonMessageInfo info)
+    {
+        if (!PhotonNetwork.IsMasterClient || photonView == null || !photonView.IsMine)
+        {
+            Debug.LogWarning("RPC_ReportPieceMoved ignored because this instance is not the master owner.");
+            return;
+        }
+
+        PlayerColor reportedColor = (PlayerColor)reportedColorValue;
+        string reporter = info.Sender != null ? info.Sender.NickName : "Unknown";
+        Debug.Log($"Received piece moved report for {reportedColor} from {reporter}.");
+
+        if (reportedColor != PlayerColor.None && !IsCurrentPlayer(reportedColor))
+        {
+            if (ForceSetCurrentPlayer(reportedColor))
+            {
+                Debug.LogWarning($"Turn desync detected while handling piece move report. Forcing turn to {reportedColor}.");
+            }
+            else
+            {
+                Debug.LogWarning($"Ignoring piece move report for {reportedColor}; color not present in current order.");
+                return;
+            }
+        }
+
+        CompleteTurnAfterPieceMoved();
+    }
 
     // Trong GameTurnManager.cs
     public void MovePiece(PieceController piece)
