@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.UI;
 using TMPro;
+using Photon.Pun;
 
 [System.Serializable]
 public class FactResponse
@@ -12,14 +13,15 @@ public class FactResponse
     public string description;
 }
 
-public class FactManager : MonoBehaviour
+[RequireComponent(typeof(PhotonView))]
+public class FactManager : MonoBehaviourPunCallbacks
 {
     [Header("UI Elements")]
     public TextMeshProUGUI titleText;
     public TextMeshProUGUI descriptionText;
     public Image factImage;
 
-    private string apiUrl = "";
+    private string apiUrl = "https://ludo-mr.sapca.ai.vn/api/fact";
 
     private FactResponse factVi;
     private FactResponse factEn;
@@ -45,6 +47,32 @@ public class FactManager : MonoBehaviour
     public void GetFact(string country = "Vietnam")
     {
         Debug.Log($"[DEBUG] FactManager.GetFact called with country: {country}");
+
+        if (string.IsNullOrEmpty(country))
+        {
+            Debug.LogWarning("[DEBUG] Country parameter is null or empty. Abort fetching fact.");
+            return;
+        }
+
+        if (PhotonNetwork.IsConnected)
+        {
+            if (PhotonNetwork.IsMasterClient)
+            {
+                StartFactFetch(country);
+            }
+            else
+            {
+                photonView.RPC(nameof(RPC_RequestFact), RpcTarget.MasterClient, country);
+            }
+        }
+        else
+        {
+            StartFactFetch(country);
+        }
+    }
+
+    private void StartFactFetch(string country)
+    {
         StartCoroutine(CallAPI(country, "vi"));
         StartCoroutine(CallAPI(country, "en"));
     }
@@ -67,19 +95,85 @@ public class FactManager : MonoBehaviour
                 Debug.Log($"[DEBUG] API Response ({lang}): {request.downloadHandler.text}");
                 FactResponse fact = JsonUtility.FromJson<FactResponse>(request.downloadHandler.text);
 
-                if (lang == "vi")
-                {
-                    factVi = fact;
-                    Debug.Log($"[DEBUG] factVi assigned. isVietnamese: {isVietnamese}");
-                    if (isVietnamese) UpdateUI(factVi);
-                }
-                else
-                {
-                    factEn = fact;
-                    Debug.Log($"[DEBUG] factEn assigned. isVietnamese: {isVietnamese}");
-                    if (!isVietnamese) UpdateUI(factEn);
-                }
+                HandleFactResponse(lang, fact);
             }
+        }
+    }
+
+    private void HandleFactResponse(string lang, FactResponse fact)
+    {
+        if (fact == null)
+        {
+            Debug.LogWarning($"[DEBUG] Received null fact for lang {lang}");
+            return;
+        }
+
+        if (lang == "vi")
+        {
+            factVi = fact;
+            Debug.Log($"[DEBUG] factVi assigned. isVietnamese: {isVietnamese}");
+        }
+        else
+        {
+            factEn = fact;
+            Debug.Log($"[DEBUG] factEn assigned. isVietnamese: {isVietnamese}");
+        }
+
+        if (PhotonNetwork.IsConnected && PhotonNetwork.IsMasterClient)
+        {
+            photonView.RPC(
+                nameof(RPC_ReceiveFact),
+                RpcTarget.Others,
+                lang,
+                fact.title ?? string.Empty,
+                fact.description ?? string.Empty,
+                fact.image ?? string.Empty
+            );
+        }
+
+        bool shouldUpdateUI = (isVietnamese && lang == "vi") || (!isVietnamese && lang == "en");
+        if (shouldUpdateUI)
+        {
+            UpdateUI(fact);
+        }
+    }
+
+    [PunRPC]
+    private void RPC_RequestFact(string country)
+    {
+        Debug.Log($"[DEBUG] RPC_RequestFact received for country: {country}. IsMasterClient: {PhotonNetwork.IsMasterClient}");
+        if (!PhotonNetwork.IsMasterClient)
+        {
+            return;
+        }
+
+        StartFactFetch(country);
+    }
+
+    [PunRPC]
+    private void RPC_ReceiveFact(string lang, string title, string description, string imageUrl)
+    {
+        Debug.Log($"[DEBUG] RPC_ReceiveFact lang:{lang}, title:{title}");
+        FactResponse fact = new FactResponse
+        {
+            title = title,
+            description = description,
+            image = imageUrl
+        };
+
+        if (lang == "vi")
+        {
+            factVi = fact;
+        }
+        else
+        {
+            factEn = fact;
+        }
+
+        bool shouldUpdateUI = (isVietnamese && lang == "vi") || (!isVietnamese && lang == "en");
+        if (shouldUpdateUI)
+        {
+            UpdateUI(fact);
         }
     }
 
