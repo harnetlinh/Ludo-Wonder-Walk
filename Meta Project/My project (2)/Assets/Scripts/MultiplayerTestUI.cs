@@ -106,7 +106,7 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
         {
             try
             {
-                if (PhotonNetwork.IsConnected)
+                if (PhotonNetwork.IsConnected || PhotonNetwork.OfflineMode)
                 {
                     if (PhotonNetwork.InRoom && PhotonNetwork.CurrentRoom != null)
                     {
@@ -223,7 +223,7 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
     // THÊM: Phương thức rejoin phòng cũ
     public void RejoinPreviousRoom()
     {
-        if (PhotonNetwork.IsConnected && !PhotonNetwork.InRoom)
+        if ((PhotonNetwork.IsConnected || PhotonNetwork.OfflineMode) && !PhotonNetwork.InRoom)
         {
             string previousRoom = PhotonManager.Instance?.GetPreviousRoom();
             
@@ -346,7 +346,7 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
 
     public void ConfirmCreateRoom()
     {
-        if (PhotonNetwork.IsConnected && !PhotonNetwork.InRoom)
+        if ((PhotonNetwork.IsConnected || PhotonNetwork.OfflineMode) && !PhotonNetwork.InRoom)
         {
             int maxPlayers = 4;
             int piecesPerPlayer = 4;
@@ -396,7 +396,7 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
 
     public void ConfirmJoinRoom()
     {
-        if (PhotonNetwork.IsConnected && !PhotonNetwork.InRoom)
+        if ((PhotonNetwork.IsConnected || PhotonNetwork.OfflineMode) && !PhotonNetwork.InRoom)
         {
             string roomId = roomIdInput.text.Trim();
 

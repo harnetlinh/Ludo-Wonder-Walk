@@ -607,17 +607,23 @@ private void HandleDiceTransformChanged(Vector3 position, Quaternion rotation)
     diceFaceDetector.ResetRollTrackingState();
 }
 
-private bool IsLocalPlayersTurn()
-{
-    if (currentRollingPlayer == PlayerColor.None)
+    private bool IsLocalPlayersTurn()
     {
-        return false;
-    }
+        if (currentRollingPlayer == PlayerColor.None)
+        {
+            return false;
+        }
 
-    if (PhotonManager.Instance == null || !PhotonNetwork.InRoom)
-    {
-        return true;
-    }
+        // Trong chế độ Offline, cho phép điều khiển mọi lượt như pass-and-play
+        if (PhotonNetwork.OfflineMode)
+        {
+            return true;
+        }
+
+        if (PhotonManager.Instance == null || !PhotonNetwork.InRoom)
+        {
+            return true;
+        }
 
     if (localPlayerColor == PlayerColor.None)
     {

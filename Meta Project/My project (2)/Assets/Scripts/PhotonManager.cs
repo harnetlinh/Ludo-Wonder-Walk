@@ -66,8 +66,17 @@ public class PhotonManager : MonoBehaviourPunCallbacks
 
         if (autoConnectOnStart)
         {
-            Debug.Log("Attempting to connect to Photon...");
-            PhotonNetwork.ConnectUsingSettings();
+            // Nếu không có mạng, chạy ở chế độ Offline (không cần kết nối)
+            if (Application.internetReachability == NetworkReachability.NotReachable)
+            {
+                Debug.Log("No internet detected. Starting in OfflineMode.");
+                PhotonNetwork.OfflineMode = true;
+            }
+            else
+            {
+                Debug.Log("Attempting to connect to Photon...");
+                PhotonNetwork.ConnectUsingSettings();
+            }
         }
     }
 
@@ -305,6 +314,13 @@ public class PhotonManager : MonoBehaviourPunCallbacks
     {
         if (!PhotonNetwork.IsMasterClient) return;
 
+        // In OfflineMode, keep the offline 4-color setup prepared elsewhere
+        if (PhotonNetwork.OfflineMode)
+        {
+            Debug.Log("OfflineMode detected. Skipping online color assignment to keep all 4 colors active.");
+            return;
+        }
+
         Debug.Log("=== ASSIGNING PLAYER COLORS ===");
 
         // Tạo dictionary để theo dõi màu đã gán
@@ -505,7 +521,14 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         if (PhotonNetwork.IsMasterClient)
         {
             UpdateRoomPlayerIDs();
-            AssignPlayerColors();
+            if (!PhotonNetwork.OfflineMode)
+            {
+                AssignPlayerColors();
+            }
+            else
+            {
+                Debug.Log("OfflineMode: Not reassigning colors here. OfflineInitRunner prepares 4-player colors.");
+            }
         }
         else if (isRejoining)
         {
@@ -590,6 +613,13 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         Debug.Log(
             $"Player {newPlayer.NickName} entered the room. Total players: {PhotonNetwork.CurrentRoom.PlayerCount}");
 
+        // In OfflineMode there are no remote joins; avoid reassigning colors.
+        if (PhotonNetwork.OfflineMode)
+        {
+            StartCoroutine(ActivatePiecesAfterDelay());
+            return;
+        }
+
         // KIỂM TRA: Đây có phải là player rejoining không?
         string playerId = GetPlayerIDFromNickname(newPlayer.NickName);
         PlayerColor previousColor = GetPreviouslyAssignedColor(playerId);
@@ -634,6 +664,12 @@ public class PhotonManager : MonoBehaviourPunCallbacks
     {
         Debug.Log(
             $"Player {otherPlayer.NickName} left the room. Total players: {PhotonNetwork.CurrentRoom.PlayerCount}");
+
+        if (PhotonNetwork.OfflineMode)
+        {
+            // Nothing to do in offline mode
+            return;
+        }
 
         string leftPlayerId = GetPlayerIDFromNickname(otherPlayer.NickName);
 
@@ -792,15 +828,21 @@ public class PhotonManager : MonoBehaviourPunCallbacks
     // Method để connect manually
     public void ConnectToPhoton()
     {
-        if (!PhotonNetwork.IsConnected)
+        if (PhotonNetwork.IsConnected || PhotonNetwork.OfflineMode)
         {
-            Debug.Log("Connecting to Photon...");
-            PhotonNetwork.ConnectUsingSettings();
+            Debug.Log("Already connected or in OfflineMode");
+            return;
         }
-        else
+
+        if (Application.internetReachability == NetworkReachability.NotReachable)
         {
-            Debug.Log("Already connected to Photon");
+            Debug.Log("No internet. Switching to OfflineMode.");
+            PhotonNetwork.OfflineMode = true;
+            return;
         }
+
+        Debug.Log("Connecting to Photon...");
+        PhotonNetwork.ConnectUsingSettings();
     }
 
     // SỬA: Method để join room cụ thể với kiểm tra
