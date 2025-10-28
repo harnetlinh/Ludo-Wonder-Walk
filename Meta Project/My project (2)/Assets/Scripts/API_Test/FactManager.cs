@@ -37,6 +37,12 @@ public class QuestionEntry
     public int correctAnswerIndex;
 }
 
+[System.Serializable]
+public class QuestionBank
+{
+    public QuestionEntry[] questions;
+}
+
 [RequireComponent(typeof(PhotonView))]
 public class FactManager : MonoBehaviourPunCallbacks
 {
@@ -75,6 +81,10 @@ public class FactManager : MonoBehaviourPunCallbacks
     public float questionAutoHideDelay = 3f;
 
     [Header("Question Bank")]
+    [Tooltip("Optional JSON file that defines the question list. Leave empty to configure questions manually.")]
+    public TextAsset questionBankJson;
+    [Tooltip("Automatically load the question list from the assigned JSON when this component awakens.")]
+    public bool loadQuestionsFromJsonOnAwake = true;
     public List<QuestionEntry> questionEntries = new List<QuestionEntry>();
 
     private string apiUrl = "https://ludo-mr.sapca.ai.vn/api/fact";
@@ -102,6 +112,10 @@ public class FactManager : MonoBehaviourPunCallbacks
             DontDestroyOnLoad(gameObject);
             InitializePanelState();
             SetupAnswerButtonCallbacks();
+            if (loadQuestionsFromJsonOnAwake)
+            {
+                LoadQuestionsFromJson();
+            }
         }
         else
         {
@@ -143,6 +157,115 @@ public class FactManager : MonoBehaviourPunCallbacks
             int capturedIndex = i;
             button.onClick.RemoveAllListeners();
             button.onClick.AddListener(() => OnQuestionAnswerSelected(capturedIndex));
+        }
+    }
+
+    private void LoadQuestionsFromJson()
+    {
+        if (questionBankJson == null)
+        {
+            Debug.Log("[DEBUG] No questionBankJson assigned. Skipping JSON question load.");
+            return;
+        }
+
+        string jsonContent = questionBankJson.text;
+        if (string.IsNullOrWhiteSpace(jsonContent))
+        {
+            Debug.LogWarning("[DEBUG] questionBankJson is assigned but empty. Skipping question load.");
+            return;
+        }
+
+        QuestionBank parsedBank = null;
+        try
+        {
+            parsedBank = JsonUtility.FromJson<QuestionBank>(jsonContent);
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"[DEBUG] Failed to parse questionBankJson. Exception: {ex}");
+            return;
+        }
+
+        if (parsedBank == null || parsedBank.questions == null || parsedBank.questions.Length == 0)
+        {
+            Debug.LogWarning("[DEBUG] Parsed questionBankJson but it did not contain any questions.");
+            return;
+        }
+
+        if (questionEntries == null)
+        {
+            questionEntries = new List<QuestionEntry>(parsedBank.questions.Length);
+        }
+        else
+        {
+            questionEntries.Clear();
+        }
+
+        foreach (QuestionEntry entry in parsedBank.questions)
+        {
+            if (entry == null)
+            {
+                continue;
+            }
+
+            NormalizeQuestionEntry(entry);
+            questionEntries.Add(entry);
+        }
+
+        Debug.Log($"[DEBUG] Loaded {questionEntries.Count} questions from JSON.");
+    }
+
+    private void NormalizeQuestionEntry(QuestionEntry entry)
+    {
+        if (entry == null)
+        {
+            return;
+        }
+
+        if (entry.vietnamese == null)
+        {
+            entry.vietnamese = new QuestionLocalization();
+        }
+
+        if (entry.english == null)
+        {
+            entry.english = new QuestionLocalization();
+        }
+
+        NormalizeLocalization(entry.vietnamese);
+        NormalizeLocalization(entry.english);
+
+        entry.correctAnswerIndex = Mathf.Clamp(entry.correctAnswerIndex, 0, 2);
+    }
+
+    private void NormalizeLocalization(QuestionLocalization localization)
+    {
+        if (localization.answers == null)
+        {
+            localization.answers = new string[3];
+        }
+        else if (localization.answers.Length != 3)
+        {
+            string[] resized = new string[3];
+            int copyLength = Mathf.Min(localization.answers.Length, resized.Length);
+            for (int i = 0; i < copyLength; i++)
+            {
+                resized[i] = localization.answers[i];
+            }
+            localization.answers = resized;
+        }
+
+        for (int i = 0; i < localization.answers.Length; i++)
+        {
+            if (localization.answers[i] == null)
+            {
+                localization.answers[i] = string.Empty;
+            }
+        }
+
+        if (localization.question == null)
+        {
+            localization.question = string.Empty;
         }
     }
 

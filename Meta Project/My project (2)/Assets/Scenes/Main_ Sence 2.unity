@@ -15088,21 +15088,9 @@ MonoBehaviour:
   correctMessageEnglish: You answered correctly!
   incorrectMessageEnglish: That is not correct.
   questionAutoHideDelay: 3
-  questionEntries:
-  - id: 01
-    vietnamese:
-      question: dkkwopdkpaokdpkpwka
-      answers:
-      - jjfijeoifjoiwe
-      - "d\u01B0madmpwpdmpw"
-      - dwk[akdkwkpad
-    english:
-      question: odpapdpowjpakpsodpw
-      answers:
-      - "9diw-ia-id-ia-\u01B0dw"
-      - duawdo=wo-ai-sd
-      - "du0w-aks[dk[\u01B0-9"
-    correctAnswerIndex: 0
+  questionBankJson: {fileID: 4900000, guid: 962689bd9a6b1874bafced1dfd803d94, type: 3}
+  loadQuestionsFromJsonOnAwake: 1
+  questionEntries: []
 --- !u!114 &1348312701
 MonoBehaviour:
   m_ObjectHideFlags: 0
