@@ -51,6 +51,9 @@ public class HorseRacePathManager : MonoBehaviour
 
     private Dictionary<int, CountryPoint> countryPointDict = new Dictionary<int, CountryPoint>();
 
+    [Header("Question Points")]
+    public List<int> questionPointIndices = new List<int>();
+
     //// Thêm vào đầu file HorseRacePathManager.cs
     //[System.Serializable]
     //public class SpecialPointImage
@@ -318,6 +321,16 @@ public class HorseRacePathManager : MonoBehaviour
             }
         }
         return false;
+    }
+
+    public bool IsQuestionPoint(int pointIndex)
+    {
+        if (questionPointIndices == null || questionPointIndices.Count == 0)
+        {
+            return false;
+        }
+
+        return questionPointIndices.Contains(pointIndex);
     }
 
     // Lấy mã quốc gia của điểm (nếu có)

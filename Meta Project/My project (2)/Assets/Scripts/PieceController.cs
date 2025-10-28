@@ -44,6 +44,7 @@ public class PieceController : MonoBehaviourPun, IPunObservable
     private bool isTouchingTable = false;
 
     public int lastCountryPointIndex = -1;
+    private int lastQuestionPointIndex = -1;
 
     // Simple drag variables
     private bool isDragging = false;
@@ -1121,11 +1122,18 @@ private IEnumerator ResetTurnProcessingAfterDelay(float delay)
 
         Debug.Log($"[DEBUG] CheckAndShowCountryInfo called for point {pointIndex}, player {playerColor}");
 
+        HorseRacePathManager pathManager = HorseRacePathManager.Instance;
+        if (pathManager == null)
+        {
+            Debug.LogWarning("[DEBUG] HorseRacePathManager.Instance is null in CheckAndShowCountryInfo");
+            return;
+        }
+
         // Sử dụng hàm mới có kiểm tra playerColor
-        if (HorseRacePathManager.Instance.IsCountryPoint(pointIndex, playerColor))
+        if (pathManager.IsCountryPoint(pointIndex, playerColor))
         {
             Debug.Log($"[DEBUG] Point {pointIndex} is a country point for {playerColor}");
-            string countryCode = HorseRacePathManager.Instance.GetCountryCode(pointIndex, playerColor);
+            string countryCode = pathManager.GetCountryCode(pointIndex, playerColor);
             Debug.Log($"[DEBUG] Country code for point {pointIndex}: {countryCode}");
 
             if (!string.IsNullOrEmpty(countryCode) && pointIndex != lastCountryPointIndex)
@@ -1151,6 +1159,28 @@ private IEnumerator ResetTurnProcessingAfterDelay(float delay)
         {
             Debug.Log($"[DEBUG] Point {pointIndex} is NOT a country point for {playerColor}");
             lastCountryPointIndex = -1;
+        }
+
+        if (pathManager.IsQuestionPoint(pointIndex))
+        {
+            if (pointIndex != lastQuestionPointIndex)
+            {
+                lastQuestionPointIndex = pointIndex;
+
+                if (FactManager.Instance != null)
+                {
+                    FactManager.Instance.ShowRandomQuestionPanel();
+                    Debug.Log($"[DEBUG] Triggered question panel at point {pointIndex} for {playerColor}");
+                }
+                else
+                {
+                    Debug.LogWarning("[DEBUG] FactManager.Instance is null when trying to show question panel");
+                }
+            }
+        }
+        else if (lastQuestionPointIndex != -1)
+        {
+            lastQuestionPointIndex = -1;
         }
     }
 
