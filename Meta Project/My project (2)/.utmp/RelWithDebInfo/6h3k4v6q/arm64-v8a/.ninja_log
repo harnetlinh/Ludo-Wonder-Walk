@@ -89,3 +89,12 @@
 21	2245	7832519146251618	GameActivity/CMakeFiles/game.dir/UGAInput.cpp.o	291e41fec15bf76b
 10	2337	7832519147118214	GameActivity/CMakeFiles/game.dir/UGAApplication.cpp.o	b00a37fa910d81e4
 2338	2457	7832519148345412	D:/GIT/Ludo-Wonder-Walk/Meta Project/My project (2)/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/RelWithDebInfo/6h3k4v6q/obj/arm64-v8a/libgame.so	24c3979150589561
+21	1734	7834510943744319	GameActivity/CMakeFiles/game.dir/UGAInputKeyEvent.cpp.o	ad9bba38b9caf86e
+25	1738	7834510943754533	GameActivity/CMakeFiles/game.dir/UGAEntry.cpp.o	fade53e3477e2da6
+17	1775	7834510944153078	GameActivity/CMakeFiles/game.dir/UGAConfiguration.cpp.o	26fd5e6ddf307028
+34	1798	7834510944399124	GameActivity/CMakeFiles/game.dir/UGAInputMotionEvent.cpp.o	d58d0e0c17eaba17
+10	1822	7834510944624271	GameActivity/CMakeFiles/game.dir/UGADebug.cpp.o	7a70a0da083f8f9
+39	1935	7834510945743481	GameActivity/CMakeFiles/game.dir/UGASoftKeyboard.cpp.o	9d918871600dd9a4
+30	2095	7834510947381985	GameActivity/CMakeFiles/game.dir/UGAInput.cpp.o	291e41fec15bf76b
+14	2198	7834510948350708	GameActivity/CMakeFiles/game.dir/UGAApplication.cpp.o	b00a37fa910d81e4
+2198	2314	7834510949556232	D:/GIT/Ludo-Wonder-Walk/Meta Project/My project (2)/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/RelWithDebInfo/6h3k4v6q/obj/arm64-v8a/libgame.so	24c3979150589561

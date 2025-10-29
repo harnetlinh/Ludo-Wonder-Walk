@@ -1,5 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System;
+using System.IO;
 using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.UI;
@@ -41,6 +43,20 @@ public class QuestionEntry
 public class QuestionBank
 {
     public QuestionEntry[] questions;
+}
+
+[System.Serializable]
+public class OfflineFactEntry
+{
+    public string country;
+    public string lang;
+    public FactResponse fact;
+}
+
+[System.Serializable]
+public class OfflineFactBank
+{
+    public OfflineFactEntry[] facts;
 }
 
 [RequireComponent(typeof(PhotonView))]
@@ -87,10 +103,19 @@ public class FactManager : MonoBehaviourPunCallbacks
     public bool loadQuestionsFromJsonOnAwake = true;
     public List<QuestionEntry> questionEntries = new List<QuestionEntry>();
 
+    [Header("Offline Fact Fallback")]
+    [Tooltip("Optional JSON asset used when the API is unavailable or the device is offline.")]
+    public TextAsset offlineFactJson;
+    [Tooltip("If true, skips API calls when there is no internet connection and relies on the offline JSON.")]
+    public bool useOfflineWhenNoInternet = true;
+
     private string apiUrl = "https://ludo-mr.sapca.ai.vn/api/fact";
 
     private FactResponse factVi;
     private FactResponse factEn;
+    private readonly Dictionary<string, List<FactResponse>> offlineFactsByKey = new Dictionary<string, List<FactResponse>>();
+    private bool offlineFactsLoaded = false;
+    private readonly Dictionary<string, Sprite> resourceSpriteCache = new Dictionary<string, Sprite>();
 
     private bool isVietnamese = false; // current language mode (true = VI)
 
@@ -116,6 +141,7 @@ public class FactManager : MonoBehaviourPunCallbacks
             {
                 LoadQuestionsFromJson();
             }
+            EnsureOfflineFactsLoaded();
         }
         else
         {
@@ -304,6 +330,168 @@ public class FactManager : MonoBehaviourPunCallbacks
         }
     }
 
+    private void EnsureOfflineFactsLoaded()
+    {
+        if (offlineFactsLoaded)
+        {
+            return;
+        }
+
+        offlineFactsLoaded = true;
+        offlineFactsByKey.Clear();
+
+        if (offlineFactJson == null)
+        {
+            return;
+        }
+
+        string jsonContent = offlineFactJson.text;
+        if (string.IsNullOrWhiteSpace(jsonContent))
+        {
+            Debug.LogWarning("[DEBUG] offlineFactJson is assigned but empty. Skipping offline fact load.");
+            return;
+        }
+
+        OfflineFactBank parsedBank = null;
+        try
+        {
+            parsedBank = JsonUtility.FromJson<OfflineFactBank>(jsonContent);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"[DEBUG] Failed to parse offline fact JSON. Exception: {ex.Message}");
+            return;
+        }
+
+        if (parsedBank?.facts == null || parsedBank.facts.Length == 0)
+        {
+            Debug.LogWarning("[DEBUG] Parsed offlineFactJson but it did not contain any facts.");
+            return;
+        }
+
+        foreach (OfflineFactEntry entry in parsedBank.facts)
+        {
+            if (entry == null || entry.fact == null)
+            {
+                continue;
+            }
+
+            string key = BuildOfflineFactKey(entry.country, entry.lang);
+            if (string.IsNullOrEmpty(key))
+            {
+                continue;
+            }
+
+            if (!offlineFactsByKey.TryGetValue(key, out var list) || list == null)
+            {
+                list = new List<FactResponse>();
+                offlineFactsByKey[key] = list;
+            }
+
+            list.Add(new FactResponse
+            {
+                title = entry.fact.title,
+                description = entry.fact.description,
+                image = entry.fact.image
+            });
+        }
+
+        Debug.Log($"[DEBUG] Loaded offline facts groups: {offlineFactsByKey.Count} keys.");
+    }
+
+    private static string BuildOfflineFactKey(string country, string lang)
+    {
+        if (string.IsNullOrWhiteSpace(lang))
+        {
+            return null;
+        }
+
+        string normalizedLang = lang.Trim().ToLowerInvariant();
+        string normalizedCountry = string.IsNullOrWhiteSpace(country)
+            ? "*"
+            : country.Trim().ToLowerInvariant();
+
+        return $"{normalizedCountry}|{normalizedLang}";
+    }
+
+    private bool TryGetOfflineFact(string country, string lang, out FactResponse fact)
+    {
+        fact = null;
+        EnsureOfflineFactsLoaded();
+
+        if (offlineFactsByKey.Count == 0)
+        {
+            return false;
+        }
+
+        string specificKey = BuildOfflineFactKey(country, lang);
+        if (!string.IsNullOrEmpty(specificKey) && TryPickOfflineFactFromKey(specificKey, out fact))
+        {
+            return true;
+        }
+
+        string wildcardKey = BuildOfflineFactKey("*", lang);
+        if (!string.IsNullOrEmpty(wildcardKey) && TryPickOfflineFactFromKey(wildcardKey, out fact))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool TryPickOfflineFactFromKey(string key, out FactResponse fact)
+    {
+        fact = null;
+        if (string.IsNullOrEmpty(key))
+        {
+            return false;
+        }
+
+        if (!offlineFactsByKey.TryGetValue(key, out var list) || list == null || list.Count == 0)
+        {
+            return false;
+        }
+
+        List<FactResponse> withImages = new List<FactResponse>();
+        List<FactResponse> others = new List<FactResponse>();
+
+        foreach (var item in list)
+        {
+            if (item == null) continue;
+
+            if (!string.IsNullOrWhiteSpace(item.image) && CanResolveOfflineSprite(item.image))
+            {
+                withImages.Add(item);
+            }
+            else
+            {
+                others.Add(item);
+            }
+        }
+
+        FactResponse PickRandom(List<FactResponse> src)
+        {
+            if (src == null || src.Count == 0) return null;
+            int idx = UnityEngine.Random.Range(0, src.Count);
+            return src[idx];
+        }
+
+        fact = PickRandom(withImages) ?? PickRandom(others);
+        return fact != null;
+    }
+
+    private bool TryHandleOfflineFact(string country, string lang)
+    {
+        if (!TryGetOfflineFact(country, lang, out FactResponse fact))
+        {
+            return false;
+        }
+
+        Debug.Log($"[DEBUG] Using offline fact for country '{country}' and language '{lang}'.");
+        HandleFactResponse(lang, fact);
+        return true;
+    }
+
     public void GetFact(string country = "Vietnam")
     {
         Debug.Log($"[DEBUG] FactManager.GetFact called with country: {country}");
@@ -361,6 +549,30 @@ public class FactManager : MonoBehaviourPunCallbacks
 
     private void StartFactFetch(string country)
     {
+        bool shouldUseOfflineOnly = useOfflineWhenNoInternet &&
+                                    Application.internetReachability == NetworkReachability.NotReachable;
+
+        if (shouldUseOfflineOnly)
+        {
+            string preferredLang = isVietnamese ? "vi" : "en";
+            string fallbackLang = isVietnamese ? "en" : "vi";
+
+            if (TryGetOfflineFact(country, preferredLang, out var preferredFact))
+            {
+                HandleFactResponse(preferredLang, preferredFact);
+            }
+            else if (TryGetOfflineFact(country, fallbackLang, out var fallbackFact))
+            {
+                HandleFactResponse(fallbackLang, fallbackFact);
+            }
+            else
+            {
+                Debug.LogWarning($"[DEBUG] Offline fallback did not contain facts for country '{country}'.");
+            }
+
+            return;
+        }
+
         StartCoroutine(CallAPI(country, "vi"));
         StartCoroutine(CallAPI(country, "en"));
     }
@@ -376,15 +588,37 @@ public class FactManager : MonoBehaviourPunCallbacks
             if (request.result == UnityWebRequest.Result.ConnectionError ||
                 request.result == UnityWebRequest.Result.ProtocolError)
             {
-                Debug.LogError($"[DEBUG] API Error: {request.error}");
+                Debug.LogError($"[DEBUG] API Error ({lang}): {request.error}");
+                if (!TryHandleOfflineFact(country, lang))
+                {
+                    Debug.LogWarning($"[DEBUG] No offline fact available for country '{country}' and language '{lang}'.");
+                }
+                yield break;
             }
-            else
-            {
-                Debug.Log($"[DEBUG] API Response ({lang}): {request.downloadHandler.text}");
-                FactResponse fact = JsonUtility.FromJson<FactResponse>(request.downloadHandler.text);
 
-                HandleFactResponse(lang, fact);
+            string responseText = request.downloadHandler.text;
+            Debug.Log($"[DEBUG] API Response ({lang}): {responseText}");
+
+            FactResponse fact = null;
+            try
+            {
+                fact = JsonUtility.FromJson<FactResponse>(responseText);
             }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[DEBUG] Failed to parse API response for language '{lang}'. Exception: {ex.Message}");
+            }
+
+            if (fact == null)
+            {
+                if (!TryHandleOfflineFact(country, lang))
+                {
+                    Debug.LogWarning($"[DEBUG] API response for country '{country}' and language '{lang}' was invalid and no offline fallback was found.");
+                }
+                yield break;
+            }
+
+            HandleFactResponse(lang, fact);
         }
     }
 
@@ -424,6 +658,15 @@ public class FactManager : MonoBehaviourPunCallbacks
         {
             UpdateUI(fact);
         }
+        else
+        {
+            // If preferred language data is missing, show the available one to avoid blank UI
+            bool preferredMissing = isVietnamese ? (factVi == null) : (factEn == null);
+            if (preferredMissing)
+            {
+                UpdateUI(fact);
+            }
+        }
     }
 
     [PunRPC]
@@ -462,6 +705,15 @@ public class FactManager : MonoBehaviourPunCallbacks
         if (shouldUpdateUI)
         {
             UpdateUI(fact);
+        }
+        else
+        {
+            // If preferred language data is missing, show the available one to avoid blank UI
+            bool preferredMissing = isVietnamese ? (factVi == null) : (factEn == null);
+            if (preferredMissing)
+            {
+                UpdateUI(fact);
+            }
         }
     }
 
@@ -801,20 +1053,188 @@ public class FactManager : MonoBehaviourPunCallbacks
         if (factImage != null) StartCoroutine(LoadImage(fact.image));
     }
 
-    IEnumerator LoadImage(string imageUrl)
+    IEnumerator LoadImage(string imageSource)
     {
-        UnityWebRequest request = UnityWebRequestTexture.GetTexture(imageUrl);
-        yield return request.SendWebRequest();
+        if (factImage == null)
+        {
+            yield break;
+        }
 
-        if (request.result == UnityWebRequest.Result.Success)
+        if (string.IsNullOrWhiteSpace(imageSource))
         {
-            Texture2D tex = DownloadHandlerTexture.GetContent(request);
-            factImage.sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), Vector2.one * 0.5f);
+            factImage.sprite = null;
+            yield break;
         }
-        else
+
+        if (!IsRemoteImageSource(imageSource))
         {
-            Debug.LogError("Image load error: " + request.error);
+            Sprite resourceSprite = LoadSpriteFromResources(imageSource);
+            if (resourceSprite != null)
+            {
+                factImage.sprite = resourceSprite;
+            }
+            else
+            {
+                factImage.sprite = null;
+                Debug.LogWarning($"[DEBUG] Failed to load offline fact image from Resources path '{imageSource}'.");
+            }
+            yield break;
         }
+
+        using (UnityWebRequest request = UnityWebRequestTexture.GetTexture(imageSource))
+        {
+            yield return request.SendWebRequest();
+
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                Texture2D tex = DownloadHandlerTexture.GetContent(request);
+                factImage.sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), Vector2.one * 0.5f);
+            }
+            else
+            {
+                factImage.sprite = null;
+                Debug.LogError($"[DEBUG] Image load error for source '{imageSource}': {request.error}");
+            }
+        }
+    }
+
+    private static bool IsRemoteImageSource(string imageSource)
+    {
+        if (string.IsNullOrWhiteSpace(imageSource))
+        {
+            return false;
+        }
+
+        if (imageSource.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+            imageSource.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private Sprite LoadSpriteFromResources(string resourcePath)
+    {
+        string normalizedPath = NormalizeResourcePath(resourcePath);
+        if (string.IsNullOrEmpty(normalizedPath))
+        {
+            return null;
+        }
+
+        if (resourceSpriteCache.TryGetValue(normalizedPath, out Sprite cachedSprite) && cachedSprite != null)
+        {
+            return cachedSprite;
+        }
+
+        // Try exact sprite path first
+        Sprite loadedSprite = Resources.Load<Sprite>(normalizedPath);
+        if (loadedSprite != null)
+        {
+            resourceSpriteCache[normalizedPath] = loadedSprite;
+            return loadedSprite;
+        }
+
+        // Fallback: try exact texture and create a sprite
+        Texture2D tex = Resources.Load<Texture2D>(normalizedPath);
+        if (tex != null)
+        {
+            var created = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), Vector2.one * 0.5f);
+            return created;
+        }
+
+        // If not found, treat the path as a folder and try to load any sprites from it
+        Sprite[] spritesInFolder = Resources.LoadAll<Sprite>(normalizedPath);
+        if (spritesInFolder != null && spritesInFolder.Length > 0)
+        {
+            int idx = UnityEngine.Random.Range(0, spritesInFolder.Length);
+            return spritesInFolder[idx];
+        }
+
+        // Fallback: try textures in folder and create a sprite
+        Texture2D[] texturesInFolder = Resources.LoadAll<Texture2D>(normalizedPath);
+        if (texturesInFolder != null && texturesInFolder.Length > 0)
+        {
+            int idx = UnityEngine.Random.Range(0, texturesInFolder.Length);
+            var tex2 = texturesInFolder[idx];
+            var created = Sprite.Create(tex2, new Rect(0, 0, tex2.width, tex2.height), Vector2.one * 0.5f);
+            return created;
+        }
+
+        Debug.LogWarning($"[DEBUG] Resources could not find sprite/texture at '{normalizedPath}'.");
+        return null;
+    }
+
+    private static string NormalizeResourcePath(string rawPath)
+    {
+        if (string.IsNullOrWhiteSpace(rawPath))
+        {
+            return null;
+        }
+
+        string trimmed = rawPath.Trim().Replace('\\', '/');
+
+        // Remove trailing slash so we can treat the value as a folder path if needed
+        while (trimmed.EndsWith("/"))
+        {
+            trimmed = trimmed.Substring(0, trimmed.Length - 1);
+        }
+
+        const string resourcesPrefix = "Resources/";
+        if (trimmed.StartsWith(resourcesPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            trimmed = trimmed.Substring(resourcesPrefix.Length);
+        }
+
+        if (trimmed.StartsWith("/"))
+        {
+            trimmed = trimmed.Substring(1);
+        }
+
+        string withoutExtension = Path.ChangeExtension(trimmed, null);
+        return withoutExtension;
+    }
+
+    private bool CanResolveOfflineSprite(string imageSource)
+    {
+        if (string.IsNullOrWhiteSpace(imageSource))
+        {
+            return false;
+        }
+
+        if (IsRemoteImageSource(imageSource))
+        {
+            // Remote images are not considered resolvable in offline mode
+            return false;
+        }
+
+        string normalizedPath = NormalizeResourcePath(imageSource);
+        if (string.IsNullOrEmpty(normalizedPath))
+        {
+            return false;
+        }
+
+        // First try direct sprite or texture
+        var direct = Resources.Load<Sprite>(normalizedPath);
+        if (direct != null)
+        {
+            return true;
+        }
+        var tex = Resources.Load<Texture2D>(normalizedPath);
+        if (tex != null)
+        {
+            return true;
+        }
+
+        // Then try as a folder containing sprites or textures
+        var allSprites = Resources.LoadAll<Sprite>(normalizedPath);
+        if (allSprites != null && allSprites.Length > 0)
+        {
+            return true;
+        }
+
+        var allTextures = Resources.LoadAll<Texture2D>(normalizedPath);
+        return allTextures != null && allTextures.Length > 0;
     }
 
     // Hàm gọi từ Button để đổi ngôn ngữ

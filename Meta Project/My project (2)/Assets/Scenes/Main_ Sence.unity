@@ -15091,6 +15091,8 @@ MonoBehaviour:
   questionBankJson: {fileID: 4900000, guid: 962689bd9a6b1874bafced1dfd803d94, type: 3}
   loadQuestionsFromJsonOnAwake: 1
   questionEntries: []
+  offlineFactJson: {fileID: 4900000, guid: 4bf6dd76a875d5649916ecc567d90a31, type: 3}
+  useOfflineWhenNoInternet: 1
 --- !u!114 &1348312701
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -17246,7 +17248,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   playerColor: 1
-  currentPathIndex: -1
+  currentPathIndex: 15
   isMoving: 0
   moveSpeed: 5
   isOnlineMode: 1
