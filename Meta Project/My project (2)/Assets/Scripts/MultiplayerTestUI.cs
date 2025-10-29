@@ -49,9 +49,20 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
     private void Start()
     {
         SetupUI();
-        ShowMainMenu();
         ClearError();
-        UpdateRejoinButton(); // Cập nhật trạng thái rejoin button khi bắt đầu
+
+        // Nếu đã ở trong phòng (online hoặc offline), hiển thị Room panel ngay
+        if ((PhotonNetwork.IsConnected || PhotonNetwork.OfflineMode) && PhotonNetwork.InRoom)
+        {
+            ShowRoomPanel();
+            UpdateUI();
+        }
+        else
+        {
+            ShowMainMenu();
+        }
+
+        UpdateRejoinButton();
     }
     
     private void SetupUI()
