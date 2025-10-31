@@ -14642,7 +14642,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &1350059362
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -14655,6 +14655,27 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8deae370f0e0ee1479455db9418182d8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  targetFPS: 72
+  disableVSync: 1
+  renderScale: 0.5
+  autoAdjustQuality: 1
+  preserveTextureDetail: 1
+  anisotropicMode: 1
+  questShadowDistance: 0
+  questShadowResolution: 0
+  questLodBias: 1
+  enableShadows: 0
+  enableRealtimeReflectionProbes: 0
+  disableTransparentMaterials: 1
+  disableTransparentParticles: 1
+  enableAdaptiveGpuBudget: 1
+  targetGpuUtilisation: 0.3
+  gpuUtilisationTolerance: 0.08
+  gpuCheckInterval: 3
+  minFoveatedLevel: 0
+  baseFoveatedLevel: 0
+  maxFoveatedLevel: 0
+  disablePostProcessing: 1
 --- !u!4 &1350059363
 Transform:
   m_ObjectHideFlags: 0
