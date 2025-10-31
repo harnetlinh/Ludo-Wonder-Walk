@@ -531,8 +531,65 @@ public class GameStateManager : MonoBehaviourPunCallbacks
 
     #endregion
 
-    #region DEBUG METHODS
+    #region RESET METHODS
+    /// <summary>
+    /// Reset all locally cached gameplay state and optionally clear any room-scope data.
+    /// </summary>
+    /// <param name="clearNetworkState">
+    /// When true and executed by the Master Client while still in a room, all persisted
+    /// room properties maintained by this manager are removed so the next game starts cleanly.
+    /// </param>
+    public void ResetLocalState(bool clearNetworkState = false)
+    {
+        currentTurnIndex = 0;
+        currentPlayerColor = PlayerColor.None;
+        lastDiceValue = null;
+        isDiceRolling = false;
+        isGameInitialized = false;
+        playerOrder.Clear();
+        hasDiceTransform = false;
+        diceWorldPosition = Vector3.zero;
+        diceWorldRotation = Quaternion.identity;
 
+        OnDiceResultChanged?.Invoke(null, PlayerColor.None);
+        OnTurnChanged?.Invoke(currentTurnIndex, currentPlayerColor);
+        OnGameInitialized?.Invoke(false);
+
+        if (DiceController.Instance != null)
+        {
+            DiceController.Instance.currentRollingPlayer = PlayerColor.None;
+            DiceController.Instance.isDiceRolling = false;
+            DiceController.Instance.ResetDiceValue();
+        }
+
+        if (GameTurnManager.Instance != null)
+        {
+            GameTurnManager.Instance.playerOrder.Clear();
+            GameTurnManager.Instance.currentPlayerIndex = 0;
+            GameTurnManager.Instance.isInitialized = false;
+        }
+
+        PieceController.ResetAllPiecesToStablePositions();
+
+        if (clearNetworkState && PhotonNetwork.IsMasterClient && PhotonNetwork.InRoom && PhotonNetwork.CurrentRoom != null)
+        {
+            var clearProps = new ExitGames.Client.Photon.Hashtable
+            {
+                ["CurrentTurnIndex"] = null,
+                ["CurrentPlayerColor"] = null,
+                ["LastDiceValue"] = null,
+                ["IsDiceRolling"] = null,
+                ["IsGameInitialized"] = null,
+                ["PlayerOrder"] = null,
+                [DiceTransformKey] = null
+            };
+
+            PhotonNetwork.CurrentRoom.SetCustomProperties(clearProps);
+        }
+    }
+    #endregion
+
+    #region DEBUG METHODS
     /// <summary>
     /// Print current game state for debugging
     /// </summary>

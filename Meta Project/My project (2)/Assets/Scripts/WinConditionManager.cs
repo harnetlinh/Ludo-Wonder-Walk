@@ -285,6 +285,13 @@ public class WinConditionManager : MonoBehaviourPunCallbacks
         }
 
         yield return new WaitForSeconds(2f);
+
+        ResetBoardToInitialState(hideWinPanel: false, resetGameEndedFlag: false);
+
+        if (GameStateManager.Instance != null)
+        {
+            GameStateManager.Instance.ResetLocalState(clearNetworkState: PhotonNetwork.IsMasterClient);
+        }
     }
 
     private IEnumerator JumpEffect(Transform pieceTransform)
@@ -310,28 +317,32 @@ public class WinConditionManager : MonoBehaviourPunCallbacks
         }
     }
 
-    public void RestartGame()
+    public void ResetBoardToInitialState(bool hideWinPanel = false, bool resetGameEndedFlag = true)
     {
-        gameEnded = false;
+        if (resetGameEndedFlag)
+        {
+            gameEnded = false;
+        }
 
-        ClearNetworkGameOverFlag();
-        EnsurePiecesToWinSynced();
-
-        List<PlayerColor> keys = new List<PlayerColor>(finishedPieces.Keys);
-        foreach (PlayerColor color in keys)
+        foreach (PlayerColor color in Enum.GetValues(typeof(PlayerColor)))
         {
             finishedPieces[color] = 0;
         }
 
-        if (winPanel != null)
-            winPanel.SetActive(false);
-
-        PieceController[] allPieces = FindObjectsByType<PieceController>(FindObjectsSortMode.None);
-        foreach (PieceController piece in allPieces)
+        if (hideWinPanel && winPanel != null)
         {
-            piece.currentPathIndex = -1;
-            piece.transform.position = piece.GetInitialStablePosition();
+            winPanel.SetActive(false);
         }
+
+        PieceController.ResetAllPiecesToStablePositions();
+    }
+
+    public void RestartGame()
+    {
+        ClearNetworkGameOverFlag();
+        EnsurePiecesToWinSynced();
+
+        ResetBoardToInitialState(hideWinPanel: true, resetGameEndedFlag: true);
 
         if (GameTurnManager.Instance != null)
         {

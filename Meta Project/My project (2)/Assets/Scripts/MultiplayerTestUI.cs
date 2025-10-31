@@ -453,7 +453,17 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
             {
                 PhotonManager.Instance.HideAllPiecesOnLeave();
             }
-        
+
+            if (WinConditionManager.Instance != null)
+            {
+                WinConditionManager.Instance.ResetBoardToInitialState(hideWinPanel: true, resetGameEndedFlag: true);
+            }
+
+            if (GameStateManager.Instance != null)
+            {
+                GameStateManager.Instance.ResetLocalState(clearNetworkState: PhotonNetwork.IsMasterClient);
+            }
+
             ShowLoadingPanel("Đang rời phòng...");
             PhotonNetwork.LeaveRoom();
         }
@@ -503,6 +513,17 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
     public override void OnLeftRoom()
     {
         Debug.Log("Đã rời phòng");
+
+        if (WinConditionManager.Instance != null)
+        {
+            WinConditionManager.Instance.ResetBoardToInitialState(hideWinPanel: true, resetGameEndedFlag: true);
+        }
+
+        if (GameStateManager.Instance != null)
+        {
+            GameStateManager.Instance.ResetLocalState();
+        }
+
         ShowMainMenu();
         UpdateUI();
         UpdateRejoinButton(); // Cập nhật rejoin button sau khi rời phòng

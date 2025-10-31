@@ -766,6 +766,54 @@ public class PieceController : MonoBehaviourPun, IPunObservable
         return initialStablePosition;
     }
 
+    public void ResetToStableStateInstant()
+    {
+        StopAllCoroutines();
+        isMoving = false;
+        isVRGrabbed = false;
+        isDragging = false;
+        pendingTableCollisionProcessing = false;
+        hasBeenPickedUpThisTurn = false;
+        hasValidMove = false;
+        pickedFromStableThisGrab = false;
+        isTouchingTable = false;
+        currentPathIndex = -1;
+        networkPathIndex = -1;
+        lastCountryPointIndex = -1;
+        lastQuestionPointIndex = -1;
+        lastPickupTurnToken = -1;
+
+        Vector3 targetPosition = initialStablePosition;
+        if (HorseRacePathManager.Instance != null)
+        {
+            List<Transform> stablePoints = HorseRacePathManager.Instance.GetStablePoints(playerColor);
+            if (stablePointIndex >= 0 && stablePointIndex < stablePoints.Count && stablePoints[stablePointIndex] != null)
+            {
+                targetPosition = stablePoints[stablePointIndex].position;
+            }
+        }
+
+        transform.position = targetPosition;
+        networkPosition = transform.position;
+        networkRotation = transform.rotation;
+
+        ResetPickupRequirement();
+    }
+
+    public static void ResetAllPiecesToStablePositions()
+    {
+        PieceController[] allPieces = FindObjectsOfType<PieceController>(true);
+        foreach (PieceController piece in allPieces)
+        {
+            if (piece == null || !piece.gameObject.scene.IsValid())
+            {
+                continue;
+            }
+
+        piece.ResetToStableStateInstant();
+        }
+    }
+
     public void ResetColor()
     {
         pieceRenderer.material.color = originalColor;
