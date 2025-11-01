@@ -222,8 +222,6 @@ public class NetworkDiceSync : MonoBehaviourPun, IPunOwnershipCallbacks
             rb.WakeUp();
         
             // Đảm bảo không có velocity cũ
-            rb.linearVelocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
         }
     }
 }

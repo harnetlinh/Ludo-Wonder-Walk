@@ -158,8 +158,6 @@ public class GrabDice : MonoBehaviourPun
             rb.useGravity = false;  // Tắt gravity khi cầm
         
             // Reset velocities
-            rb.linearVelocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
         }
 
         // THÊM: Đồng bộ với NetworkDiceSync
@@ -206,8 +204,6 @@ public class GrabDice : MonoBehaviourPun
             rb.WakeUp();
         
             // Đảm bảo không có velocity cũ
-            rb.linearVelocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
         }
         // THÊM: Đồng bộ với NetworkDiceSync
         if (networkDiceSync != null)
