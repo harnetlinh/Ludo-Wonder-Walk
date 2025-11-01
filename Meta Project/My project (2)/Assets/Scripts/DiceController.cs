@@ -314,11 +314,11 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
         isDiceRolling = true;
         if (diceResultText != null)
         {
-            diceResultText.text = "Dang xuc xac...";
+            diceResultText.text = "Rolling dice...";
         }
         if (statusText != null)
         {
-            statusText.text = $"{currentRollingPlayer} dang xuc xac...";
+            statusText.text = $"{currentRollingPlayer} rolling dice...";
         }
         LastDiceValue = null;
     }
@@ -358,8 +358,8 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
         if (statusText != null)
         {
             statusText.text = LastDiceValue.HasValue
-                ? $"{playerColor} xuc ra so {FormatDiceValue(LastDiceValue)}"
-                : $"Luot cua {playerColor} Chua xuc xac";
+                ? $"{playerColor} scoop out numbers {FormatDiceValue(LastDiceValue)}"
+                : $"Turn of {playerColor} No dice yet";
         }
 
         if (GameTurnManager.Instance != null && !GameTurnManager.Instance.isDeterminingOrder)
@@ -538,8 +538,8 @@ private void OnDiceResultChanged(int? value, PlayerColor playerColor)
     if (statusText != null)
     {
         statusText.text = value.HasValue
-            ? $"{playerColor} xuc ra so {FormatDiceValue(value)}"
-            : $"Luot cua {playerColor}\nChua xuc xac";
+            ? $"{playerColor} scoop out numbers {FormatDiceValue(value)}"
+            : $"Turn of {playerColor}\nNo dice yet";
     }
 
     if (GameTurnManager.Instance != null && !GameTurnManager.Instance.isDeterminingOrder)
@@ -566,11 +566,11 @@ private void HandleTurnChanged(int turnIndex, PlayerColor playerColor)
     {
         if (playerColor == PlayerColor.None)
         {
-            statusText.text = "Dang cho luot...";
+            statusText.text = "Waiting for your turn...";
         }
         else
         {
-            statusText.text = $"Luot cua {playerColor}\nChua xuc xac";
+            statusText.text = $"Turn of {playerColor}\nNo dice yet";
         }
     }
     
@@ -793,8 +793,8 @@ private bool ShouldForceRollForInitialization()
         if (diceResultText != null)
         {
             diceResultText.text = hasRolledThisTurn
-                ? "Ban da xuc xac trong luot nay"
-                : "Cam xuc xac len de nem";
+                ? "You have dice this turn"
+                : "Feel free to add the dice to the spring rolls.";
         }
     }
 
@@ -872,7 +872,7 @@ private bool ShouldForceRollForInitialization()
             isDiceRolling = networkIsRolling;
             if (diceResultText != null && isDiceRolling)
             {
-                diceResultText.text = "Đang xúc xắc...";
+                diceResultText.text = "Rolling the dice...";
             }
         }
 
@@ -892,10 +892,10 @@ private bool ShouldForceRollForInitialization()
         if (statusText != null)
         {
             statusText.text = isDiceRolling
-                ? $"{currentRollingPlayer} đang xúc xắc..."
+                ? $"{currentRollingPlayer} rolling dice..."
                 : (hasRolledThisTurn
-                    ? $"{currentRollingPlayer} đã xúc xắc"
-                    : $"Lượt của {currentRollingPlayer}\nChưa xúc xắc");
+                    ? $"{currentRollingPlayer} has been dice"
+                    : $"Turn of {currentRollingPlayer}\nNo dice yet");
         }
         
     }
@@ -939,11 +939,11 @@ private bool ShouldForceRollForInitialization()
         isDiceRolling = true;
         if (diceResultText != null)
         {
-            diceResultText.text = "Dang xuc xac...";
+            diceResultText.text = "Rolling the dice...";
         }
         if (statusText != null)
         {
-            statusText.text = $"{currentRollingPlayer} dang xuc xac...";
+            statusText.text = $"{currentRollingPlayer} rolling the dice...";
         }
         LastDiceValue = null;
     }
@@ -1296,17 +1296,17 @@ public void EnsurePhysicsForNewTurn()
         if (diceResultText != null)
         {
             diceResultText.text = isDiceRolling
-                ? "Dang xuc xac..."
+                ? "Rolling the dice..."
                 : $"{currentRollingPlayer}: {FormatDiceValue(LastDiceValue)}";
         }
 
         if (statusText != null)
         {
             statusText.text = isDiceRolling
-                ? $"{currentRollingPlayer} dang xuc xac..."
+                ? $"{currentRollingPlayer} rolling the dice..."
                 : (hasRolledThisTurn
-                    ? $"{currentRollingPlayer} da xuc xac"
-                    : $"Luot cua {currentRollingPlayer}\nChua xuc xac");
+                    ? $"{currentRollingPlayer} has been dice."
+                    : $"Turn of {currentRollingPlayer}\nNo dice yet");
         }
         
     }

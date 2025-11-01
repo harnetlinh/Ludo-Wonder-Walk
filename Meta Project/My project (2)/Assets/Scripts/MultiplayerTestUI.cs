@@ -121,24 +121,24 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
                 {
                     if (PhotonNetwork.InRoom && PhotonNetwork.CurrentRoom != null)
                     {
-                        connectionStatusText.text = "Đã kết nối - Trong phòng";
+                        connectionStatusText.text = "Connected - In Room";
                         connectionStatusText.color = Color.green;
                     }
                     else
                     {
-                        connectionStatusText.text = "Đã kết nối - Chưa vào phòng";
-                        connectionStatusText.color = Color.yellow;
+                        connectionStatusText.text = "Connected - Not in room yet";
+                        connectionStatusText.color = Color.darkBlue;
                     }
                 }
                 else
                 {
-                    connectionStatusText.text = "Chưa kết nối";
+                    connectionStatusText.text = "Not connected";
                     connectionStatusText.color = Color.red;
                 }
             }
             catch (System.Exception e)
             {
-                connectionStatusText.text = "Lỗi kết nối";
+                connectionStatusText.text = "Connection error";
                 connectionStatusText.color = Color.red;
                 Debug.LogError($"UI Update Error: {e.Message}");
             }
@@ -151,16 +151,16 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
             {
                 if (PhotonNetwork.InRoom && PhotonNetwork.CurrentRoom != null)
                 {
-                    roomInfoText.text = $"Phòng: {PhotonNetwork.CurrentRoom.Name}";
+                    roomInfoText.text = $"Room: {PhotonNetwork.CurrentRoom.Name}";
                 }
                 else
                 {
-                    roomInfoText.text = "Chưa vào phòng";
+                    roomInfoText.text = "Not in the room yet";
                 }
             }
             catch (System.Exception e)
             {
-                roomInfoText.text = "Lỗi thông tin phòng";
+                roomInfoText.text = "Room information error";
                 Debug.LogError($"Room Info Error: {e.Message}");
             }
         }
@@ -172,16 +172,16 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
             {
                 if (PhotonNetwork.InRoom && PhotonNetwork.CurrentRoom != null)
                 {
-                    playerCountText.text = $"Người chơi: {PhotonNetwork.CurrentRoom.PlayerCount}/{PhotonNetwork.CurrentRoom.MaxPlayers}";
+                    playerCountText.text = $"Player: {PhotonNetwork.CurrentRoom.PlayerCount}/{PhotonNetwork.CurrentRoom.MaxPlayers}";
                 }
                 else
                 {
-                    playerCountText.text = "Người chơi: 0/0";
+                    playerCountText.text = "Player: 0/0";
                 }
             }
             catch (System.Exception e)
             {
-                playerCountText.text = "Lỗi số người chơi";
+                playerCountText.text = "Player number error";
                 Debug.LogError($"Player Count Error: {e.Message}");
             }
         }
@@ -240,11 +240,11 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
             
             if (string.IsNullOrEmpty(previousRoom))
             {
-                ShowError("Không có phòng cũ để rejoin!");
+                ShowError("No old room to rejoin!");
                 return;
             }
             
-            ShowLoadingPanel($"Đang rejoin phòng '{previousRoom}'...");
+            ShowLoadingPanel($"Rejoining room '{previousRoom}'...");
             
             // Đăng ký sự kiện join room thất bại
             if (PhotonManager.Instance != null)
@@ -255,7 +255,7 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
         }
         else
         {
-            ShowError("Chưa kết nối hoặc đã trong phòng!");
+            ShowError("Not connected or already in room!");
         }
     }
     
@@ -401,7 +401,7 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
         if (roomIdInput != null)
         {
             roomIdInput.text = "";
-            roomIdInput.placeholder.GetComponent<TextMeshProUGUI>().text = "Nhập Room ID...";
+            roomIdInput.placeholder.GetComponent<TextMeshProUGUI>().text = "Enter Room ID...";
         }
     }
 
@@ -413,13 +413,13 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
 
             if (string.IsNullOrEmpty(roomId))
             {
-                ShowError("Vui lòng nhập Room ID!");
+                ShowError("Please enter Room ID!");
                 return;
             }
 
             if (roomId.Length < 4)
             {
-                ShowError("Room ID phải có ít nhất 4 ký tự!");
+                ShowError("Room ID must be at least 4 characters!");
                 return;
             }
 
@@ -430,7 +430,7 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
                 PhotonManager.Instance?.ResetPreviousRoom();
             }
 
-            ShowLoadingPanel($"Đang vào phòng '{roomId}'...");
+            ShowLoadingPanel($"Entering the room '{roomId}'...");
 
             if (PhotonManager.Instance != null)
             {
@@ -464,7 +464,7 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
                 GameStateManager.Instance.ResetLocalState(clearNetworkState: PhotonNetwork.IsMasterClient);
             }
 
-            ShowLoadingPanel("Đang rời phòng...");
+            ShowLoadingPanel("Leaving the room...");
             PhotonNetwork.LeaveRoom();
         }
     }

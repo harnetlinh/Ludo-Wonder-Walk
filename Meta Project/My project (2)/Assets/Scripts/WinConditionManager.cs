@@ -258,7 +258,7 @@ public class WinConditionManager : MonoBehaviourPunCallbacks
             winPanel.SetActive(true);
             if (winnerText != null)
             {
-                winnerText.text = $"{GetColorName(winnerColor)} chiến thắng!";
+                winnerText.text = $"{GetColorName(winnerColor)} win!";
                 winnerText.color = GetColor(winnerColor);
             }
         }
@@ -375,13 +375,13 @@ public class WinConditionManager : MonoBehaviourPunCallbacks
         switch (color)
         {
             case PlayerColor.Red:
-                return "Đỏ";
+                return "Red";
             case PlayerColor.Blue:
-                return "Xanh Dương";
+                return "Blue";
             case PlayerColor.Yellow:
-                return "Vàng";
+                return "Yellow";
             case PlayerColor.Green:
-                return "Xanh Lá";
+                return "Green";
             default:
                 return color.ToString();
         }
