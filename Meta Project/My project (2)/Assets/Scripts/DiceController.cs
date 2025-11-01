@@ -717,6 +717,12 @@ private bool ShouldForceRollForInitialization()
         if (diceFaceDetector == null) return;
         if (isMovingToPlayer) return;
 
+        if (isNetworked && PhotonNetwork.InRoom && !PhotonNetwork.IsMasterClient)
+        {
+            Debug.Log("MoveDiceToCurrentPlayer: Only master client may drive dice movement.");
+            return;
+        }
+
         if (PhotonNetwork.IsMasterClient && photonView != null && !photonView.IsMine)
         {
             photonView.RequestOwnership();
@@ -1022,12 +1028,18 @@ private bool ShouldForceRollForInitialization()
         }
 
         NetworkDiceSync diceSync = diceFaceDetector.GetComponent<NetworkDiceSync>();
-        if (diceSync != null)
+        bool isPhotonContext = photonView != null && PhotonNetwork.InRoom;
+        bool intendsToControl =
+            !isPhotonContext ||
+            PhotonNetwork.IsMasterClient ||
+            photonView.IsMine;
+
+        if (diceSync != null && intendsToControl)
         {
             diceSync.RequestOwnership();
         }
 
-        if (photonView != null && !photonView.IsMine)
+        if (intendsToControl && photonView != null && !photonView.IsMine)
         {
             float ownershipWait = 0f;
             while (!photonView.IsMine && ownershipWait < 0.5f)
@@ -1035,6 +1047,20 @@ private bool ShouldForceRollForInitialization()
                 ownershipWait += Time.deltaTime;
                 yield return null;
             }
+        }
+
+        float movementDuration = Mathf.Max(0.01f, diceMoveDuration);
+
+        if (!intendsToControl)
+        {
+            yield return new WaitForSeconds(movementDuration);
+
+            diceFaceDetector.isFirstPickup = true;
+            diceFaceDetector.hasLanded = false;
+            diceFaceDetector.ResetRollTrackingState();
+            isMovingToPlayer = false;
+            diceMoveRoutine = null;
+            yield break;
         }
 
         bool hasOwnership = photonView == null || photonView.IsMine;
@@ -1056,14 +1082,13 @@ private bool ShouldForceRollForInitialization()
         Vector3 startPosition = diceFaceDetector.transform.position;
         Quaternion startRotation = diceFaceDetector.transform.rotation;
         float elapsed = 0f;
-        float duration = Mathf.Max(0.01f, diceMoveDuration);
         float smoothingTime = Mathf.Max(0f, diceMoveSmoothingTime);
         Vector3 smoothVelocity = Vector3.zero;
 
-        while (elapsed < duration)
+        while (elapsed < movementDuration)
         {
             elapsed += Time.deltaTime;
-            float normalizedTime = Mathf.Clamp01(elapsed / duration);
+            float normalizedTime = Mathf.Clamp01(elapsed / movementDuration);
             float t = diceMoveCurve.Evaluate(normalizedTime);
 
             Vector3 lerpPosition = Vector3.Lerp(startPosition, targetPosition, t);
