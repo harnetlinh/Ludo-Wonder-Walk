@@ -794,10 +794,23 @@ public class PieceController : MonoBehaviourPun, IPunObservable
         }
 
         transform.position = targetPosition;
+        transform.rotation = SanitizeQuaternion(transform.rotation);
+
+        var rb = GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+        }
+
         networkPosition = transform.position;
-        networkRotation = transform.rotation;
+        networkRotation = SanitizeQuaternion(transform.rotation);
+        networkIsMoving = false;
+        networkIsVRGrabbed = false;
+        hasReceivedInitialNetworkState = false;
 
         ResetPickupRequirement();
+        SaveInitialStablePosition();
     }
 
     public static void ResetAllPiecesToStablePositions()
