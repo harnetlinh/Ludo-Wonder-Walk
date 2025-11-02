@@ -1,0 +1,436 @@
+﻿{
+    "facts":  [
+                  {
+                      "country":  "Vietnam",
+                      "lang":  "vi",
+                      "fact":  {
+                                   "title":  "Quần thể di tích Cố đô Huế",
+                                   "description":  "Quần thể di tích Cố đô Huế hay Quần thể kiến trúc cố đô Huế là những di tích lịch sử - văn hóa do triều Nguyễn chủ trương xây dựng trong khoảng thời gian từ đầu thế kỷ 19 đến nửa đầu thế kỷ 20 trên địa bàn kinh đô Huế xưa; nay thuộc phạm vi thành phố Huế, Việt Nam. Phần lớn các di tích này nay thuộc sự quản lý của Trung tâm Bảo tồn Di tích Cố đô Huế và được UNESCO công nhận là Di sản Văn hoá Thế giới vào ngày 11 tháng 12 năm 1993. Hiện tại, cố đô Huế đã được thủ tướng chính phủ Việt Nam đưa vào danh sách xếp hạng 130 di tích quốc gia đặc biệt quan trọng. Quần thể di tích Cố đô Huế có thể phân chia thành các cụm công trình gồm các cụm công trình ngoài Kinh thành Huế và trong kinh thành Huế.",
+                                   "image":  "FactImages/Vietnam/"
+                               }
+                  },
+                  {
+                      "country":  "Vietnam",
+                      "lang":  "en",
+                      "fact":  {
+                                   "title":  "Mỹ Sơn",
+                                   "description":  "Mỹ Sơn is a cluster of abandoned and partially ruined Shaiva Hindu temples in central Vietnam, constructed between the 4th and the 13th century by the Kings of Champa, an Indianized kingdom of the Cham people. The temples are dedicated to the veneration of God in accordance with Shaivism, wherein God is named Shiva, or The Auspicious One. In this particular complex, he is venerated under various local names, the most important of which is Bhadreshvara.",
+                                   "image":  "FactImages/Vietnam/"
+                               }
+                  },
+                  {
+                      "country":  "Japan",
+                      "lang":  "vi",
+                      "fact":  {
+                                   "title":  "Đền Itsukushima",
+                                   "description":  "Thần xã Itsukushima là một đền thờ Thần đạo nằm trên đảo Itsukushima nổi tiếng với cổng torii \"nổi\". Về mặt hành chính, nó thuộc thành phố Hatsukaichi, tỉnh Hiroshima, Nhật Bản. Quần thể này được UNESCO công nhận là Di sản thế giới, một số tòa nhà của nó cũng được Chính phủ Nhật Bản xếp hạng là các Báu vật Quốc gia.",
+                                   "image":  "FactImages/Japan/"
+                               }
+                  },
+                  {
+                      "country":  "Japan",
+                      "lang":  "en",
+                      "fact":  {
+                                   "title":  "Historic Monuments of Ancient Kyoto (Kyoto, Uji and Otsu Cities)",
+                                   "description":  "The UNESCO World Heritage Site Historic Monuments of Ancient Kyoto  encompasses 17 locations in Japan within the city of Kyoto and its immediate vicinity. In 794, the Japanese imperial family moved the capital to Heian-kyō. The locations are in three cities: Kyoto and Uji in Kyoto Prefecture; and Ōtsu in Shiga Prefecture; Uji and Ōtsu border Kyoto to the south and north, respectively. Of the monuments, 13 are Buddhist temples, three are Shinto shrines, and one is a castle. The properties include 38 buildings designated by the Japanese government as National Treasures, 160 properties designated as Important Cultural Properties, eight gardens designated as Special Places of Scenic Beauty, and four designated as Places of Scenic Beauty. UNESCO listed the site as World Heritage in 1994.",
+                                   "image":  "FactImages/Japan/"
+                               }
+                  },
+                  {
+                      "country":  "France",
+                      "lang":  "vi",
+                      "fact":  {
+                                   "title":  "Tháp Eiffel",
+                                   "description":  "Tháp Eiffel là một công trình kiến trúc bằng thép nằm trên công viên Champ-de-Mars, cạnh sông Seine, thủ đô Paris nước Pháp. Vốn có tên nguyên thủy là Tháp 300 mét, công trình này do kỹ sư Gustave Eiffel và các đồng nghiệp của mình thiết kế và xây dựng từ năm 1887 tới năm 1889 nhân dịp Triển lãm thế giới năm 1889, và cũng là dịp kỷ niệm 100 năm Cách mạng Pháp.",
+                                   "image":  "FactImages/France/"
+                               }
+                  },
+                  {
+                      "country":  "France",
+                      "lang":  "en",
+                      "fact":  {
+                                   "title":  "Palace of Versailles",
+                                   "description":  "The Palace of Versailles is a former royal residence commissioned by King Louis XIV located in Versailles, about 18 kilometres (11 mi) west of the city centre of Paris, in the Yvelines Department of Île-de-France region in France.",
+                                   "image":  "FactImages/France/"
+                               }
+                  },
+                  {
+                      "country":  "Egypt",
+                      "lang":  "vi",
+                      "fact":  {
+                                   "title":  "Kim tự tháp Keops",
+                                   "description":  "Đại Kim tự tháp Giza là Kim tự tháp Ai Cập lớn nhất và là lăng mộ của Vương triều thứ Tư của pha-ra-ông Khufu. Được xây dựng vào đầu thế kỷ 26 trước Công nguyên trong khoảng thời gian 27 năm, đây là kim tự tháp lâu đời nhất còn nằm trong Bảy kỳ quan của thế giới cổ đại, và là kim tự tháp duy nhất với phần lớn còn nguyên vẹn. Là một phần của Quần thể kim tự tháp Giza, nó giáp với Giza ngày nay tại Greater Cairo, Ai Cập.",
+                                   "image":  "FactImages/Egypt/"
+                               }
+                  },
+                  {
+                      "country":  "Egypt",
+                      "lang":  "en",
+                      "fact":  {
+                                   "title":  "Great Sphinx of Giza",
+                                   "description":  "The Great Sphinx of Giza is a limestone statue of a reclining sphinx, a mythical creature with the head of a human and the body of a lion.",
+                                   "image":  "FactImages/Egypt/"
+                               }
+                  },
+                  {
+                      "country":  "Vietnam",
+                      "lang":  "vi",
+                      "fact":  {
+                                   "title":  "Vườn quốc gia Phong Nha–Kẻ Bàng",
+                                   "description":  "Vườn quốc gia Phong Nha–Kẻ Bàng là một địa danh/di tích tiêu biểu tại Việt Nam.",
+                                   "image":  "FactImages/Vietnam/"
+                               }
+                  },
+                  {
+                      "country":  "Vietnam",
+                      "lang":  "en",
+                      "fact":  {
+                                   "title":  "Citadel of the Hồ Dynasty",
+                                   "description":  "The Citadel of the Hồ Dynasty is a 15th century stone fortress in Thanh Hóa, Vietnam. It served as the western capital of the Hồ dynasty (1398–1407) while also being an important political, economic, and cultural centre in the 16th to the 18th century. It is located in modern Tây Giai commune, Vĩnh Lộc District, in Thanh Hóa Province, in Vietnam\u0027s North Central Coast region.",
+                                   "image":  "FactImages/Vietnam/citadel-of-the-ho-dynasty.jpg"
+                               }
+                  },
+                  {
+                      "country":  "Japan",
+                      "lang":  "vi",
+                      "fact":  {
+                                   "title":  "Di tích Cố đô Nara",
+                                   "description":  "Di tích Lịch sử của Nara cổ là một Di sản thế giới của UNESCO bao gồm 8 công trình ở cố đô Nara, tỉnh Nara, Nhật Bản. Trong số này có năm công trình là chùa Phật giáo, một đền thờ Thần đạo (Shintō), một cung điện và một khu rừng nguyên sinh. Quần thể bao gồm 26 tòa nhà được Chính phú Nhật Bản chỉ định như là Quốc bảo của Nhật Bản và 53 tòa nhà được chỉ định là Tài sản Văn hóa Quan trọng của Nhật Bản. Tất cả đều được công nhận là Di tích quốc gia của Nhật Bản. Cung điện Nara được chỉ định là Di tích Lịch sử đặc biệt, còn Rừng nguyên sinh Kasugayama là Di tích tự nhiên đặc biệt. Các công trình khác đáng chú ý bao gồm Tōdai-ji, chùa Kofuku-ji cùng các công trình nằm tại Rừng nguyên sinh Kasugayama và Công viên Nara, một công viên được Bộ Giáo dục, Văn hóa, Thể thao, Khoa học và Công nghệ (MEXT) chỉ định là một Danh lam thắng cảnh. Năm 1998, UNESCO liệt kê các công trình lịch sử của Nara cổ là Di sản văn hóa của nhân loại.",
+                                   "image":  "FactImages/Japan/di-tich-co-o-nara.jpg"
+                               }
+                  },
+                  {
+                      "country":  "Japan",
+                      "lang":  "en",
+                      "fact":  {
+                                   "title":  "Shrines and Temples of Nikkō",
+                                   "description":  "The UNESCO World Heritage Site Shrines and Temples of Nikkō encompasses 103 buildings or structures and the natural setting around them. It is located in Nikkō, Tochigi Prefecture, Japan. The buildings belong to two Shinto shrines and one Buddhist temple (Rinnō-ji). Nine of the structures are designated National Treasures of Japan while the remaining 94 are Important Cultural Properties. UNESCO listed the site as World Heritage in 1999.",
+                                   "image":  "FactImages/Japan/shrines-and-temples-of-nikko.jpg"
+                               }
+                  },
+                  {
+                      "country":  "France",
+                      "lang":  "vi",
+                      "fact":  {
+                                   "title":  "Mont-Saint-Michel",
+                                   "description":  "Mont-Saint-Michel là một xã đảo ở Normandie, Pháp. Nó nằm ngoài khơi khoảng 1 km bờ biển tây bắc tại cửa sông Couesnon, gần Avranches và có diện tích khoảng 100 hécta. Tính đến hết năm 2009, dân số của hòn đảo là 44 người.",
+                                   "image":  "FactImages/France/mont-saint-michel.jpg"
+                               }
+                  },
+                  {
+                      "country":  "France",
+                      "lang":  "en",
+                      "fact":  {
+                                   "title":  "Notre-Dame de Paris",
+                                   "description":  "Notre-Dame de Paris, often referred to simply as Notre-Dame, is a medieval Catholic cathedral on the Île de la Cité, in the 4th arrondissement of Paris, France. It is the cathedral church of the Roman Catholic Archdiocese of Paris.",
+                                   "image":  "FactImages/France/notre-dame-de-paris.jpg"
+                               }
+                  },
+                  {
+                      "country":  "Egypt",
+                      "lang":  "vi",
+                      "fact":  {
+                                   "title":  "Đền Abu Simbel",
+                                   "description":  "Abu Simbel là một khu khảo cổ bao gồm hai ngôi đền lớn tạc từ đá nằm tại phia Nam Ai Cập, về phia Tây hồ Nasser và khoảng 290 km phia Tây Nam của Aswan. Ngoài các vách tường ở sân trong, bên ngoài và một ngôi nhà thờ Mặt Trời nhỏ, toàn bộ ngôi đền đều được tạc từ đá rắn. Nhờ vào sự hẻo lánh và vững chãi, ngôi đền được bảo quản tốt, bất chấp nước trong đập Aswan dâng cao. Chiếm cả mặt tiền là bốn pho tượng khổng lồ của nhà vua, cao khoảng 22 m trong khi lối vào giữa các tượng dẫn đến một loạt các phòng trong khoét sâu vào trong vách đá.",
+                                   "image":  "FactImages/Egypt/en-abu-simbel.jpg"
+                               }
+                  },
+                  {
+                      "country":  "Egypt",
+                      "lang":  "en",
+                      "fact":  {
+                                   "title":  "Karnak",
+                                   "description":  "The Karnak Temple Complex, commonly known as Karnak, comprises a vast mix of temples, pylons, chapels, and other buildings near Luxor, Egypt. Construction at the complex began during the reign of Senusret I in the Middle Kingdom and continued into the Ptolemaic Kingdom, although most of the extant buildings date from the New Kingdom. The area around Karnak was the ancient Egyptian Ipet-isut and the main place of worship of the 18th Dynastic Theban Triad, with the god Amun as its head.",
+                                   "image":  "FactImages/Egypt/karnak.jpg"
+                               }
+                  },
+                  {
+                      "country":  "Vietnam",
+                      "lang":  "vi",
+                      "fact":  {
+                                   "title":  "Văn Miếu Quốc Tử Giám",
+                                   "description":  "Văn Miếu – Quốc Tử Giám là quần thể di tích đa dạng, phong phú hàng đầu của thành phố Hà Nội, nằm ở phía Nam kinh thành Thăng Long. Quần thể kiến trúc Văn Miếu – Quốc Tử Giám bao gồm: hồ Văn, khu Văn Miếu – Quốc Tử Giám và vườn Giám, mà kiến trúc chủ thể là Văn miếu - nơi thờ Khổng Tử, và Quốc tử giám - trường đại học đầu tiên của Việt Nam. Khu Văn Miếu – Quốc Tử Giám có tường gạch vồ bao quanh, phía trong chia thành 5 lớp không gian với các kiến trúc khác nhau. Mỗi lớp không gian đó được giới hạn bởi các tường gạch có 3 cửa để thông với nhau. Từ ngoài vào trong có các cổng lần lượt là: cổng Văn Miếu, Đại Trung, Khuê Văn các, Đại Thành và cổng Thái Học. Với hơn 700 năm hoạt động đã đào tạo hàng nghìn nhân tài cho đất nước. Ngày nay, Văn Miếu – Quốc Tử Giám là nơi tham quan của du khách trong và ngoài nước đồng thời cũng là nơi khen tặng cho học sinh xuất sắc và còn là nơi tổ chức hội thơ hàng năm vào ngày rằm tháng giêng. Đặc biệt, đây còn là nơi các sĩ tử ngày nay đến \"cầu may\" trước mỗi kỳ thi quan trọng.",
+                                   "image":  "FactImages/Vietnam/van-mieu-quoc-tu-giam.jpg"
+                               }
+                  },
+                  {
+                      "country":  "Vietnam",
+                      "lang":  "en",
+                      "fact":  {
+                                   "title":  "Tràng An Scenic Landscape Complex",
+                                   "description":  "Tràng An is a scenic area near Hoa Lư, Vietnam renowned for its boat cave tours.\nOn 23 June 2014, at the 38th session of the World Heritage Committee in Doha, the Trang An Scenic Landscape Complex was inscribed as a UNESCO World Heritage Site.",
+                                   "image":  "FactImages/Vietnam/trang-an-scenic-landscape-complex.jpg"
+                               }
+                  },
+                  {
+                      "country":  "Japan",
+                      "lang":  "vi",
+                      "fact":  {
+                                   "title":  "Núi Phú Sĩ",
+                                   "description":  "Núi Phú Sĩ hay Núi Fuji  nằm trên đảo Honshu là ngọn núi cao nhất Nhật Bản với độ cao 3.776,24 trên mực nước biển, là đỉnh núi cao thứ 2 trên một hòn đảo tại châu Á và thứ 7 trên thế giới. Đây là một núi lửa dạng tầng đã ngưng hoạt động với lần phun trào cuối vào năm 1707-1708. Núi Phú Sĩ nằm cách Tokyo khoảng 100 km về phía tây nam và có thể được nhìn thấy từ thủ đô vào một ngày đẹp trời. Ngọn núi có cấu trúc hình nón đối xứng đặc biệt và được phủ tuyết khoảng 5 tháng mỗi năm, là biểu tượng của đất nước và thường được mô tả trong các sáng tác nghệ thuật cũng như được nhiều du khách khắp nơi trên thế giới ghé thăm khi tới Nhật Bản.",
+                                   "image":  "FactImages/Japan/nui-phu-si.jpg"
+                               }
+                  },
+                  {
+                      "country":  "Japan",
+                      "lang":  "en",
+                      "fact":  {
+                                   "title":  "Hiroshima Peace Memorial",
+                                   "description":  "The Hiroshima Peace Memorial , originally the Hiroshima Prefectural Industrial Promotion Hall, and now commonly called the Genbaku Dome, Atomic Bomb Dome or A-Bomb Dome , is part of Hiroshima Peace Memorial Park in Hiroshima, Japan, and was designated a UNESCO World Heritage Site in 1996.",
+                                   "image":  "FactImages/Japan/hiroshima-peace-memorial.jpg"
+                               }
+                  },
+                  {
+                      "country":  "France",
+                      "lang":  "vi",
+                      "fact":  {
+                                   "title":  "Bảo tàng Louvre",
+                                   "description":  "Louvre, hoặc Viện bảo tàng Louvre, là một viện bảo tàng nghệ thuật và di tích lịch sử tại Paris, Pháp. Có vị trí ở trung tâm lịch sử thành phố, bên bờ sông Seine, Viện bảo tàng Louvre vốn là một pháo đài được vua Philippe Auguste cho xây dựng vào năm 1190. Cuối thế kỷ XIV, dưới thời Charles V, Viện bảo tàng Louvre trở thành cung điện hoàng gia và sau đó tiếp tục được mở rộng qua các triều đại. Từ năm 1672, khi triều đình Pháp chuyển về lâu đài Versailles, bộ sưu tập hoàng gia được lưu trữ tại Louvre. Vào thời kỳ Cách mạng Pháp, cung điện trở thành bảo tàng và mở cửa vào ngày 10 tháng 8 năm 1793.",
+                                   "image":  "FactImages/France/bao-tang-louvre.png"
+                               }
+                  },
+                  {
+                      "country":  "France",
+                      "lang":  "en",
+                      "fact":  {
+                                   "title":  "Pont du Gard",
+                                   "description":  "The Pont du Gard is an ancient Roman aqueduct bridge built in the first century AD to carry water over 50 km (31 mi) to the Roman colony of Nemausus (Nîmes). It crosses the river Gardon near the town of Vers-Pont-du-Gard in southern France. The Pont du Gard is one of the best preserved Roman aqueduct bridges. It was added to UNESCO\u0027s list of World Heritage sites in 1985 because of its exceptional preservation, historical importance, and architectural ingenuity.",
+                                   "image":  "FactImages/France/pont-du-gard.jpg"
+                               }
+                  },
+                  {
+                      "country":  "Egypt",
+                      "lang":  "vi",
+                      "fact":  {
+                                   "title":  "Thung lũng các Vị Vua",
+                                   "description":  "Thung lũng các vị Vua, một số ít thường gọi là Thung lũng cổng vào các vị vua, là một thung lũng ở Ai Cập, trong khoảng thời gian gần 500 năm từ thế kỉ 16 đến thế kỉ 11 TCN người Ai Cập đã xây dựng tại đây nhiều lăng mộ cho các Pharaon và những viên quan Ai Cập có quyền lực lớn của thời kì Tân vương quốc. Thung lũng này tọa lạc bên bờ Tây của sông Nin, đối diện Thebes, nằm trong trung tâm của Theban Necropolis. Sông ngòi tại đây có 2 thung lũng: thung lũng phía đông và thung lũng phía tây.\nVới phát hiện vào năm 2006 về một căn phòng mới (KV63) và phát hiện năm 2008 về 2 lối vào hầm mộ thì thung lũng đã được biết đến là có 63 ngôi mộ và các phòng, kích thước của các ngôi mộ khác nhau và ngôi mộ lớn nhất được biết đến với hơn 120 phòng.Là nơi chôn cất chính những nhân vật hoàng gia chủ chốt của Ai Cập thời kì Tân vương quốc, ngoài ra nơi đây còn chôn cất những quý tộc có đặc quyền và quan lại Ai Cập. Các ngôi mộ hoàng gia được trang hoàng bởi những cảnh trong thần thoại của Ai Cập và cho chúng ta những đầu mối về tín ngưỡng và các nghi thức tang lễ của người Ai Cập cổ đại vào thời kì này. Tất cả các ngôi mộ dường như đã được mở và bị cướp từ thời xa xưa nhưng họ vẫn cho ta thấy được sự giàu có và quyền lực của những người cai trị vào thời gian này.",
+                                   "image":  "FactImages/Egypt/thung-lung-cac-vi-vua.jpg"
+                               }
+                  },
+                  {
+                      "country":  "Egypt",
+                      "lang":  "en",
+                      "fact":  {
+                                   "title":  "Luxor Temple",
+                                   "description":  "The Luxor Temple is a large Ancient Egyptian temple complex located on the east bank of the Nile River in the city today known as Luxor and was constructed approximately 1400 BCE. In the Egyptian language it was known as ipet resyt, \"the southern sanctuary\". It was one of the two primary temples on the east bank, the other being Karnak. Unlike the other temples in Thebes, Luxor temple is not dedicated to a cult god or a deified version of the pharaoh in death. Instead, Luxor temple is dedicated to the rejuvenation of kingship; it may have been where many of the pharaohs of Egypt were crowned in reality or conceptually.",
+                                   "image":  "FactImages/Egypt/luxor-temple.jpg"
+                               }
+                  },
+                  {
+                      "country":  "Vietnam",
+                      "lang":  "vi",
+                      "fact":  {
+                                   "title":  "Chùa Một Cột",
+                                   "description":  "Chùa Một Cột có tên ban đầu là Liên Hoa Đài (蓮花臺) tức là Đài Hoa Sen với lối kiến trúc độc đáo: một điện thờ đặt trên một cột trụ duy nhất. Liên Hoa Đài là công trình nổi tiếng nhất nằm trong quần thể kiến trúc Chùa Diên Hựu (延祐寺), có nghĩa là ngôi chùa \"Phúc lành dài lâu\". Công trình Chùa Diên Hựu nguyên bản được xây vào thời vua Lý Thái Tông mùa đông năm 1049 và hoàn thiện vào năm 1105 thời vua Lý Nhân Tông nay đã không còn. Công trình Liên Hoa Đài hiện tại nằm ở Hà Nội là một phiên bản được chỉnh sửa nhiều lần qua các thời kỳ, bị Pháp phá huỷ khi rút khỏi Hà Nội ngày 11/9/1954 và được dựng lại năm 1955 bởi kiến trúc sư Nguyễn Bá Lăng theo kiến trúc để lại từ thời Nguyễn. Đây là ngôi chùa có kiến trúc độc đáo ở Việt Nam.",
+                                   "image":  "FactImages/Vietnam/chua-mot-cot.jpg"
+                               }
+                  },
+                  {
+                      "country":  "Vietnam",
+                      "lang":  "en",
+                      "fact":  {
+                                   "title":  "Ba Bể Lake",
+                                   "description":  "Ba Bể Lake is the largest natural lake in Vietnam. It is located in Nam Mẫu commune, Ba Bể district, Bắc Kạn Province in the Northeast region of the country.",
+                                   "image":  "FactImages/Vietnam/ba-be-lake.jpg"
+                               }
+                  },
+                  {
+                      "country":  "Japan",
+                      "lang":  "vi",
+                      "fact":  {
+                                   "title":  "Chùa Kiyomizu-dera",
+                                   "description":  "Kiyomizu-dera , tên chính thức là Otowa-san Kiyomizu-dera  là một ngôi chùa độc lập ở phía đông Kyōto, Nhật Bản. Ngôi chùa này là một phần của Di sản văn hóa cố đô Kyōto theo UNESCO. Không nên nhầm lẫn ngôi chùa này với Kiyomizu-dera tại Yasugi, Shimane, là một trong 33 ngôi chùa thuộc Chặng hành hương Quan Âm qua 33 chùa vùng Chūgoku dọc phía Tây của Nhật Bản.",
+                                   "image":  "FactImages/Japan/chua-kiyomizu-dera.jpg"
+                               }
+                  },
+                  {
+                      "country":  "Japan",
+                      "lang":  "en",
+                      "fact":  {
+                                   "title":  "Kinkaku-ji",
+                                   "description":  "Kinkaku-ji , officially named Rokuon-ji , is a Zen Buddhist temple in Kyoto, Japan and a tourist attraction. It is designated as a World Heritage Site, a National Special Historic Site, a National Special Landscape, and one of the 17 Historic Monuments of Ancient Kyoto. The temple is nicknamed after its reliquary (shariden), the Golden Pavilion , whose top two floors are coated in 0.5 μm gold leaf. The current pavilion was rebuilt in 1955 after being destroyed in an arson attack.",
+                                   "image":  "FactImages/Japan/kinkaku-ji.jpg"
+                               }
+                  },
+                  {
+                      "country":  "France",
+                      "lang":  "vi",
+                      "fact":  {
+                                   "title":  "Nhà thờ Chính tòa Chartres",
+                                   "description":  "Nhà thờ Đức Bà Chartres là một nhà thờ chính tòa ở thành phố Chartres, tỉnh lỵ của tỉnh Eure-et-Loir, nằm cách Paris 80 km về phía Tây Nam. Nhà thờ Đức Bà Chartres được coi là một trong những công trình kiến trúc Gothic đẹp và lớn nhất, thể hiện tính nguyên bản nổi bật ở cả cấu trúc và các chi tiết trang trí, đặc biệt là các cổng và tượng trang trí của chúng còn gần như nguyên vẹn từ lúc ban đầu, và quần thể kính màu đặc biệt của thế kỷ XIII đã được bảo tồn một cách đáng kinh ngạc đến ngày nay, và đã được UNESCO đưa vào danh sách Di sản thế giới năm 1979. Đây là nơi đăng quang của vua Henri IV, vị vua duy nhất không làm lễ đăng quang tại Nhà thờ Đức Bà Reims theo truyền thống của hoàng gia Pháp.",
+                                   "image":  "FactImages/France/nha-tho-chinh-toa-chartres.jpg"
+                               }
+                  },
+                  {
+                      "country":  "France",
+                      "lang":  "en",
+                      "fact":  {
+                                   "title":  "Cité de Carcassonne",
+                                   "description":  "The Cité de Carcassonne is a medieval citadel located in the French city of Carcassonne, in the Aude department, Occitania region. It is situated on a hill on the right bank of the river Aude, in the south-eastern part of the city proper.",
+                                   "image":  "FactImages/France/"
+                               }
+                  },
+                  {
+                      "country":  "Egypt",
+                      "lang":  "vi",
+                      "fact":  {
+                                   "title":  "Saqqara",
+                                   "description":  "Saqqara, còn được viết là Sakkara hay Saccara, là một khu nghĩa trang của người Ai Cập cổ đại, thuộc tỉnh Giza ngày nay. Saqqara bao gồm nhiều kim tự tháp, nổi tiếng nhất trong số đó là kim tự tháp bậc thang của pharaon Djoser. Nằm cách khoảng 30 km về phía nam thủ đô Cairo, Saqqara chiếm một diện tích khoảng hơn 16 ha.",
+                                   "image":  "FactImages/Egypt/saqqara.jpg"
+                               }
+                  },
+                  {
+                      "country":  "Egypt",
+                      "lang":  "en",
+                      "fact":  {
+                                   "title":  "Philae",
+                                   "description":  "The Philae temple complex is an island-based temple complex in the reservoir of the Aswan Low Dam, downstream of the Aswan Dam and Lake Nasser, Egypt in Africa.",
+                                   "image":  "FactImages/Egypt/"
+                               }
+                  },
+                  {
+                      "country":  "Vietnam",
+                      "lang":  "vi",
+                      "fact":  {
+                                   "title":  "Hoàng thành Thăng Long",
+                                   "description":  "Hoàng thành Thăng Long là quần thể di tích gắn với lịch sử kinh thành Thăng Long - Đông Kinh và tỉnh thành Hà Nội bắt đầu từ thời kì tiền Thăng Long qua thời Đinh - Tiền Lê, phát triển mạnh dưới thời Lý, Trần, Lê và thành Hà Nội dưới triều Nguyễn. Đây là công trình kiến trúc các triều vua xây dựng trong nhiều giai đoạn lịch sử và trở thành một trong những di tích quan trọng bậc nhất trong hệ thống các di tích Việt Nam.",
+                                   "image":  "FactImages/Vietnam/hoang-thanh-thang-long.png"
+                               }
+                  },
+                  {
+                      "country":  "Vietnam",
+                      "lang":  "en",
+                      "fact":  {
+                                   "title":  "Phong Nha Cave",
+                                   "description":  "Phong Nha Cave is a cave in Phong Nha-Kẻ Bàng National Park, a UNESCO World Heritage Site in Quảng Bình Province, Vietnam. It is 7,729 meters long and contains 14 grottoes, as well as a 13,969 meter underground river. While scientists have surveyed 44.5 kilometers of passages, tourists are only allowed to explore the first 1500 meters.",
+                                   "image":  "FactImages/Vietnam/phong-nha-cave.jpg"
+                               }
+                  },
+                  {
+                      "country":  "Japan",
+                      "lang":  "vi",
+                      "fact":  {
+                                   "title":  "Chùa Hōryū-ji",
+                                   "description":  "Chùa Hōryū , tên chính thức là Chùa Học vấn Hōryū  là một ngôi chùa Phật giáo ở Ikaruga, tỉnh Nara, Nhật Bản, là một phần của Quần thể kiến trúc Phật giáo khu vực chùa Hōryū.",
+                                   "image":  "FactImages/Japan/chua-horyu-ji.jpg"
+                               }
+                  },
+                  {
+                      "country":  "Japan",
+                      "lang":  "en",
+                      "fact":  {
+                                   "title":  "Tōdai-ji",
+                                   "description":  "Tōdai-ji  is a Buddhist temple complex that was once one of the powerful Seven Great Temples, located in the city of Nara, Japan. The construction of the temple was an attempt to imitate Chinese temples from the much-admired Tang dynasty. Though it was originally founded in the year 738 CE, Tōdai-ji was not opened until the year 752 CE. The temple has undergone several reconstructions since then, with the most significant reconstruction taking place in 1709. However, it was on the verge of collapse in the late 19th century due to the weight of its huge roof. The collapse was prevented through a first restoration (1904–1913), and its current appearance was completed using rebars and concretes between 1974 and 1980. Its Great Buddha Hall houses the world\u0027s largest bronze statue of the Buddha Vairocana, known in Japanese as Daibutsu (大仏). The temple also serves as the Japanese headquarters of the Kegon school of Buddhism. The temple is a listed UNESCO World Heritage Site as one of the \"Historic Monuments of Ancient Nara\", together with seven other sites in the city of Nara.",
+                                   "image":  "FactImages/Japan/todai-ji.jpg"
+                               }
+                  },
+                  {
+                      "country":  "France",
+                      "lang":  "vi",
+                      "fact":  {
+                                   "title":  "Lascaux",
+                                   "description":  "Lascaux là một hệ thống hang động tại phía Tây Nam nước Pháp, nổi tiếng bởi những hình vẽ hang động. Chúng bao gồm những tác phẩm nổi tiếng nhất của thời kì hậu đồ đá cũ. Các bức vẽ này được ước tính 16.000 năm tuổi. Chúng chủ yếu bao gồm các bức vẽ tả thực về các loài động vật lớn, phần lớn trong số chúng được biết đến nhờ những bằng chứng hóa thạch cho thấy rằng đã tồn tại trong khu vực đó và thời gian đó. Lascaux trở thành Di sản thế giới UNESCO vào năm 1979.",
+                                   "image":  "FactImages/France/lascaux.jpg"
+                               }
+                  },
+                  {
+                      "country":  "France",
+                      "lang":  "en",
+                      "fact":  {
+                                   "title":  "Roman Theatre of Orange",
+                                   "description":  "The Roman Theatre of Orange is a Roman theatre in Orange, Vaucluse, France. It was built early in the 1st century AD. The structure is owned by the municipality of Orange and is the home of the summer opera festival, the Chorégies d\u0027Orange.",
+                                   "image":  "FactImages/France/roman-theatre-of-orange.jpg"
+                               }
+                  },
+                  {
+                      "country":  "Egypt",
+                      "lang":  "vi",
+                      "fact":  {
+                                   "title":  "Đền tang lễ của Hatshepsut",
+                                   "description":  "The mortuary temple of Hatshepsut is a mortuary temple built during the reign of Pharaoh Hatshepsut of the Eighteenth Dynasty of Egypt. Located opposite the city of Luxor, it is considered to be a masterpiece of ancient architecture. Its three massive terraces rise above the desert floor and into the cliffs of Deir el-Bahari. Hatshepsut\u0027s tomb, KV20, lies inside the same massif capped by El Qurn, a pyramid for her mortuary complex. At the edge of the desert, 1 km (0.62 mi) east, connected to the complex by a causeway, lies the accompanying valley temple. Across the river Nile, the whole structure points towards the monumental Eighth Pylon, Hatshepsut\u0027s most recognizable addition to the Temple of Karnak and the site from which the procession of the Beautiful Festival of the Valley departed. Its axes identify the temple\u0027s twin functions: its central east-west axis served to receive the barque of Amun-Re at the climax of the festival, while its north-south axis represented the life cycle of the pharaoh from coronation to rebirth.",
+                                   "image":  "FactImages/Egypt/en-tang-le-cua-hatshepsut.jpg"
+                               }
+                  },
+                  {
+                      "country":  "Egypt",
+                      "lang":  "en",
+                      "fact":  {
+                                   "title":  "Dendera Temple complex",
+                                   "description":  "The Dendera Temple complex is located about 2.5 kilometres south-east of Dendera, Egypt. It is one of the best-preserved temple complexes of ancient Egypt. The area was used as the sixth nome of Upper Egypt, south of Abydos.",
+                                   "image":  "FactImages/Egypt/dendera-temple-complex.png"
+                               }
+                  },
+                  {
+                      "country":  "Vietnam",
+                      "lang":  "vi",
+                      "fact":  {
+                                   "title":  "Hang Sơn Đoòng",
+                                   "description":  "Hang Sơn Đoòng là một hang động tự nhiên tại xã Tân Trạch, tỉnh Quảng Trị, Việt Nam. Hang Sơn Đoòng được coi là hang động tự nhiên lớn nhất thế giới đã biết. Hang này nằm trong quần thể hang động Phong Nha-Kẻ Bàng. Hang Sơn Đoòng là một phần của hệ thống ngầm nối với hơn 1500000 động khác ở Việt Nam gần biên giới với Lào. Thời báo New York xếp hạng hang Sơn Đoòng vào vị trí thứ 8 trong 52 địa danh trong danh sách những nơi nên đến năm 2014.",
+                                   "image":  "FactImages/Vietnam/hang-son-oong.jpg"
+                               }
+                  },
+                  {
+                      "country":  "Vietnam",
+                      "lang":  "en",
+                      "fact":  {
+                                   "title":  "Hạ Long Bay",
+                                   "description":  "Hạ Long Bay or Halong Bay is a bay located in Northeastern Vietnam. The name Hạ Long means \"descending dragon\". The bay is administered by the cities of Hạ Long and Cẩm Phả in Quảng Ninh province. It features thousands of limestone karsts and islets in various shapes and sizes, for which it is listed as a UNESCO World Heritage Site and a popular travel destination. The bay is also part of a larger area that includes Bai Tu Long Bay to the northeast and Cát Bà Island to the southwest, with these zones sharing similar geological, geographical, geomorphological, climate, and cultural characteristics.",
+                                   "image":  "FactImages/Vietnam/ha-long-bay.jpg"
+                               }
+                  },
+                  {
+                      "country":  "Japan",
+                      "lang":  "vi",
+                      "fact":  {
+                                   "title":  "Đền Fushimi Inari",
+                                   "description":  "Fushimi Inari-taisha  là ngôi đền chính trong hệ thống gồm 32.000 đền thờ thần Inari trên khắp Nhật Bản, nằm ở Fushimi-ku, Kyoto, Nhật Bản. Đền này tọa lạc dưới chân núi Inari, trên độ cao 233m so với mực nước biển. Đường dẫn lên đền là một hệ thống nhiều đường mòn kéo dài khoảng 4 km và mất khoảng 2 giờ để đi lên. Dọc theo các đường mòn là các ngôi đền nhỏ và nhiều cánh cổng torii nằm rải rác.",
+                                   "image":  "FactImages/Japan/en-fushimi-inari.jpg"
+                               }
+                  },
+                  {
+                      "country":  "Japan",
+                      "lang":  "en",
+                      "fact":  {
+                                   "title":  "Himeji Castle",
+                                   "description":  "Himeji Castle  is a hilltop Japanese castle complex situated in Himeji, a city in Hyōgo Prefecture, Japan. The castle is regarded as the finest surviving example of prototypical Japanese castle architecture, comprising a network of 83 rooms with advanced defensive systems from the feudal period. The castle is frequently known as Hakuro-jō or Shirasagi-jō because of its brilliant white exterior and supposed resemblance to a bird taking flight.",
+                                   "image":  "FactImages/Japan/himeji-castle.jpg"
+                               }
+                  },
+                  {
+                      "country":  "France",
+                      "lang":  "vi",
+                      "fact":  {
+                                   "title":  "Tu viện Vézelay",
+                                   "description":  "Vương cung thánh đường Thánh Maria Madalena là một nhà thờ mà tiền thân là một tu viện dòng Biển Đức ở Vézelay thuộc tỉnh Yonne, Pháp. Đây là một trong những kiệt tác kiến trúc La Mã của vùng Bourgogne-Franche-Comté và là điểm dừng chân quan trọng của các con chiên trên Con đường hành hương Saint-Jacques-de-Compostelle. Mặc dù đã bị hủy hoại ít nhiều trong thời gian Cách mạng Pháp nhưng với giá trị lịch sử và kiến trúc lớn của mình, nhà thờ Sainte-Marie-Madeleine và khu đồi lân cận đã được UNESCO công nhận là Di sản thế giới năm 1979.",
+                                   "image":  "FactImages/France/tu-vien-vezelay.jpg"
+                               }
+                  },
+                  {
+                      "country":  "France",
+                      "lang":  "en",
+                      "fact":  {
+                                   "title":  "Arles, Roman and Romanesque Monuments",
+                                   "description":  "Arles, Roman and Romanesque Monuments is an area containing a collection of monuments in the city centre of Arles, France, that has been listed as a UNESCO World Heritage Site since 1981.",
+                                   "image":  "FactImages/France/arles-roman-and-romanesque-monuments.jpg"
+                               }
+                  },
+                  {
+                      "country":  "Egypt",
+                      "lang":  "vi",
+                      "fact":  {
+                                   "title":  "Đền Edfu",
+                                   "description":  "The Temple of Edfu is an Egyptian temple located on the west bank of the Nile in Edfu, Upper Egypt. The city was known in the Hellenistic period in Koine Greek as Ἀπόλλωνος πόλις and in Latin as Apollonopolis Magna, after the chief god Horus, who was identified as Apollo under the interpretatio graeca. It is one of the best preserved shrines in Egypt. The temple was built in the Ptolemaic Kingdom between 237 and 57 BC. The inscriptions on its walls provide important information on language, myth and religion during the Hellenistic period in Egypt. In particular, the Temple\u0027s inscribed building texts \"provide details [both] of its construction, and also preserve information about the mythical interpretation of this and all other temples as the Island of Creation.\" There are also \"important scenes and inscriptions of the Sacred Drama which related the age-old conflict between Horus and Seth.\" They are translated by the Edfu-Project.",
+                                   "image":  "FactImages/Egypt/en-edfu.jpg"
+                               }
+                  },
+                  {
+                      "country":  "Egypt",
+                      "lang":  "en",
+                      "fact":  {
+                                   "title":  "Kom Ombo",
+                                   "description":  "Kom Ombo is an agricultural town in Egypt famous for the Temple of Kom Ombo. It was originally an Egyptian city called Nubt, meaning City of Gold. Nubt is also known as Nubet or Nubyt. It became a Greek settlement during the Greco-Roman Period. The town\u0027s location on the Nile, 50 kilometres (31 mi) north of Aswan (Syene), gave it some control over trade routes from Nubia to the Nile Valley, but its main rise to prominence came with the erection of the Temple of Kom Ombo in the 2nd century BC.",
+                                   "image":  "FactImages/Egypt/kom-ombo.jpg"
+                               }
+                  }
+              ]
+}

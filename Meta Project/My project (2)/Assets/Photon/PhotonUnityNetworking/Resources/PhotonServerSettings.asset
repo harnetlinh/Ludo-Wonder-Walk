@@ -19,7 +19,7 @@ MonoBehaviour:
     AppIdVoice: 
     AppVersion: V1.0
     UseNameServer: 1
-    FixedRegion: 
+    FixedRegion: hk
     Server: 
     Port: 0
     ProxyServer: 
@@ -112,6 +112,44 @@ MonoBehaviour:
   - RPC_SetDiceKinematic
   - SyncKinematicState
   - RPC_SyncPhysicsState
+  - RPC_OnPlayerLeftRoom
+  - RPC_PlayerLeftRoom
+  - SyncDiceState
+  - RPC_UpdateDiceStatus
+  - RPC_SendDiceState
+  - NetworkSyncPlayerOrder
+  - NetworkSyncCurrentPlayer
+  - RPC_ReportDiceResult
+  - RPC_SyncDiceResult
+  - RPC_UpdateUI
+  - RPC_ClientRollDice
+  - RPC_SyncTurnInfo
+  - RPC_ClientRequestRoll
+  - RPC_SyncTurnState
+  - RPC_SyncCurrentTurn
+  - RPC_FullDiceSync
+  - RPC_SyncPlayerOrder
+  - RPC_SyncTurn
+  - RPC_BeginDiceMove
+  - RPC_SyncDiceTransform
+  - RPC_RequestOwnershipReturnToMaster
+  - RPC_ReportNoMovesAvailable
+  - RPC_ReportPieceMoved
+  - RPC_RequestKickCheck
+  - RPC_HandlePieceMoved
+  - RPC_ApplyDiceReset
+  - RPC_ApplyMovementLock
+  - RPC_ConfirmPieceAction
+  - RPC_ReceiveMovementLockSnapshot
+  - RPC_ReportPieceDeployment
+  - RPC_ReportPieceMovement
+  - RPC_RequestTurnStateResync
+  - RPC_SetTurnStage
+  - RPC_HandleExtraRollAfterSix
+  - RPC_ReceiveFact
+  - RPC_RequestFact
+  - RPC_RequestQuestion
+  - RPC_ShowQuestion
   DisableAutoOpenWizard: 1
   ShowSettings: 1
   DevRegionSetOnce: 1

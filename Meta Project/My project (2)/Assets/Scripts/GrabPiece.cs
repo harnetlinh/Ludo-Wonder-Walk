@@ -271,10 +271,10 @@ public class GrabPiece : MonoBehaviourPun
 
     private IEnumerator EnablePositionOptimizerAfterDelay(float delay)
     {
-        yield return new WaitForSeconds(delay);
         if (positionOptimizer != null && !wasGrabbed)
         {
             positionOptimizer.enabled = true;
         }
+        yield break;
     }
 }

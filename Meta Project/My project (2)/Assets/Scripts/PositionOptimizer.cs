@@ -26,7 +26,7 @@ public class PositionOptimizer : MonoBehaviour
     // Thêm các biến mới
     private bool wasReleased = false;
     private float releaseTime = 0f;
-    private const float STABLE_CHECK_DELAY = 0.5f;
+    private const float STABLE_CHECK_DELAY = 0f;
 
     private void Awake()
     {

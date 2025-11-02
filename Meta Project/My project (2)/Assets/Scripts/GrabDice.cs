@@ -158,8 +158,6 @@ public class GrabDice : MonoBehaviourPun
             rb.useGravity = false;  // Tắt gravity khi cầm
         
             // Reset velocities
-            rb.linearVelocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
         }
 
         // THÊM: Đồng bộ với NetworkDiceSync
@@ -178,13 +176,6 @@ public class GrabDice : MonoBehaviourPun
         if (diceDetector != null)
         {
             diceDetector.isFirstPickup = false;
-        }
-
-        // Thông báo cho DiceController
-        if (DiceController.Instance != null && !DiceController.Instance.hasRolledThisTurn)
-        {
-            DiceController.Instance.PrepareToRoll();
-            DiceController.Instance.UpdateDiceStatus(true);
         }
 
         // Gửi RPC đồng bộ trạng thái cầm
@@ -213,8 +204,6 @@ public class GrabDice : MonoBehaviourPun
             rb.WakeUp();
         
             // Đảm bảo không có velocity cũ
-            rb.linearVelocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
         }
         // THÊM: Đồng bộ với NetworkDiceSync
         if (networkDiceSync != null)
@@ -229,10 +218,7 @@ public class GrabDice : MonoBehaviourPun
             networkDiceSync.OnEndInteraction();
         }
 
-        if (DiceController.Instance != null)
-        {
-            DiceController.Instance.UpdateDiceStatus(false);
-        }
+        
 
         // Gửi RPC đồng bộ trạng thái thả
         if (photonView != null && photonView.IsMine)
@@ -242,6 +228,8 @@ public class GrabDice : MonoBehaviourPun
             photonView.RPC("RPC_UpdateGrabbedPosition", RpcTarget.Others,
                 transform.position, transform.rotation);
         }
+
+        // Ownership will be returned to the master once the turn flow requests it.
     }
 
     private void Update()

@@ -76,6 +76,12 @@ public class NetworkDiceSync : MonoBehaviourPun, IPunOwnershipCallbacks
 
     private bool ShouldRequestOwnership()
     {
+        DiceController diceController = DiceController.Instance;
+        if (diceController != null && diceController.IsDiceMoving())
+        {
+            return false;
+        }
+
         // Chỉ request ownership khi người chơi tương tác với xúc xắc
         GrabDice grabDice = GetComponent<GrabDice>();
         if (grabDice != null && grabDice.IsBeingHeld())
@@ -222,8 +228,6 @@ public class NetworkDiceSync : MonoBehaviourPun, IPunOwnershipCallbacks
             rb.WakeUp();
         
             // Đảm bảo không có velocity cũ
-            rb.linearVelocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
         }
     }
 }

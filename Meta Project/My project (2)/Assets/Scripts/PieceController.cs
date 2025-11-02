@@ -35,8 +35,16 @@ public class PieceController : MonoBehaviourPun, IPunObservable
     protected Color originalColor;
     private Vector3 targetPosition;
     private bool hasValidMove = false;
+    private bool hasBeenPickedUpThisTurn = false;
+    private bool pickedFromStableThisGrab = false;
+    private bool pendingTableCollisionProcessing = false;
+    private int lastPickupTurnToken = -1;
+    
+    // Only treat a drop as valid once the piece physically touches the table
+    private bool isTouchingTable = false;
 
     public int lastCountryPointIndex = -1;
+    private int lastQuestionPointIndex = -1;
 
     // Simple drag variables
     private bool isDragging = false;
@@ -52,6 +60,7 @@ public class PieceController : MonoBehaviourPun, IPunObservable
     private bool networkIsMoving;
     private int networkPathIndex;
     private bool networkIsVRGrabbed;
+    private bool hasReceivedInitialNetworkState = false;
 
     // High precision sync
     private float lastNetworkTime;
@@ -60,9 +69,17 @@ public class PieceController : MonoBehaviourPun, IPunObservable
 
 
     // Thêm vào class PieceController
-private static bool isProcessingTurn = false;
-private static float lastTurnProcessingTime = 0f;
-private const float TURN_COOLDOWN = 1f; // Thời gian chờ giữa các lượt
+    private static bool isProcessingTurn = false;
+    private static float lastTurnProcessingTime = 0f;
+    private const float TURN_COOLDOWN = 1f; // Thời gian chờ giữa các lượt
+
+// Trong PieceController.cs, thêm kiểm tra trong Start:
+    private void Awake()
+    {
+        // Initialize sync targets to valid values until network data arrives
+        networkPosition = transform.position;
+        networkRotation = SanitizeQuaternion(transform.rotation);
+    }
 
     protected virtual void Start()
     {
@@ -70,26 +87,75 @@ private const float TURN_COOLDOWN = 1f; // Thời gian chờ giữa các lượt
         pieceRenderer = GetComponent<Renderer>();
         originalColor = pieceRenderer.material.color;
 
+        // THÊM: Ban đầu tắt quân cờ, sẽ được kích hoạt sau khi phân phối màu
+        gameObject.SetActive(false);
+
         // Lưu vị trí chuồng ban đầu
         SaveInitialStablePosition();
 
         // Khởi tạo camera
         mainCamera = Camera.main;
 
-        // Khởi tạo biến đồng bộ
-        if (isOnlineMode && photonView != null)
-        {
-            networkPosition = transform.position;
-            networkRotation = transform.rotation;
-            networkPathIndex = currentPathIndex;
-            networkIsMoving = isMoving;
-            networkIsVRGrabbed = isVRGrabbed;
+        // KHÔNG kiểm tra màu ở đây nữa, sẽ kiểm tra sau khi phân phối màu
+        Debug.Log($"PieceController ready for {playerColor}. Owner: {photonView?.Owner?.NickName}");
+    }
 
-            lastSentPosition = transform.position;
-            lastSentRotation = transform.rotation;
+// THÊM: Phương thức để kích hoạt quân cờ khi màu được phân phối
+    
+    public void ActivateForPlayer()
+    {
+        if (PhotonManager.Instance == null)
+        {
+            gameObject.SetActive(true);
+            return;
         }
 
-        Debug.Log($"PieceController ready for {playerColor}. Owner: {photonView.Owner?.NickName}");
+        // LUÔN KIỂM TRA: Màu này có được assigned cho player nào không
+        PlayerColor currentPlayerColor = PhotonManager.Instance.GetCurrentPlayerColor();
+        List<PlayerColor> activeColors = PhotonManager.Instance.GetRoomPlayerColors();
+    
+        bool shouldActivate = activeColors.Contains(playerColor) &&
+                              ShouldBeActiveBasedOnLimit(); // THÊM: Kiểm tra giới hạn số lượng
+
+        GameTurnManager turnManager = GameTurnManager.Instance;
+        if (turnManager != null)
+        {
+            if (turnManager.isInitialized)
+            {
+                shouldActivate &= turnManager.IsColorInGame(playerColor);
+            }
+            else
+            {
+                Debug.Log("Turn manager not initialized yet; enabling piece based on room colors");
+            }
+        }
+
+        if (shouldActivate)
+        {
+            // LƯU currentPathIndex hiện tại trước khi kích hoạt
+            int savedPathIndex = currentPathIndex;
+            
+            gameObject.SetActive(true);
+            
+            // KHÔI PHỤC currentPathIndex sau khi kích hoạt
+            currentPathIndex = savedPathIndex;
+            Debug.Log($"Activated piece for color: {playerColor} (Current player color: {currentPlayerColor})");
+
+            // Đảm bảo vật lý được kích hoạt
+            Rigidbody rb = GetComponent<Rigidbody>();
+            if (rb != null)
+            {
+                rb.isKinematic = false;
+                rb.useGravity = true;
+                rb.WakeUp();
+            }
+        }
+        else
+        {
+            gameObject.SetActive(false);
+            Debug.Log($"Deactivated piece for color: {playerColor} - not in active colors list or limit reached");
+        }
+
     }
 
     protected virtual void Update()
@@ -114,6 +180,11 @@ private const float TURN_COOLDOWN = 1f; // Thời gian chờ giữa các lượt
     /// </summary>
     private void SmoothSync()
     {
+        if (!hasReceivedInitialNetworkState)
+        {
+            // Wait for the first data packet to avoid invalid interpolation
+            return;
+        }
         // Đồng bộ tức thì khi được cầm bằng VR
         if (networkIsVRGrabbed)
         {
@@ -123,7 +194,7 @@ private const float TURN_COOLDOWN = 1f; // Thời gian chờ giữa các lượt
         else
         {
             // Sử dụng interpolation cho di chuyển bình thường
-            float lerpFactor = Time.deltaTime * networkUpdateRate;
+            float lerpFactor = Mathf.Clamp01(Time.deltaTime * networkUpdateRate);
             transform.position = Vector3.Lerp(transform.position, networkPosition, lerpFactor);
             transform.rotation = Quaternion.Lerp(transform.rotation, networkRotation, lerpFactor);
         }
@@ -132,6 +203,22 @@ private const float TURN_COOLDOWN = 1f; // Thời gian chờ giữa các lượt
         isMoving = networkIsMoving;
         currentPathIndex = networkPathIndex;
         isVRGrabbed = networkIsVRGrabbed;
+    }
+
+    private static Quaternion SanitizeQuaternion(Quaternion rotation)
+    {
+        float magnitudeSq = rotation.x * rotation.x +
+                            rotation.y * rotation.y +
+                            rotation.z * rotation.z +
+                            rotation.w * rotation.w;
+
+        const float minMagnitudeSq = 1e-6f;
+        if (magnitudeSq <= minMagnitudeSq)
+        {
+            return Quaternion.identity;
+        }
+
+        return Quaternion.Normalize(rotation);
     }
 
     //private void UpdateVisualFeedback()
@@ -193,6 +280,8 @@ private const float TURN_COOLDOWN = 1f; // Thời gian chờ giữa các lượt
         if (isMoving) return;
 
         isDragging = true;
+        pickedFromStableThisGrab = (currentPathIndex == -1);
+        MarkPiecePickedUpForCurrentTurn();
 
         Vector3 mousePos = Input.mousePosition;
         mousePos.z = Vector3.Distance(mainCamera.transform.position, transform.position);
@@ -216,14 +305,15 @@ private const float TURN_COOLDOWN = 1f; // Thời gian chờ giữa các lượt
     {
         isDragging = false;
 
-        if (IsValidDropPosition())
+        // Only process drop after actual contact with the table
+        if (isTouchingTable)
         {
-            Debug.Log($"Valid drop position for {playerColor} piece");
+            Debug.Log($"Valid drop (actual contact) for {playerColor} piece");
             ProcessValidDrop();
         }
         else
         {
-            Debug.Log($"Invalid drop position for {playerColor} piece");
+            Debug.Log($"Drop ignored: not touching table (release without contact) for {playerColor}");
         }
 
         Debug.Log($"Stopped dragging {playerColor} piece");
@@ -295,6 +385,13 @@ private const float TURN_COOLDOWN = 1f; // Thời gian chờ giữa các lượt
 
     public void Move(int steps)
     {
+        // Block programmatic moves while the piece is being held (mouse/VR)
+        if (isVRGrabbed || isDragging)
+        {
+            Debug.Log($"Ignoring Move({steps}) for {playerColor}: piece is currently held (isVRGrabbed={isVRGrabbed}, isDragging={isDragging})");
+            return;
+        }
+
         if (isMoving) return;
 
         if (isOnlineMode && photonView != null && !photonView.IsMine)
@@ -332,7 +429,17 @@ private const float TURN_COOLDOWN = 1f; // Thời gian chờ giữa các lượt
     protected virtual void MoveLocal(int steps)
     {
         Debug.Log($"MoveLocal called for {playerColor} piece, steps: {steps}");
-
+        if (isVRGrabbed || isDragging)
+        {
+            Debug.Log($"Ignoring MoveLocal for {playerColor}: piece is currently held (isVRGrabbed={isVRGrabbed}, isDragging={isDragging})");
+            return;
+        }
+        // THÊM: Kiểm tra steps hợp lệ
+        if (steps <= 0)
+        {
+            Debug.LogWarning($"Invalid steps value: {steps}, aborting move");
+            return;
+        }
         if (isMoving) return;
 
         StartCoroutine(MoveStepByStep(steps));
@@ -410,7 +517,22 @@ private const float TURN_COOLDOWN = 1f; // Thời gian chờ giữa các lượt
             transform.rotation = Quaternion.identity;
 
             // Kiểm tra và đá quân đối thủ tại điểm hiện tại
-            CheckAndKickOpponentPieces(currentPathIndex);
+            // Online: yêu cầu Master kiểm tra và phát RPC đá quân để tránh desync
+            if (isOnlineMode && PhotonNetwork.IsConnected)
+            {
+                if (PhotonNetwork.IsMasterClient)
+                {
+                    CheckAndKickOpponentPieces(currentPathIndex);
+                }
+                else
+                {
+                    photonView.RPC("RPC_RequestKickCheck", RpcTarget.MasterClient, currentPathIndex);
+                }
+            }
+            else
+            {
+                CheckAndKickOpponentPieces(currentPathIndex);
+            }
 
             // Kiểm tra nếu quân cờ đã về đích
             if (WinConditionManager.Instance.IsPieceFinished(currentPathIndex, playerColor))
@@ -456,11 +578,9 @@ private const float TURN_COOLDOWN = 1f; // Thời gian chờ giữa các lượt
         {
             GameTurnManager.Instance.PieceMoved();
 
-            // Di chuyển xúc xắc đến người chơi tiếp theo sau khi di chuyển xong
-            if (DiceController.Instance != null)
-            {
-                DiceController.Instance.MoveDiceToCurrentPlayer();
-            }
+            ResetPickupRequirement();
+            // THÊM: Reset dice value để tránh di chuyển nhiều lần
+            
         }
     }
 
@@ -545,19 +665,27 @@ private const float TURN_COOLDOWN = 1f; // Thời gian chờ giữa các lượt
 
     private void KickPieceToStable(PieceController piece)
     {
-        if (isOnlineMode && piece.photonView != null && !piece.photonView.IsMine)
+        // Online: phát RPC để mọi client đồng bộ về -1, tránh race với SmoothSync
+        if (isOnlineMode && PhotonNetwork.IsConnected)
         {
-            piece.photonView.RequestOwnership();
+            if (piece != null && piece.photonView != null)
+            {
+                piece.photonView.RPC("NetworkKickToStable", RpcTarget.All);
+            }
+            return;
         }
 
-        piece.currentPathIndex = -1;
-
-        if (piece.stablePointIndex >= 0)
+        // Offline fallback: cập nhật trực tiếp
+        if (piece != null)
         {
-            List<Transform> stablePoints = HorseRacePathManager.Instance.GetStablePoints(piece.playerColor);
-            if (piece.stablePointIndex < stablePoints.Count)
+            piece.currentPathIndex = -1;
+            if (piece.stablePointIndex >= 0)
             {
-                StartCoroutine(MovePieceToStableSmoothly(piece, stablePoints[piece.stablePointIndex].position));
+                List<Transform> stablePoints = HorseRacePathManager.Instance.GetStablePoints(piece.playerColor);
+                if (piece.stablePointIndex < stablePoints.Count)
+                {
+                    StartCoroutine(MovePieceToStableSmoothly(piece, stablePoints[piece.stablePointIndex].position));
+                }
             }
         }
     }
@@ -602,12 +730,20 @@ private const float TURN_COOLDOWN = 1f; // Thời gian chờ giữa các lượt
         {
             // Nhận dữ liệu và áp dụng ngay lập tức
             networkPosition = (Vector3)stream.ReceiveNext();
-            networkRotation = (Quaternion)stream.ReceiveNext();
+            Quaternion receivedRotation = (Quaternion)stream.ReceiveNext();
+            networkRotation = SanitizeQuaternion(receivedRotation);
             networkIsMoving = (bool)stream.ReceiveNext();
             networkPathIndex = (int)stream.ReceiveNext();
             PlayerColor receivedColor = (PlayerColor)stream.ReceiveNext();
             networkIsVRGrabbed = (bool)stream.ReceiveNext();
             float sendTime = (float)stream.ReceiveNext();
+
+            if (!hasReceivedInitialNetworkState && photonView != null && !photonView.IsMine)
+            {
+                hasReceivedInitialNetworkState = true;
+                transform.position = networkPosition;
+                transform.rotation = networkRotation;
+            }
 
             // Tính độ trễ và bù trừ nếu cần
             float latency = Time.time - sendTime;
@@ -630,15 +766,125 @@ private const float TURN_COOLDOWN = 1f; // Thời gian chờ giữa các lượt
         return initialStablePosition;
     }
 
+    public void ResetToStableStateInstant()
+    {
+        StopAllCoroutines();
+        isMoving = false;
+        isVRGrabbed = false;
+        isDragging = false;
+        pendingTableCollisionProcessing = false;
+        hasBeenPickedUpThisTurn = false;
+        hasValidMove = false;
+        pickedFromStableThisGrab = false;
+        isTouchingTable = false;
+        currentPathIndex = -1;
+        networkPathIndex = -1;
+        lastCountryPointIndex = -1;
+        lastQuestionPointIndex = -1;
+        lastPickupTurnToken = -1;
+
+        Vector3 targetPosition = initialStablePosition;
+        if (HorseRacePathManager.Instance != null)
+        {
+            List<Transform> stablePoints = HorseRacePathManager.Instance.GetStablePoints(playerColor);
+            if (stablePointIndex >= 0 && stablePointIndex < stablePoints.Count && stablePoints[stablePointIndex] != null)
+            {
+                targetPosition = stablePoints[stablePointIndex].position;
+            }
+        }
+
+        transform.position = targetPosition;
+        transform.rotation = SanitizeQuaternion(transform.rotation);
+
+        var rb = GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+        }
+
+        networkPosition = transform.position;
+        networkRotation = SanitizeQuaternion(transform.rotation);
+        networkIsMoving = false;
+        networkIsVRGrabbed = false;
+        hasReceivedInitialNetworkState = false;
+
+        ResetPickupRequirement();
+        SaveInitialStablePosition();
+    }
+
+    public static void ResetAllPiecesToStablePositions()
+    {
+        PieceController[] allPieces = FindObjectsOfType<PieceController>(true);
+        foreach (PieceController piece in allPieces)
+        {
+            if (piece == null || !piece.gameObject.scene.IsValid())
+            {
+                continue;
+            }
+
+        piece.ResetToStableStateInstant();
+        }
+    }
+
     public void ResetColor()
     {
         pieceRenderer.material.color = originalColor;
+    }
+
+    private void MarkPiecePickedUpForCurrentTurn()
+    {
+        hasBeenPickedUpThisTurn = true;
+        lastPickupTurnToken = GetCurrentTurnToken();
+    }
+
+    private bool HasPickupForCurrentTurn()
+    {
+        if (!hasBeenPickedUpThisTurn)
+        {
+            return false;
+        }
+
+        int currentToken = GetCurrentTurnToken();
+        if (currentToken < 0 || lastPickupTurnToken < 0)
+        {
+            return hasBeenPickedUpThisTurn;
+        }
+
+        return currentToken == lastPickupTurnToken;
+    }
+
+    private void ResetPickupRequirement()
+    {
+        hasBeenPickedUpThisTurn = false;
+        pickedFromStableThisGrab = false;
+        lastPickupTurnToken = -1;
+    }
+
+    private int GetCurrentTurnToken()
+    {
+        if (GameStateManager.Instance != null)
+        {
+            return GameStateManager.Instance.currentTurnIndex;
+        }
+
+        if (GameTurnManager.Instance != null)
+        {
+            return GameTurnManager.Instance.currentPlayerIndex;
+        }
+
+        return -1;
     }
 
     // Phương thức cho VR
     public void SetGrabbedState(bool grabbed)
     {
         isVRGrabbed = grabbed;
+        if (grabbed)
+        {
+            pickedFromStableThisGrab = (currentPathIndex == -1);
+            MarkPiecePickedUpForCurrentTurn();
+        }
 
         // THÊM: Đảm bảo vật lý được kích hoạt khi thả quân cờ
         if (!grabbed)
@@ -700,7 +946,9 @@ private const float TURN_COOLDOWN = 1f; // Thời gian chờ giữa các lượt
     [PunRPC]
     public void NetworkKickToStable()
     {
+        // Đặt cả currentPathIndex và networkPathIndex về -1 để tránh SmoothSync ghi đè lại
         currentPathIndex = -1;
+        networkPathIndex = -1;
         if (stablePointIndex >= 0)
         {
             List<Transform> stablePoints = HorseRacePathManager.Instance.GetStablePoints(playerColor);
@@ -711,153 +959,205 @@ private const float TURN_COOLDOWN = 1f; // Thời gian chờ giữa các lượt
         }
     }
 
-    private void OnCollisionExit(Collision collision)
+    // RPC: Master xử lý kiểm tra và đá quân để đảm bảo tính nhất quán giữa các client
+    [PunRPC]
+    private void RPC_RequestKickCheck(int pathIndex)
     {
-        if (collision.gameObject.CompareTag("Table"))
-        {
+        if (!PhotonNetwork.IsMasterClient)
+            return;
 
-            if (GameTurnManager.Instance.IsCurrentPlayer(playerColor) &&
-                DiceController.Instance.LastDiceValue == 6 &&
-                currentPathIndex == -1)
-            {
-                // Hiển thị vị trí được phép đặt (điểm xuất phát)
-                Transform startPoint = HorseRacePathManager.Instance.GetStartPoint(playerColor);
-                //HighlightManager.Instance.HighlightPosition(startPoint.position);
-            }
-        }
+        CheckAndKickOpponentPieces(pathIndex);
     }
 
-
-    // Sửa phương thức OnCollisionEnter
-private void OnCollisionEnter(Collision collision)
-{
-    if (collision.gameObject.CompareTag("Table"))
-    {
-        // KIỂM TRA: Nếu dice đang di chuyển, bỏ qua xử lý lượt
-        if (DiceController.Instance != null && DiceController.Instance.IsDiceMoving())
-        {
-            Debug.Log("Dice đang di chuyển, bỏ qua xử lý lượt từ va chạm");
-            return;
-        }
-        // ĐẢM BẢO VẬT LÝ ĐƯỢC KÍCH HOẠT KHI CHẠM BÀN
-        Rigidbody rb = GetComponent<Rigidbody>();
-        if (rb != null)
-        {
-            if (rb.isKinematic && !isMoving && !isVRGrabbed)
-            {
-                rb.isKinematic = false;
-                rb.useGravity = true;
-            }
-            rb.WakeUp();
-        }
-        
-        // THÊM: Bỏ qua nếu đang di chuyển
-        if (isMoving) return;
-
-        if (GameTurnManager.Instance == null || !GameTurnManager.Instance.isInitialized)
-        {
-            return;
-        }
-
-        // THÊM: Kiểm tra cooldown để tránh xử lý nhiều quân cùng lúc
-        if (isProcessingTurn && Time.time - lastTurnProcessingTime < TURN_COOLDOWN)
-        {
-            Debug.Log($"Ignoring collision for {playerColor} piece - turn processing in progress");
-            return;
-        }
-
-        // THÊM: Kiểm tra xem đã có quân cờ nào được xử lý trong lượt này chưa
-        if (GameTurnManager.Instance.HasPieceMovedThisTurn())
-        {
-            Debug.Log($"Ignoring collision for {playerColor} piece - another piece already moved this turn");
-            return;
-        }
-
-        // Kiểm tra nếu đặt vào vị trí hợp lệ
-        if (currentPathIndex == -1 &&
-            GameTurnManager.Instance.IsCurrentPlayer(playerColor) &&
-            DiceController.Instance.LastDiceValue == 6)
-        {
-            var stablePoints = HorseRacePathManager.Instance.GetStablePoints(playerColor);
-            bool isNearStable = stablePoints.Any(point =>
-                Vector3.Distance(transform.position, point.position) < 2.0f);
-
-            // THÊM: Kiểm tra xem quân cờ đã được xuất chưa
-            bool alreadyExited = (currentPathIndex == -1 && 
-                                 transform.position != initialStablePosition && 
-                                 Vector3.Distance(transform.position, initialStablePosition) > 1.0f);
-
-            if (isNearStable && !alreadyExited)
-            {
-                // THÊM: Đánh dấu đang xử lý lượt
-                isProcessingTurn = true;
-                lastTurnProcessingTime = Time.time;
-
+
+    private void OnCollisionExit(Collision collision)
+    {
+        if (collision.gameObject.CompareTag("Table"))
+        {
+            isTouchingTable = false;
+            pendingTableCollisionProcessing = false;
+
+            if (GameTurnManager.Instance.IsCurrentPlayer(playerColor) &&
+                DiceController.Instance.LastDiceValue == 6 &&
+                currentPathIndex == -1)
+            {
                 Transform startPoint = HorseRacePathManager.Instance.GetStartPoint(playerColor);
-
-                PositionOptimizer optimizer = GetComponent<PositionOptimizer>();
-                if (optimizer != null)
+                if (startPoint == null)
                 {
-                    optimizer.SetIsBeingHandled(true);
+                    Debug.LogWarning($"Start point not found for {playerColor}, aborting auto deploy.");
+                    return;
                 }
-
-                transform.position = startPoint.position;
-                currentPathIndex = HorseRacePathManager.Instance.commonPathPoints.IndexOf(startPoint);
-
-                Debug.Log($"{playerColor} piece moved to start point at index {currentPathIndex}");
-
-                PieceArranger arranger = GetComponent<PieceArranger>();
-                if (arranger != null)
-                {
-                    arranger.ForceArrangeCheck(true);
-                }
-
-                if (optimizer != null)
-                {
-                    StartCoroutine(ReEnableOptimizerAfterDelay(optimizer, 1f));
-                }
-
-                // THÊM: Đánh dấu quân cờ đã xuất để tránh xuất lại
-                hasValidMove = true;
-                
-                // CẬP NHẬT: Kết thúc lượt sau khi xuất quân thành công
-                GameTurnManager.Instance.PieceMoved();
-
-                // Cập nhật trạng thái của xúc xắc
-                if (DiceController.Instance != null)
-                {
-                    DiceController.Instance.hasRolledThisTurn = false; // Cho phép roll lại nếu có quân 6
-                    DiceController.Instance.diceButton.interactable = true; // Mở nút xúc xắc
-                }
-
-                // THÊM: Reset trạng thái xử lý sau một khoảng thời gian
-                StartCoroutine(ResetTurnProcessingAfterDelay(TURN_COOLDOWN));
-            }
-        }
-        else if (currentPathIndex >= 0 &&
-                GameTurnManager.Instance.IsCurrentPlayer(playerColor))
-        {
-            // THÊM: Kiểm tra xem đã có quân cờ nào di chuyển trong lượt này chưa
-            if (GameTurnManager.Instance.HasPieceMovedThisTurn())
-            {
-                Debug.Log($"Ignoring movement for {playerColor} piece - another piece already moved this turn");
-                return;
-            }
-
-            // THÊM: Đánh dấu đang xử lý lượt
-            isProcessingTurn = true;
-            lastTurnProcessingTime = Time.time;
-
-            // Di chuyển quân theo số xúc xắc
-            Move(DiceController.Instance.LastDiceValue);
-
-            // THÊM: Reset trạng thái xử lý sau một khoảng thời gian
-            StartCoroutine(ResetTurnProcessingAfterDelay(TURN_COOLDOWN));
-        }
-    }
-}
-
-// THÊM: Coroutine để reset trạng thái xử lý lượt
+                //HighlightManager.Instance.HighlightPosition(startPoint.position);
+            }
+        }
+    }
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        if (!collision.gameObject.CompareTag("Table"))
+        {
+            return;
+        }
+
+        isTouchingTable = true;
+        HandleTableCollision();
+    }
+
+    private void OnCollisionStay(Collision collision)
+    {
+        if (!collision.gameObject.CompareTag("Table"))
+        {
+            return;
+        }
+
+        isTouchingTable = true;
+        if (pendingTableCollisionProcessing)
+        {
+            HandleTableCollision();
+        }
+    }
+
+    private void HandleTableCollision()
+    {
+        if (isOnlineMode && photonView != null && !photonView.IsMine)
+        {
+            if (!pendingTableCollisionProcessing)
+            {
+                Debug.Log($"Skipping collision logic for {playerColor} - waiting for ownership.");
+            }
+            pendingTableCollisionProcessing = true;
+            return;
+        }
+
+        pendingTableCollisionProcessing = false;
+
+        if (isVRGrabbed || isDragging)
+        {
+            Debug.Log($"Ignoring collision logic for {playerColor} piece: currently held (isVRGrabbed={isVRGrabbed}, isDragging={isDragging})");
+            return;
+        }
+
+        if (DiceController.Instance != null && DiceController.Instance.IsDiceMoving())
+        {
+            Debug.Log("Dice đang di chuyển, bỏ qua xử lý lượt từ va chạm");
+            return;
+        }
+
+        Rigidbody rb = GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            if (rb.isKinematic && !isMoving && !isVRGrabbed)
+            {
+                rb.isKinematic = false;
+                rb.useGravity = true;
+            }
+            rb.WakeUp();
+        }
+
+        if (isMoving)
+        {
+            return;
+        }
+
+        if (GameTurnManager.Instance == null || !GameTurnManager.Instance.isInitialized)
+        {
+            return;
+        }
+
+        if (!HasPickupForCurrentTurn())
+        {
+            Debug.Log($"Ignoring collision for {playerColor} piece - must be picked up before moving this turn");
+            return;
+        }
+
+        if (isProcessingTurn && Time.time - lastTurnProcessingTime < TURN_COOLDOWN)
+        {
+            Debug.Log($"Ignoring collision for {playerColor} piece - turn processing in progress");
+            return;
+        }
+
+        if (GameTurnManager.Instance.HasPieceMovedThisTurn())
+        {
+            Debug.Log($"Ignoring collision for {playerColor} piece - another piece already moved this turn");
+            return;
+        }
+
+        if (pickedFromStableThisGrab &&
+            GameTurnManager.Instance.IsCurrentPlayer(playerColor) &&
+            DiceController.Instance.LastDiceValue == 6)
+        {
+            var stablePoints = HorseRacePathManager.Instance.GetStablePoints(playerColor);
+            bool isNearStable = stablePoints.Any(point =>
+                Vector3.Distance(transform.position, point.position) < 2.0f);
+
+            if (isNearStable)
+            {
+                isProcessingTurn = true;
+                lastTurnProcessingTime = Time.time;
+
+                Transform startPoint = HorseRacePathManager.Instance.GetStartPoint(playerColor);
+
+                PositionOptimizer optimizer = GetComponent<PositionOptimizer>();
+                if (optimizer != null)
+                {
+                    optimizer.SetIsBeingHandled(true);
+                }
+
+                transform.position = startPoint.position;
+                currentPathIndex = HorseRacePathManager.Instance.commonPathPoints.IndexOf(startPoint);
+
+                Debug.Log($"{playerColor} piece moved to start point at index {currentPathIndex}");
+
+                PieceArranger arranger = GetComponent<PieceArranger>();
+                if (arranger != null)
+                {
+                    arranger.ForceArrangeCheck(true);
+                }
+
+                if (optimizer != null)
+                {
+                    StartCoroutine(ReEnableOptimizerAfterDelay(optimizer, 1f));
+                }
+
+                hasValidMove = true;
+
+                GameTurnManager.Instance.PieceMoved();
+                ResetPickupRequirement();
+
+                if (DiceController.Instance != null)
+                {
+                    DiceController.Instance.hasRolledThisTurn = false;
+                }
+
+                StartCoroutine(ResetTurnProcessingAfterDelay(TURN_COOLDOWN));
+            }
+        }
+        else if (!pickedFromStableThisGrab &&
+                currentPathIndex >= 0 &&
+                GameTurnManager.Instance.IsCurrentPlayer(playerColor))
+        {
+            if (GameTurnManager.Instance.HasPieceMovedThisTurn())
+            {
+                Debug.Log($"Ignoring movement for {playerColor} piece - another piece already moved this turn");
+                return;
+            }
+
+            int? diceValue = DiceController.Instance.LastDiceValue;
+            if (!diceValue.HasValue)
+            {
+                Debug.LogWarning("Cannot move piece without a rolled dice value.");
+                return;
+            }
+
+            isProcessingTurn = true;
+            lastTurnProcessingTime = Time.time;
+
+            Move(diceValue.Value);
+
+            StartCoroutine(ResetTurnProcessingAfterDelay(TURN_COOLDOWN));
+        }
+    }
+
 private IEnumerator ResetTurnProcessingAfterDelay(float delay)
 {
     yield return new WaitForSeconds(delay);
@@ -883,11 +1183,18 @@ private IEnumerator ResetTurnProcessingAfterDelay(float delay)
 
         Debug.Log($"[DEBUG] CheckAndShowCountryInfo called for point {pointIndex}, player {playerColor}");
 
+        HorseRacePathManager pathManager = HorseRacePathManager.Instance;
+        if (pathManager == null)
+        {
+            Debug.LogWarning("[DEBUG] HorseRacePathManager.Instance is null in CheckAndShowCountryInfo");
+            return;
+        }
+
         // Sử dụng hàm mới có kiểm tra playerColor
-        if (HorseRacePathManager.Instance.IsCountryPoint(pointIndex, playerColor))
+        if (pathManager.IsCountryPoint(pointIndex, playerColor))
         {
             Debug.Log($"[DEBUG] Point {pointIndex} is a country point for {playerColor}");
-            string countryCode = HorseRacePathManager.Instance.GetCountryCode(pointIndex, playerColor);
+            string countryCode = pathManager.GetCountryCode(pointIndex, playerColor);
             Debug.Log($"[DEBUG] Country code for point {pointIndex}: {countryCode}");
 
             if (!string.IsNullOrEmpty(countryCode) && pointIndex != lastCountryPointIndex)
@@ -913,6 +1220,28 @@ private IEnumerator ResetTurnProcessingAfterDelay(float delay)
         {
             Debug.Log($"[DEBUG] Point {pointIndex} is NOT a country point for {playerColor}");
             lastCountryPointIndex = -1;
+        }
+
+        if (pathManager.IsQuestionPoint(pointIndex))
+        {
+            if (pointIndex != lastQuestionPointIndex)
+            {
+                lastQuestionPointIndex = pointIndex;
+
+                if (FactManager.Instance != null)
+                {
+                    FactManager.Instance.ShowRandomQuestionPanel();
+                    Debug.Log($"[DEBUG] Triggered question panel at point {pointIndex} for {playerColor}");
+                }
+                else
+                {
+                    Debug.LogWarning("[DEBUG] FactManager.Instance is null when trying to show question panel");
+                }
+            }
+        }
+        else if (lastQuestionPointIndex != -1)
+        {
+            lastQuestionPointIndex = -1;
         }
     }
 
@@ -956,5 +1285,34 @@ private IEnumerator ResetTurnProcessingAfterDelay(float delay)
             // Đợi một chút để hoàn thành sắp xếp
             yield return new WaitForSeconds(0.2f);
         }
+    }
+    
+    // THÊM: Kiểm tra xem quân cờ này có nên được kích hoạt dựa trên giới hạn số lượng
+    public bool ShouldBeActiveBasedOnLimit()
+    {
+        if (PhotonManager.Instance == null) 
+            return true; // Fallback cho offline mode
+
+        // Lấy tất cả quân cờ cùng màu
+        PieceController[] allPieces = FindObjectsOfType<PieceController>();
+        List<PieceController> sameColorPieces = new List<PieceController>();
+    
+        foreach (PieceController piece in allPieces)
+        {
+            if (piece.playerColor == this.playerColor)
+            {
+                sameColorPieces.Add(piece);
+            }
+        }
+
+        // Sắp xếp theo instance ID để có thứ tự nhất quán
+        sameColorPieces.Sort((a, b) => a.GetInstanceID().CompareTo(b.GetInstanceID()));
+    
+        // Tìm vị trí của quân cờ này trong danh sách
+        int myIndex = sameColorPieces.IndexOf(this);
+        int maxPieces = PhotonManager.Instance.GetMaxPiecesPerPlayer();
+
+        // Chỉ kích hoạt nếu nằm trong số lượng cho phép
+        return myIndex < maxPieces;
     }
 }

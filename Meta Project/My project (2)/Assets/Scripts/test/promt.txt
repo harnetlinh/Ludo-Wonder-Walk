@@ -1,0 +1,77 @@
+1. ban đầu master giữ owner ship
+2. client cầm dice --> owner ship dice chuyển sang phía client --> đồng bộ dice cho master và các client khác
+3. khi thả dice --> dice dừng hẳn --> nhận diện mặt trên cùng của dice --> player nhận số roll là số đó master nhận được số đã roll ra từ client
+3.1. Nếu như số vừa roll ra là 6 hoặc là có quân cờ trên bàn cờ có thể đi thì đợi tới khi đi xong --> client trả owner ship dice cho master --> master xác nhạn là đã đi xong --> chuyển tới lượt và di chuyển dice tới vị trí của màu tiếp theo
+3.2. Nếu như roll ra số mà ko có quân nào đi thì --> client trả owner ship dice cho master -- thông báo cho master là ko có quân nào đi được --> master xác nhạn là đã đi xong --> chuyển tới lượt và di chuyển dice tới vị trí của màu tiếp theo
+
+
+
+4. khi dice roll ra 6 --> player (client hoặc master) xuất quân --> khóa peice di chuyển phía màu đó ở toàn bộ player --> reset giá trị dice và cho phép player roll tiếp --> player roll (nếu không ra 6) --> cho đi piece --> khóa peice di chuyển phía màu đó ở toàn bộ player  --> đợi piece đi xong bước cuối cùng  --> khóa peice di chuyển phía màu đó ở toàn bộ player --> thông báo cho master endturn --> endturn và  master chuyển lượt ngay lập tức 
+4.1 nếu piece có thể di chuyển quân dù ko roll ra 6 --> cho đi piece --> khóa peice di chuyển phía màu đó ở toàn bộ player  --> đợi piece đi xong bước cuối cùng   --> khóa peice di chuyển phía màu đó ở toàn bộ player --> thông báo cho master endturn --> endturn và  master chuyển lượt ngay lập tức 
+
+
+
+┌──────────────┐
+│    START     │
+└──────┬───────┘
+       │
+       ▼
+┌───────────────────────────────────────┐
+│Master giữ ownership của dice ban đầu. │
+└──────────────┬────────────────────────┘
+               │
+               ▼
+     ┌─────────────────────────┐
+     │Client cố gắng cầm dice? │
+     └──────┬──────────────────┘
+            │Không
+            │  └─► Quay lại chờ client.
+            │
+            ▼ Có
+┌────────────────────────────────────────────────┐
+│Chuyển ownership dice sang client.              │
+│Phát tín hiệu khóa dice cho master + client khác│
+└──────────────────┬─────────────────────────────┘
+                   │
+                   ▼
+          ┌─────────────────────┐
+          │Client thả dice?     │
+          └──────┬──────────────┘
+                 │Không
+                 │  └─► Tiếp tục theo dõi.
+                 │
+                 ▼ Có
+┌───────────────────────────────────────────────────────────────┐
+│Dice dừng hẳn → nhận diện mặt trên.                            │
+│Player thấy giá trị, master nhận kết quả từ client.            │
+└────────────────────┬──────────────────────────────────────────┘
+                     │
+                     ▼
+        ┌────────────────────────────────────────┐
+        │Kết quả = 6 HOẶC có quân có thể đi?     │
+        └─────────┬──────────────────────────────┘
+                  │Không                         │Có
+                  │                              │
+                  ▼                              ▼
+┌───────────────────────────────┐      ┌─────────────────────────────────────┐
+│Client trả ownership cho master│      │ Client giữ ownership cho đến khi đi │
+│ngay.                          │      │ xong quân/các quân hợp lệ.          │
+└──────────────┬────────────────┘      └──────────────────┬──────────────────┘
+               │                                          │
+               ▼                                          ▼
+   ┌──────────────────────────────┐       ┌─────────────────────────────────────────┐
+   │Master xác nhận lượt kết thúc,│       │Sau khi di chuyển xong, client trả lại   │
+   │tiến hành chuyển lượt.        │       │ownership cho master.                    │
+   └──────────────┬───────────────┘       └──────────────────┬──────────────────────┘
+                  │                                          │
+                  └──────────────┬───────────────────────────┘
+                                 ▼
+                ┌──────────────────────────────────────────────┐
+                │Master cập nhật GameState, chuyển lượt, di    │
+                │chuyển dice tới vị trí player kế tiếp.        │
+                └─────────────────┬────────────────────────────┘
+                                  │
+                                  ▼
+                          ┌──────────────┐
+                          │    END       │
+                          └──────────────┘
