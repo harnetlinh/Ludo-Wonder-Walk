@@ -109,7 +109,7 @@ public class FactManager : MonoBehaviourPunCallbacks
     [Tooltip("If true, skips API calls when there is no internet connection and relies on the offline JSON.")]
     public bool useOfflineWhenNoInternet = true;
 
-    private string apiUrl = "https://ludo-mr.sapca.ai.vn/api/fact";
+    private string apiUrl = "";
 
     private FactResponse factVi;
     private FactResponse factEn;
