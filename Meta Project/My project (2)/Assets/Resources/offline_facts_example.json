@@ -2,91 +2,10 @@
     "facts":  [
                   {
                       "country":  "Vietnam",
-                      "lang":  "vi",
-                      "fact":  {
-                                   "title":  "Quần thể di tích Cố đô Huế",
-                                   "description":  "Quần thể di tích Cố đô Huế hay Quần thể kiến trúc cố đô Huế là những di tích lịch sử - văn hóa do triều Nguyễn chủ trương xây dựng trong khoảng thời gian từ đầu thế kỷ 19 đến nửa đầu thế kỷ 20 trên địa bàn kinh đô Huế xưa; nay thuộc phạm vi thành phố Huế, Việt Nam. Phần lớn các di tích này nay thuộc sự quản lý của Trung tâm Bảo tồn Di tích Cố đô Huế và được UNESCO công nhận là Di sản Văn hoá Thế giới vào ngày 11 tháng 12 năm 1993. Hiện tại, cố đô Huế đã được thủ tướng chính phủ Việt Nam đưa vào danh sách xếp hạng 130 di tích quốc gia đặc biệt quan trọng. Quần thể di tích Cố đô Huế có thể phân chia thành các cụm công trình gồm các cụm công trình ngoài Kinh thành Huế và trong kinh thành Huế.",
-                                   "image":  "FactImages/Vietnam/"
-                               }
-                  },
-                  {
-                      "country":  "Vietnam",
                       "lang":  "en",
                       "fact":  {
-                                   "title":  "Mỹ Sơn",
-                                   "description":  "Mỹ Sơn is a cluster of abandoned and partially ruined Shaiva Hindu temples in central Vietnam, constructed between the 4th and the 13th century by the Kings of Champa, an Indianized kingdom of the Cham people. The temples are dedicated to the veneration of God in accordance with Shaivism, wherein God is named Shiva, or The Auspicious One. In this particular complex, he is venerated under various local names, the most important of which is Bhadreshvara.",
-                                   "image":  "FactImages/Vietnam/"
-                               }
-                  },
-                  {
-                      "country":  "Japan",
-                      "lang":  "vi",
-                      "fact":  {
-                                   "title":  "Đền Itsukushima",
-                                   "description":  "Thần xã Itsukushima là một đền thờ Thần đạo nằm trên đảo Itsukushima nổi tiếng với cổng torii \"nổi\". Về mặt hành chính, nó thuộc thành phố Hatsukaichi, tỉnh Hiroshima, Nhật Bản. Quần thể này được UNESCO công nhận là Di sản thế giới, một số tòa nhà của nó cũng được Chính phủ Nhật Bản xếp hạng là các Báu vật Quốc gia.",
-                                   "image":  "FactImages/Japan/"
-                               }
-                  },
-                  {
-                      "country":  "Japan",
-                      "lang":  "en",
-                      "fact":  {
-                                   "title":  "Historic Monuments of Ancient Kyoto (Kyoto, Uji and Otsu Cities)",
-                                   "description":  "The UNESCO World Heritage Site Historic Monuments of Ancient Kyoto  encompasses 17 locations in Japan within the city of Kyoto and its immediate vicinity. In 794, the Japanese imperial family moved the capital to Heian-kyō. The locations are in three cities: Kyoto and Uji in Kyoto Prefecture; and Ōtsu in Shiga Prefecture; Uji and Ōtsu border Kyoto to the south and north, respectively. Of the monuments, 13 are Buddhist temples, three are Shinto shrines, and one is a castle. The properties include 38 buildings designated by the Japanese government as National Treasures, 160 properties designated as Important Cultural Properties, eight gardens designated as Special Places of Scenic Beauty, and four designated as Places of Scenic Beauty. UNESCO listed the site as World Heritage in 1994.",
-                                   "image":  "FactImages/Japan/"
-                               }
-                  },
-                  {
-                      "country":  "France",
-                      "lang":  "vi",
-                      "fact":  {
-                                   "title":  "Tháp Eiffel",
-                                   "description":  "Tháp Eiffel là một công trình kiến trúc bằng thép nằm trên công viên Champ-de-Mars, cạnh sông Seine, thủ đô Paris nước Pháp. Vốn có tên nguyên thủy là Tháp 300 mét, công trình này do kỹ sư Gustave Eiffel và các đồng nghiệp của mình thiết kế và xây dựng từ năm 1887 tới năm 1889 nhân dịp Triển lãm thế giới năm 1889, và cũng là dịp kỷ niệm 100 năm Cách mạng Pháp.",
-                                   "image":  "FactImages/France/"
-                               }
-                  },
-                  {
-                      "country":  "France",
-                      "lang":  "en",
-                      "fact":  {
-                                   "title":  "Palace of Versailles",
-                                   "description":  "The Palace of Versailles is a former royal residence commissioned by King Louis XIV located in Versailles, about 18 kilometres (11 mi) west of the city centre of Paris, in the Yvelines Department of Île-de-France region in France.",
-                                   "image":  "FactImages/France/"
-                               }
-                  },
-                  {
-                      "country":  "Egypt",
-                      "lang":  "vi",
-                      "fact":  {
-                                   "title":  "Kim tự tháp Keops",
-                                   "description":  "Đại Kim tự tháp Giza là Kim tự tháp Ai Cập lớn nhất và là lăng mộ của Vương triều thứ Tư của pha-ra-ông Khufu. Được xây dựng vào đầu thế kỷ 26 trước Công nguyên trong khoảng thời gian 27 năm, đây là kim tự tháp lâu đời nhất còn nằm trong Bảy kỳ quan của thế giới cổ đại, và là kim tự tháp duy nhất với phần lớn còn nguyên vẹn. Là một phần của Quần thể kim tự tháp Giza, nó giáp với Giza ngày nay tại Greater Cairo, Ai Cập.",
-                                   "image":  "FactImages/Egypt/"
-                               }
-                  },
-                  {
-                      "country":  "Egypt",
-                      "lang":  "en",
-                      "fact":  {
-                                   "title":  "Great Sphinx of Giza",
-                                   "description":  "The Great Sphinx of Giza is a limestone statue of a reclining sphinx, a mythical creature with the head of a human and the body of a lion.",
-                                   "image":  "FactImages/Egypt/"
-                               }
-                  },
-                  {
-                      "country":  "Vietnam",
-                      "lang":  "vi",
-                      "fact":  {
-                                   "title":  "Vườn quốc gia Phong Nha–Kẻ Bàng",
-                                   "description":  "Vườn quốc gia Phong Nha–Kẻ Bàng là một địa danh/di tích tiêu biểu tại Việt Nam.",
-                                   "image":  "FactImages/Vietnam/"
-                               }
-                  },
-                  {
-                      "country":  "Vietnam",
-                      "lang":  "en",
-                      "fact":  {
-                                   "title":  "Citadel of the Hồ Dynasty",
-                                   "description":  "The Citadel of the Hồ Dynasty is a 15th century stone fortress in Thanh Hóa, Vietnam. It served as the western capital of the Hồ dynasty (1398–1407) while also being an important political, economic, and cultural centre in the 16th to the 18th century. It is located in modern Tây Giai commune, Vĩnh Lộc District, in Thanh Hóa Province, in Vietnam\u0027s North Central Coast region.",
+                                   "title":  "Citadel of the Ho Dynasty",
+                                   "description":  "The Citadel of the Ho Dynasty is a 15th century stone fortress in Thanh Hoa, Vietnam. It served as the western capital of the Ho dynasty (1398–1407) while also being an important political, economic, and cultural center in the 16th to the 18th century. It is located in modern Tay Giai commune, Vinh Loc District, in Thanh Hoa Province, in Vietnam's North Central Coast region.",
                                    "image":  "FactImages/Vietnam/citadel-of-the-ho-dynasty.jpg"
                                }
                   },
@@ -157,8 +76,8 @@
                       "country":  "Vietnam",
                       "lang":  "en",
                       "fact":  {
-                                   "title":  "Tràng An Scenic Landscape Complex",
-                                   "description":  "Tràng An is a scenic area near Hoa Lư, Vietnam renowned for its boat cave tours.\nOn 23 June 2014, at the 38th session of the World Heritage Committee in Doha, the Trang An Scenic Landscape Complex was inscribed as a UNESCO World Heritage Site.",
+                                   "title":  "Trang An Scenic Landscape Complex",
+                                  "description": "Trang An is a scenic area near Hoa Lu, Vietnam famous for its boat cave tours.\nOn June 23, 2014, at the 38th session of the World Heritage Committee in Doha, the Trang An Scenic Landscape Complex was inscribed as a UNESCO World Heritage Site.",
                                    "image":  "FactImages/Vietnam/trang-an-scenic-landscape-complex.jpg"
                                }
                   },
@@ -229,8 +148,8 @@
                       "country":  "Vietnam",
                       "lang":  "en",
                       "fact":  {
-                                   "title":  "Ba Bể Lake",
-                                   "description":  "Ba Bể Lake is the largest natural lake in Vietnam. It is located in Nam Mẫu commune, Ba Bể district, Bắc Kạn Province in the Northeast region of the country.",
+                                   "title":  "Ba Be Lake",
+                                    "description": "Ba Be Lake is the largest natural lake in Vietnam. It is located in Nam Mau commune, Ba Be district, Bac Kan Province in the Northeast region of the country.",
                                    "image":  "FactImages/Vietnam/ba-be-lake.jpg"
                                }
                   },
@@ -261,15 +180,7 @@
                                    "image":  "FactImages/France/nha-tho-chinh-toa-chartres.jpg"
                                }
                   },
-                  {
-                      "country":  "France",
-                      "lang":  "en",
-                      "fact":  {
-                                   "title":  "Cité de Carcassonne",
-                                   "description":  "The Cité de Carcassonne is a medieval citadel located in the French city of Carcassonne, in the Aude department, Occitania region. It is situated on a hill on the right bank of the river Aude, in the south-eastern part of the city proper.",
-                                   "image":  "FactImages/France/"
-                               }
-                  },
+                  
                   {
                       "country":  "Egypt",
                       "lang":  "vi",
@@ -279,15 +190,7 @@
                                    "image":  "FactImages/Egypt/saqqara.jpg"
                                }
                   },
-                  {
-                      "country":  "Egypt",
-                      "lang":  "en",
-                      "fact":  {
-                                   "title":  "Philae",
-                                   "description":  "The Philae temple complex is an island-based temple complex in the reservoir of the Aswan Low Dam, downstream of the Aswan Dam and Lake Nasser, Egypt in Africa.",
-                                   "image":  "FactImages/Egypt/"
-                               }
-                  },
+                  
                   {
                       "country":  "Vietnam",
                       "lang":  "vi",
@@ -302,7 +205,7 @@
                       "lang":  "en",
                       "fact":  {
                                    "title":  "Phong Nha Cave",
-                                   "description":  "Phong Nha Cave is a cave in Phong Nha-Kẻ Bàng National Park, a UNESCO World Heritage Site in Quảng Bình Province, Vietnam. It is 7,729 meters long and contains 14 grottoes, as well as a 13,969 meter underground river. While scientists have surveyed 44.5 kilometers of passages, tourists are only allowed to explore the first 1500 meters.",
+                                  "description": "Phong Nha Cave is a cave in Phong Nha-Ke Bang National Park, a UNESCO World Heritage Site in Quang Binh Province, Vietnam. It is 7,729 meters long and contains 14 grottoes, as well as a 13,969 meter underground river. While scientists have surveyed 44.5 kilometers of passages, tourists are only allowed to explore the first 1500 meters.",
                                    "image":  "FactImages/Vietnam/phong-nha-cave.jpg"
                                }
                   },
@@ -320,7 +223,7 @@
                       "lang":  "en",
                       "fact":  {
                                    "title":  "Tōdai-ji",
-                                   "description":  "Tōdai-ji  is a Buddhist temple complex that was once one of the powerful Seven Great Temples, located in the city of Nara, Japan. The construction of the temple was an attempt to imitate Chinese temples from the much-admired Tang dynasty. Though it was originally founded in the year 738 CE, Tōdai-ji was not opened until the year 752 CE. The temple has undergone several reconstructions since then, with the most significant reconstruction taking place in 1709. However, it was on the verge of collapse in the late 19th century due to the weight of its huge roof. The collapse was prevented through a first restoration (1904–1913), and its current appearance was completed using rebars and concretes between 1974 and 1980. Its Great Buddha Hall houses the world\u0027s largest bronze statue of the Buddha Vairocana, known in Japanese as Daibutsu (大仏). The temple also serves as the Japanese headquarters of the Kegon school of Buddhism. The temple is a listed UNESCO World Heritage Site as one of the \"Historic Monuments of Ancient Nara\", together with seven other sites in the city of Nara.",
+                                   "description":  "Tōdai-ji is a historic Buddhist temple complex in Nara, Japan, originally founded in 738 CE and opened in 752 CE. Modeled after Tang-dynasty Chinese temples, it has been rebuilt several times, with major reconstructions in 1709 and restorations from 1904–1913 and 1974–1980 to prevent structural collapse. Its Great Buddha Hall contains the world’s largest bronze statue of Vairocana (Daibutsu). Tōdai-ji is also the headquarters of the Kegon school of Buddhism and is recognized as a UNESCO World Heritage Site within the “Historic Monuments of Ancient Nara.",
                                    "image":  "FactImages/Japan/todai-ji.jpg"
                                }
                   },
@@ -347,7 +250,7 @@
                       "lang":  "vi",
                       "fact":  {
                                    "title":  "Đền tang lễ của Hatshepsut",
-                                   "description":  "The mortuary temple of Hatshepsut is a mortuary temple built during the reign of Pharaoh Hatshepsut of the Eighteenth Dynasty of Egypt. Located opposite the city of Luxor, it is considered to be a masterpiece of ancient architecture. Its three massive terraces rise above the desert floor and into the cliffs of Deir el-Bahari. Hatshepsut\u0027s tomb, KV20, lies inside the same massif capped by El Qurn, a pyramid for her mortuary complex. At the edge of the desert, 1 km (0.62 mi) east, connected to the complex by a causeway, lies the accompanying valley temple. Across the river Nile, the whole structure points towards the monumental Eighth Pylon, Hatshepsut\u0027s most recognizable addition to the Temple of Karnak and the site from which the procession of the Beautiful Festival of the Valley departed. Its axes identify the temple\u0027s twin functions: its central east-west axis served to receive the barque of Amun-Re at the climax of the festival, while its north-south axis represented the life cycle of the pharaoh from coronation to rebirth.",
+                                   "description":  "The mortuary temple of Hatshepsut, built for the Eighteenth Dynasty pharaoh, stands at Deir el-Bahari near Luxor and is considered a masterpiece of ancient Egyptian architecture. Its three terraces rise into the cliffs, with Hatshepsut’s tomb (KV20) located in the same mountain. A causeway links the temple to its valley temple 1 km east. Oriented toward the Eighth Pylon at Karnak, the complex reflects its dual purpose: receiving the barque of Amun-Re during the Beautiful Festival of the Valley and symbolizing the pharaoh’s journey from coronation to rebirth.",
                                    "image":  "FactImages/Egypt/en-tang-le-cua-hatshepsut.jpg"
                                }
                   },
@@ -373,8 +276,8 @@
                       "country":  "Vietnam",
                       "lang":  "en",
                       "fact":  {
-                                   "title":  "Hạ Long Bay",
-                                   "description":  "Hạ Long Bay or Halong Bay is a bay located in Northeastern Vietnam. The name Hạ Long means \"descending dragon\". The bay is administered by the cities of Hạ Long and Cẩm Phả in Quảng Ninh province. It features thousands of limestone karsts and islets in various shapes and sizes, for which it is listed as a UNESCO World Heritage Site and a popular travel destination. The bay is also part of a larger area that includes Bai Tu Long Bay to the northeast and Cát Bà Island to the southwest, with these zones sharing similar geological, geographical, geomorphological, climate, and cultural characteristics.",
+                                   "title":  "Ha Long Bay",
+                                   "description":  "Ha Long Bay or Halong Bay is a bay located in Northeastern Vietnam. The name Ha Long means \"descending dragon\". The bay is administered by the cities of Ha Long and Cam Pha in Quang Ninh province. It features thousands of limestone karsts and islets in various shapes and sizes, for which it is listed as a UNESCO World Heritage Site and a popular travel destination. The bay is also part of a larger area that includes Bai Tu Long Bay to the northeast and Cat Ba Island to the southwest, with these zones sharing similar geological, geographical, geomorphological, climate, and cultural characteristics.",
                                    "image":  "FactImages/Vietnam/ha-long-bay.jpg"
                                }
                   },
@@ -419,7 +322,7 @@
                       "lang":  "vi",
                       "fact":  {
                                    "title":  "Đền Edfu",
-                                   "description":  "The Temple of Edfu is an Egyptian temple located on the west bank of the Nile in Edfu, Upper Egypt. The city was known in the Hellenistic period in Koine Greek as Ἀπόλλωνος πόλις and in Latin as Apollonopolis Magna, after the chief god Horus, who was identified as Apollo under the interpretatio graeca. It is one of the best preserved shrines in Egypt. The temple was built in the Ptolemaic Kingdom between 237 and 57 BC. The inscriptions on its walls provide important information on language, myth and religion during the Hellenistic period in Egypt. In particular, the Temple\u0027s inscribed building texts \"provide details [both] of its construction, and also preserve information about the mythical interpretation of this and all other temples as the Island of Creation.\" There are also \"important scenes and inscriptions of the Sacred Drama which related the age-old conflict between Horus and Seth.\" They are translated by the Edfu-Project.",
+                                   "description":  "The Temple of Edfu, on the west bank of the Nile in Upper Egypt, is one of the best-preserved ancient Egyptian temples. Built during the Ptolemaic period (237–57 BC), it stood in a city known in Greek and Latin as Apollonopolis Magna, honoring Horus—identified with Apollo. Its inscriptions provide key information on Hellenistic-era language, myth, and religion, including details of the temple’s construction, its symbolic role as the Island of Creation, and scenes depicting the mythical conflict between Horus and Seth, translated by the Edfu Project.",
                                    "image":  "FactImages/Egypt/en-edfu.jpg"
                                }
                   },

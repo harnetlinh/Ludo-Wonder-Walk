@@ -628,7 +628,7 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
 
                 if (diceController.statusText != null)
                 {
-                    diceController.statusText.text = $"Lượt của {currentPlayer}\nHãy di chuyển quân cờ!";
+                    diceController.statusText.text = $"Turn of {currentPlayer}\nMove the pieces!";
                 }
 
                 noMovesNotifiedThisTurn = false;
@@ -637,7 +637,7 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
             {
                 if (diceController.statusText != null)
                 {
-                    diceController.statusText.text = $"Lượt của {currentPlayer}\nKhông có nước đi hợp lệ";
+                    diceController.statusText.text = $"Turn of {currentPlayer}\nNo legal move";
                 }
             }
         }
@@ -731,7 +731,41 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
 
             if (diceController.statusText != null)
             {
-                diceController.statusText.text = $"Lượt của {reportedColor}\nKhông có nước đi hợp lệ";
+                diceController.statusText.text = $"Turn of {reportedColor}\nNo legal move";
+            }
+        }
+
+        CancelInvoke(nameof(EndTurn));
+        Invoke(nameof(EndTurn), NoMoveEndTurnDelaySeconds);
+    }
+
+    public void ForceSkipTurnDueToQuestionPenalty(PlayerColor penalizedColor)
+    {
+        bool isNetworked = PhotonNetwork.IsConnected && PhotonNetwork.InRoom;
+        if (isNetworked && !PhotonNetwork.IsMasterClient)
+        {
+            Debug.LogWarning("ForceSkipTurnDueToQuestionPenalty can only be invoked on the Master Client.");
+            return;
+        }
+
+        if (!IsCurrentPlayer(penalizedColor))
+        {
+            if (!ForceSetCurrentPlayer(penalizedColor))
+            {
+                Debug.LogWarning($"Unable to align turn for penalty skip targeting {penalizedColor}.");
+                return;
+            }
+        }
+
+        DiceController diceController = DiceController.Instance;
+        if (diceController != null)
+        {
+            diceController.ResetDiceValue();
+            diceController.canRollAgain = false;
+
+            if (diceController.statusText != null)
+            {
+                diceController.statusText.text = $"{penalizedColor} lost turn for wrong answer";
             }
         }
 
@@ -1098,7 +1132,7 @@ public class GameTurnManager : MonoBehaviourPun, IPunObservable
 
         if (DiceController.Instance.statusText != null)
         {
-            DiceController.Instance.statusText.text = $"Lượt của {currentPlayer}\nChưa xúc xắc";
+            DiceController.Instance.statusText.text = $"Turn of {currentPlayer}\nNo dice yet";
         }
 
         DiceController.Instance.hasRolledThisTurn = false;

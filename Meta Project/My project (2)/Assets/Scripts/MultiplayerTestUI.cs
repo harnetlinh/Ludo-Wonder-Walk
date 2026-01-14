@@ -18,10 +18,10 @@ public class MultiplayerTestUI : MonoBehaviourPunCallbacks
     public Button spawnCubeButton;
     public Button spawnSphereButton;
     public InputField roomNameInput;
-    public Text connectionStatusText;
-    public Text roomInfoText;
-    public Text playerCountText;
-    public Text loadingText;
+    public TextMeshProUGUI connectionStatusText;
+    public TextMeshProUGUI roomInfoText;
+    public TextMeshProUGUI playerCountText;
+    public TextMeshProUGUI loadingText;
     
     [Header("Spawn Objects")]
     public GameObject cubePrefab;

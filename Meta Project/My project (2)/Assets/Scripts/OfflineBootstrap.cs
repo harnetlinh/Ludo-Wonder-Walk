@@ -2,38 +2,63 @@ using UnityEngine;
 using Photon.Pun;
 using Photon.Realtime;
 
-// Tự động bật chế độ Offline (không cần mạng) khi không có internet
+// Ensures we can bootstrap Photon OfflineMode both automatically (when there is no internet)
+// and manually when another system wants to skip the online connection flow.
 public static class OfflineBootstrap
 {
+    private const string RunnerObjectName = "__OfflineInitRunner";
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Init()
     {
         if (Application.internetReachability == NetworkReachability.NotReachable)
         {
-            if (!PhotonNetwork.OfflineMode)
-            {
-                PhotonNetwork.OfflineMode = true;
-            }
+            EnsureOfflineMode("No internet detected. Starting in OfflineMode.");
+        }
+    }
 
-            if (!PhotonNetwork.InRoom)
-            {
-                var ro = new RoomOptions
-                {
-                    IsVisible = false,
-                    MaxPlayers = 1 // Offline: chỉ 1 người chơi cục bộ
-                };
-                PhotonNetwork.CreateRoom("LocalOfflineRoom", ro);
-            }
+    public static void EnsureOfflineMode(string logMessage = null)
+    {
+        if (!string.IsNullOrEmpty(logMessage))
+        {
+            Debug.Log(logMessage);
+        }
 
-            // Tạo runner để đánh dấu GameStarted và tinh chỉnh room khi đã vào phòng
-            var runnerGO = new GameObject("__OfflineInitRunner");
+        if (!PhotonNetwork.OfflineMode)
+        {
+            PhotonNetwork.OfflineMode = true;
+        }
+
+        if (!PhotonNetwork.InRoom)
+        {
+            var ro = new RoomOptions
+            {
+                IsVisible = false,
+                MaxPlayers = 1 // Offline: single local player
+            };
+            PhotonNetwork.CreateRoom("LocalOfflineRoom", ro);
+        }
+
+        EnsureRunnerExists();
+    }
+
+    private static void EnsureRunnerExists()
+    {
+        GameObject runnerGO = GameObject.Find(RunnerObjectName);
+        if (runnerGO == null)
+        {
+            runnerGO = new GameObject(RunnerObjectName);
             Object.DontDestroyOnLoad(runnerGO);
+        }
+
+        if (runnerGO.GetComponent<OfflineInitRunner>() == null)
+        {
             runnerGO.AddComponent<OfflineInitRunner>();
         }
     }
 }
 
-// Runner đảm bảo phòng offline được đánh dấu GameStarted và MaxPlayers phù hợp
+// Runner that prepares the room properties used by offline play.
 public class OfflineInitRunner : MonoBehaviourPunCallbacks
 {
     private bool initialized;
@@ -54,10 +79,8 @@ public class OfflineInitRunner : MonoBehaviourPunCallbacks
         if (!PhotonNetwork.OfflineMode) return;
         if (!PhotonNetwork.InRoom || PhotonNetwork.CurrentRoom == null) return;
 
-        // Đặt MaxPlayers = 1 (chơi cục bộ), và đánh dấu GameStarted để khởi tạo lượt chơi
         PhotonNetwork.CurrentRoom.MaxPlayers = 1;
 
-        // Bật đủ 4 màu cho chế độ offline (gắn vào ID giả lập)
         string offlinePlayerColors = string.Join(";", new string[]
         {
             "offline_red:Red",
@@ -74,7 +97,6 @@ public class OfflineInitRunner : MonoBehaviourPunCallbacks
         };
         PhotonNetwork.CurrentRoom.SetCustomProperties(props);
 
-        // Kích hoạt quân cờ theo danh sách màu đã đặt
         if (PhotonManager.Instance != null)
         {
             PhotonManager.Instance.ActivatePiecesForPlayers();

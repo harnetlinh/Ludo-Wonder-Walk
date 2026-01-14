@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using Photon.Pun;
 using Photon.Realtime;
 using System.Collections.Generic;
@@ -59,7 +59,7 @@ public class GameStateManager : MonoBehaviourPunCallbacks
         }
 
         int sanitized = value.Value;
-        return sanitized >= 1 && sanitized <= 6 ? sanitized : (int?)null;
+        return sanitized >= 1 ? sanitized : (int?)null;
     }
 
     private static int ToNetworkValue(int? value)
@@ -240,6 +240,29 @@ public class GameStateManager : MonoBehaviourPunCallbacks
             return;
         }
         lastDiceValue = NormalizeDiceValue(value);
+        int originalRollValue = lastDiceValue ?? 0;
+        QuestionDiceAdjustment diceAdjustment = default;
+        bool questionAdjustmentApplied = false;
+
+        if (QuestionTurnEffectManager.Instance != null && lastDiceValue.HasValue)
+        {
+            diceAdjustment = QuestionTurnEffectManager.Instance.ConsumeModifier(playerColor, lastDiceValue.Value);
+            questionAdjustmentApplied = diceAdjustment.AppliedModifier != 0 || diceAdjustment.ForcedSkip;
+
+            if (questionAdjustmentApplied)
+            {
+                BroadcastQuestionModifierConsumption(playerColor, diceAdjustment);
+            }
+
+            if (diceAdjustment.ForcedSkip)
+            {
+                lastDiceValue = null;
+            }
+            else if (diceAdjustment.AppliedModifier != 0)
+            {
+                lastDiceValue = NormalizeDiceValue(diceAdjustment.FinalValue);
+            }
+        }
         currentPlayerColor = playerColor;
         isDiceRolling = false;
         if (playerOrder != null && playerOrder.Count > 0)
@@ -258,7 +281,38 @@ public class GameStateManager : MonoBehaviourPunCallbacks
         var view = GetPhotonView();
         if (view == null) return;
         view.RPC("RPC_SyncDiceResult", RpcTarget.All, ToNetworkValue(lastDiceValue), playerColor);
+        LogDiceRoll(playerColor, originalRollValue, questionAdjustmentApplied ? diceAdjustment.AppliedModifier : 0, lastDiceValue, questionAdjustmentApplied && diceAdjustment.ForcedSkip);
+
+        if (questionAdjustmentApplied && diceAdjustment.ForcedSkip && GameTurnManager.Instance != null)
+        {
+            GameTurnManager.Instance.ForceSkipTurnDueToQuestionPenalty(playerColor);
+        }
+
     }
+
+    private void BroadcastQuestionModifierConsumption(PlayerColor playerColor, QuestionDiceAdjustment adjustment)
+    {
+        if (!PhotonNetwork.InRoom)
+        {
+            QuestionTurnEffectManager.Instance.ApplyPendingModifierSnapshot(playerColor, adjustment.PendingModifierAfterConsumption);
+            return;
+        }
+
+        var view = GetPhotonView();
+        if (view == null)
+        {
+            return;
+        }
+
+        view.RPC(nameof(RPC_OnQuestionModifierConsumed), RpcTarget.All,
+            (int)playerColor,
+            adjustment.AppliedModifier,
+            adjustment.PendingModifierAfterConsumption,
+            adjustment.FinalValue,
+            adjustment.ForcedSkip,
+            adjustment.OriginalValue);
+    }
+
 
     public void UpdateDiceTransform(Vector3 position, Quaternion rotation)
     {
@@ -650,6 +704,19 @@ public class GameStateManager : MonoBehaviourPunCallbacks
         };
     }
 
+    [PunRPC]
+    private void RPC_OnQuestionModifierConsumed(int colorValue, int appliedModifier, int pendingModifier, int finalValue, bool forcedSkip, int originalValue)
+    {
+        PlayerColor color = (PlayerColor)colorValue;
+        QuestionTurnEffectManager.Instance.ApplyPendingModifierSnapshot(color, pendingModifier);
+        QuestionTurnEffectManager.Instance.ApplyRollBreakdownSnapshot(color, originalValue, appliedModifier);
+
+        if (appliedModifier != 0 || forcedSkip)
+        {
+            Debug.Log($"[DEBUG] Question modifier applied for {color}: delta {appliedModifier}, forcedSkip={forcedSkip}, pending={pendingModifier}");
+        }
+    }
+
     private static bool TryDeserializeDiceTransform(object rawData, out Vector3 position, out Quaternion rotation)
     {
         position = Vector3.zero;
@@ -689,5 +756,13 @@ public class GameStateManager : MonoBehaviourPunCallbacks
         position = new Vector3(data[0], data[1], data[2]);
         rotation = new Quaternion(data[3], data[4], data[5], data[6]);
         return true;
+    }
+
+    private void LogDiceRoll(PlayerColor playerColor, int originalValue, int appliedModifier, int? finalValue, bool forcedSkip)
+    {
+        string modifierSegment = appliedModifier >= 0 ? $"+ {appliedModifier}" : $"- {Mathf.Abs(appliedModifier)}";
+        string breakdown = $"{originalValue} {modifierSegment}";
+        string finalSegment = forcedSkip ? "SKIP" : (finalValue.HasValue ? finalValue.Value.ToString() : "-");
+        Debug.Log($"[Dice] {playerColor} rolled {breakdown} => {finalSegment}");
     }
 }

@@ -150,6 +150,9 @@ MonoBehaviour:
   - RPC_RequestFact
   - RPC_RequestQuestion
   - RPC_ShowQuestion
+  - RPC_OnQuestionAnswerProcessed
+  - RPC_OnQuestionModifierConsumed
+  - RPC_SubmitQuestionAnswer
   DisableAutoOpenWizard: 1
   ShowSettings: 1
   DevRegionSetOnce: 1

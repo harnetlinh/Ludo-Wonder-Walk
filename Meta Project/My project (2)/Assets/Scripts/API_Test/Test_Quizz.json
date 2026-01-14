@@ -1,0 +1,244 @@
+{
+  "questions": [
+    {
+      "id": "question_01",
+      "correctAnswerIndex": 0,
+      "english": {
+        "question": "Who was the first president of the United States?",
+        "answers": [
+          "George Washington",
+          "Abraham Lincoln",
+          "Thomas Jefferson"
+        ]
+      }
+    },
+    {
+      "id": "question_02",
+      "correctAnswerIndex": 0,
+      "english": {
+        "question": "In which year did World War II end?",
+        "answers": [
+          "1945",
+          "1939",
+          "1950"
+        ]
+      }
+    },
+    {
+      "id": "question_03",
+      "correctAnswerIndex": 0,
+      "english": {
+        "question": "Which empire built the Colosseum in Rome?",
+        "answers": [
+          "Roman Empire",
+          "Greek Empire",
+          "Egyptian Empire"
+        ]
+      }
+    },
+    {
+      "id": "question_04",
+      "correctAnswerIndex": 0,
+      "english": {
+        "question": "Who discovered penicillin in 1928?",
+        "answers": [
+          "Alexander Fleming",
+          "Louis Pasteur",
+          "Marie Curie"
+        ]
+      }
+    },
+    {
+      "id": "question_05",
+      "correctAnswerIndex": 0,
+      "english": {
+        "question": "Where was the ancient city of Troy located?",
+        "answers": [
+          "Turkey",
+          "Greece",
+          "Italy"
+        ]
+      }
+    },
+    {
+      "id": "question_06",
+      "correctAnswerIndex": 0,
+      "english": {
+        "question": "Which country was divided by the Berlin Wall?",
+        "answers": [
+          "Germany",
+          "Poland",
+          "Austria"
+        ]
+      }
+    },
+    {
+      "id": "question_07",
+      "correctAnswerIndex": 0,
+      "english": {
+        "question": "Who was known as the Maid of Orléans?",
+        "answers": [
+          "Joan of Arc",
+          "Queen Elizabeth I",
+          "Marie Antoinette"
+        ]
+      }
+    },
+    {
+      "id": "question_08",
+      "correctAnswerIndex": 0,
+      "english": {
+        "question": "The Industrial Revolution began in which country?",
+        "answers": [
+          "England",
+          "France",
+          "United States"
+        ]
+      }
+    },
+    {
+      "id": "question_09",
+      "correctAnswerIndex": 0,
+      "english": {
+        "question": "Who was the famous civil rights leader in the U.S. known for his 'I Have a Dream' speech?",
+        "answers": [
+          "Martin Luther King Jr.",
+          "Nelson Mandela",
+          "Malcolm X"
+        ]
+      }
+    },
+    {
+      "id": "question_10",
+      "correctAnswerIndex": 0,
+      "english": {
+        "question": "Which war was fought between the North and South regions of the United States?",
+        "answers": [
+          "Civil War",
+          "Cold War",
+          "Vietnam War"
+        ]
+      }
+    },
+    {
+      "id": "question_11",
+      "correctAnswerIndex": 0,
+      "english": {
+        "question": "Which is the largest desert in the world?",
+        "answers": [
+          "Sahara Desert",
+          "Arabian Desert",
+          "Gobi Desert"
+        ]
+      }
+    },
+    {
+      "id": "question_12",
+      "correctAnswerIndex": 0,
+      "english": {
+        "question": "Which river is the longest in the world?",
+        "answers": [
+          "Nile River",
+          "Amazon River",
+          "Yangtze River"
+        ]
+      }
+    },
+    {
+      "id": "question_13",
+      "correctAnswerIndex": 0,
+      "english": {
+        "question": "Mount Everest is located on the border of which two countries?",
+        "answers": [
+          "Nepal and China",
+          "India and Bhutan",
+          "China and India"
+        ]
+      }
+    },
+    {
+      "id": "question_14",
+      "correctAnswerIndex": 0,
+      "english": {
+        "question": "What is the capital city of Canada?",
+        "answers": [
+          "Ottawa",
+          "Toronto",
+          "Vancouver"
+        ]
+      }
+    },
+    {
+      "id": "question_15",
+      "correctAnswerIndex": 0,
+      "english": {
+        "question": "Which continent is known as the 'Dark Continent'?",
+        "answers": [
+          "Africa",
+          "South America",
+          "Asia"
+        ]
+      }
+    },
+    {
+      "id": "question_16",
+      "correctAnswerIndex": 0,
+      "english": {
+        "question": "Which ocean is the largest on Earth?",
+        "answers": [
+          "Pacific Ocean",
+          "Atlantic Ocean",
+          "Indian Ocean"
+        ]
+      }
+    },
+    {
+      "id": "question_17",
+      "correctAnswerIndex": 0,
+      "english": {
+        "question": "Which country has the most natural lakes?",
+        "answers": [
+          "Canada",
+          "Finland",
+          "United States"
+        ]
+      }
+    },
+    {
+      "id": "question_18",
+      "correctAnswerIndex": 0,
+      "english": {
+        "question": "What is the smallest country in the world?",
+        "answers": [
+          "Vatican City",
+          "Monaco",
+          "San Marino"
+        ]
+      }
+    },
+    {
+      "id": "question_19",
+      "correctAnswerIndex": 0,
+      "english": {
+        "question": "Which mountain range separates Europe from Asia?",
+        "answers": [
+          "Ural Mountains",
+          "Andes",
+          "Alps"
+        ]
+      }
+    },
+    {
+      "id": "question_20",
+      "correctAnswerIndex": 0,
+      "english": {
+        "question": "Which desert covers most of northern Africa?",
+        "answers": [
+          "Sahara Desert",
+          "Kalahari Desert",
+          "Namib Desert"
+        ]
+      }
+    }
+  ]
+}

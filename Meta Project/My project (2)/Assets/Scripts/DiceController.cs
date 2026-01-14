@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -31,7 +31,7 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
 
     public PlayerColor currentRollingPlayer;
 
-    // Thêm dictionary để lưu vị trí xúc xắc cho mỗi màu
+    // Th�m dictionary d? luu v? tr� x�c x?c cho m?i m�u
     private Dictionary<PlayerColor, Vector3> playerDicePositions = new Dictionary<PlayerColor, Vector3>();
 
 
@@ -44,12 +44,12 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
     public Transform yellowDicePosition;
     public Transform greenDicePosition;
 
-    public bool canRollAgain = true; // Thêm biến này
+    public bool canRollAgain = true; // Th�m bi?n n�y
 
-    public bool hasRolledThisTurn = false; // Thêm biến này để theo dõi đã xúc xắc trong lượt này chưa
+    public bool hasRolledThisTurn = false; // Th�m bi?n n�y d? theo d�i d� x�c x?c trong lu?t n�y chua
 
 
-    public TextMeshProUGUI statusText; // Tham chiếu đến UI Text để hiển thị trạng thái
+    public TextMeshProUGUI statusText; // Tham chi?u d?n UI Text d? hi?n th? tr?ng th�i
 
 
     [Header("Dice Movement Settings")]
@@ -57,7 +57,7 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
     public AnimationCurve diceMoveCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
     public float diceMoveSmoothingTime = 0.18f;
     public float diceMoveArcHeight = 0.15f;
-    public bool isMovingToPlayer = false; // <-- THÊM DÒNG NÀY
+    public bool isMovingToPlayer = false; // <-- TH�M D�NG N�Y
 
     // PUN Network Variables
     private int? networkDiceValue = null;
@@ -69,7 +69,7 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
     private DiceFaceDetector diceDetector;
     private NetworkDiceSync networkDiceSync;
     private PlayerColor localPlayerColor = PlayerColor.None;
-    // Thêm vào đầu class
+    // Th�m v�o d?u class
     private GameStateManager gameStateManager;
     private Coroutine diceMoveRoutine;
     private Coroutine ownershipReturnRoutine;
@@ -82,12 +82,78 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
         }
 
         int sanitized = value.Value;
-        return sanitized >= 1 && sanitized <= 6 ? sanitized : (int?)null;
+        return sanitized >= 1 ? sanitized : (int?)null;
     }
 
     private static string FormatDiceValue(int? value)
     {
         return value.HasValue ? value.Value.ToString() : "-";
+    }
+
+    private static string FormatDiceWithModifiers(PlayerColor playerColor, int? value)
+    {
+        if (playerColor == PlayerColor.None)
+        {
+            return FormatDiceValue(value);
+        }
+
+        if (!value.HasValue)
+        {
+            return $"{playerColor}: -";
+        }
+
+        if (TryBuildRollEquation(playerColor, value.Value, out string equation))
+        {
+            return $"{playerColor}: {equation}";
+        }
+
+        return $"{playerColor}: {value.Value}";
+    }
+
+    private static string FormatStatusWithModifiers(PlayerColor playerColor, int? value)
+    {
+        if (playerColor == PlayerColor.None)
+        {
+            return "Waiting for your turn...";
+        }
+
+        return value.HasValue
+            ? $"{playerColor} roll: {GetRollEquationOrValue(playerColor, value.Value)}"
+            : $"Turn of {playerColor}\nNo dice yet";
+    }
+
+    private static bool TryBuildRollEquation(PlayerColor playerColor, int finalValue, out string equation)
+    {
+        equation = null;
+        QuestionTurnEffectManager manager = QuestionTurnEffectManager.Instance;
+        if (manager != null && manager.TryGetRollBreakdown(playerColor, out QuestionRollBreakdown breakdown))
+        {
+            string modifierSegment = breakdown.Modifier >= 0
+                ? $"+ {breakdown.Modifier}"
+                : $"- {Mathf.Abs(breakdown.Modifier)}";
+            equation = $"{breakdown.BaseValue} {modifierSegment} = {finalValue}";
+            return true;
+        }
+
+        return false;
+    }
+
+    private static string GetRollEquationOrValue(PlayerColor playerColor, int finalValue)
+    {
+        if (TryBuildRollEquation(playerColor, finalValue, out string equation))
+        {
+            return equation;
+        }
+
+        return finalValue.ToString();
+    }
+
+    private void LogLocalRoll(PlayerColor playerColor, int baseValue, int modifier, int? finalValue, bool forcedSkip)
+    {
+        string modifierSegment = modifier >= 0 ? $"+ {modifier}" : $"- {Mathf.Abs(modifier)}";
+        string breakdown = $"{baseValue} {modifierSegment}";
+        string finalSegment = forcedSkip ? "SKIP" : (finalValue.HasValue ? finalValue.Value.ToString() : "-");
+        Debug.Log($"[Dice][Offline] {playerColor} rolled {breakdown} => {finalSegment}");
     }
 
     private static int ToNetworkValue(int? value)
@@ -214,7 +280,7 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
             Debug.LogWarning("DiceController: 'diceButton' is not assigned in Inspector.");
         }*/
 
-        // Thiết lập vị trí xúc xắc cho mỗi màu
+        // Thi?t l?p v? tr� x�c x?c cho m?i m�u
         if (redDicePosition != null)
             playerDicePositions[PlayerColor.Red] = redDicePosition.position;
         if (blueDicePosition != null)
@@ -224,14 +290,14 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
         if (greenDicePosition != null)
             playerDicePositions[PlayerColor.Green] = greenDicePosition.position;
 
-        // Khởi tạo PUN
+        // Kh?i t?o PUN
         if (photonView != null)
         {
             isNetworked = true;
             networkDiceValue = LastDiceValue;
             networkIsRolling = isDiceRolling;
         }
-        // Thêm vào Awake()
+        // Th�m v�o Awake()
         gameStateManager = GameStateManager.Instance;
     }
 
@@ -244,7 +310,7 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
     {
         if (playerDicePositions.ContainsKey(color) && diceFaceDetector != null)
         {
-            // Đảm bảo sở hữu trước khi đặt lại vị trí để mọi client có thể cập nhật
+            // �?m b?o s? h?u tru?c khi d?t l?i v? tr� d? m?i client c� th? c?p nh?t
             NetworkDiceSync diceSync = diceFaceDetector.GetComponent<NetworkDiceSync>();
             if (diceSync != null)
             {
@@ -253,7 +319,7 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
             diceFaceDetector.transform.position = playerDicePositions[color];
             diceFaceDetector.transform.rotation = Quaternion.identity;
 
-            // Reset các trạng thái
+            // Reset c�c tr?ng th�i
             diceFaceDetector.isFirstPickup = true;
             diceFaceDetector.hasLanded = false;
 
@@ -297,14 +363,14 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
 
     public void PrepareToRoll()
     {
-        // Nếu có PUN và là master client, gửi RPC
+        // N?u c� PUN v� l� master client, g?i RPC
         if (isNetworked && photonView.IsMine && PhotonNetwork.InRoom)
         {
             photonView.RPC("NetworkPrepareToRoll", RpcTarget.All);
         }
         else
         {
-            // Chạy local nếu không có PUN
+            // Ch?y local n?u kh�ng c� PUN
             PrepareToRollLocal();
         }
     }
@@ -346,10 +412,31 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
 
     private void ApplyLocalRollResult(int? value, PlayerColor playerColor)
     {
-        LastDiceValue = NormalizeDiceValue(value);
+        int? normalizedValue = NormalizeDiceValue(value);
+        int baseRollValue = normalizedValue ?? 0;
+        QuestionDiceAdjustment adjustment = default;
+        bool appliedQuestionModifier = false;
+
+        if (QuestionTurnEffectManager.Instance != null && normalizedValue.HasValue && playerColor != PlayerColor.None)
+        {
+            adjustment = QuestionTurnEffectManager.Instance.ConsumeModifier(playerColor, normalizedValue.Value);
+            appliedQuestionModifier = true;
+
+            if (adjustment.ForcedSkip)
+            {
+                normalizedValue = null;
+            }
+            else
+            {
+                normalizedValue = adjustment.FinalValue;
+            }
+        }
+
+        LastDiceValue = normalizedValue;
+
         if (diceResultText != null)
         {
-            diceResultText.text = $"{playerColor}: {FormatDiceValue(LastDiceValue)}";
+            diceResultText.text = FormatDiceWithModifiers(playerColor, LastDiceValue);
         }
 
         isDiceRolling = false;
@@ -357,9 +444,18 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
 
         if (statusText != null)
         {
-            statusText.text = LastDiceValue.HasValue
-                ? $"{playerColor} scoop out numbers {FormatDiceValue(LastDiceValue)}"
-                : $"Turn of {playerColor} No dice yet";
+            statusText.text = FormatStatusWithModifiers(playerColor, LastDiceValue);
+        }
+
+        LogLocalRoll(playerColor, baseRollValue, appliedQuestionModifier ? adjustment.AppliedModifier : 0, LastDiceValue, appliedQuestionModifier && adjustment.ForcedSkip);
+
+        if (appliedQuestionModifier && adjustment.ForcedSkip)
+        {
+            if (GameTurnManager.Instance != null)
+            {
+                GameTurnManager.Instance.ForceSkipTurnDueToQuestionPenalty(playerColor);
+            }
+            return;
         }
 
         if (GameTurnManager.Instance != null && !GameTurnManager.Instance.isDeterminingOrder)
@@ -387,10 +483,10 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
 
     public void AutoRollForCurrentPlayer()
     {
-        // CHỈ Master Client mới được auto roll
+        // CH? Master Client m?i du?c auto roll
         if (!PhotonNetwork.IsMasterClient) 
         {
-            Debug.Log("Chỉ Master Client mới được auto roll");
+            Debug.Log("Ch? Master Client m?i du?c auto roll");
             return;
         }
     
@@ -401,7 +497,7 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
     private void PerformAutoRoll()
     {
         PrepareToRoll();
-        // Trong chế độ auto, giả lập việc xúc xắc dừng sau 2 giây
+        // Trong ch? d? auto, gi? l?p vi?c x�c x?c d?ng sau 2 gi�y
         Invoke("SimulateDiceStop", 2f);
     }
 
@@ -425,7 +521,7 @@ public class DiceController : MonoBehaviourPunCallbacks, IPunObservable
 
     
 
-    // THAY THẾ phương thức RollDice()
+    // THAY TH? phuong th?c RollDice()
 public void RollDice()
 {
     if (gameStateManager == null)
@@ -476,9 +572,9 @@ private void RPC_RequestRollDice(PlayerColor requestingPlayer)
 {
     if (!PhotonNetwork.IsMasterClient) return;
 
-    Debug.Log($"🎲 Master received roll request from {requestingPlayer}");
+    Debug.Log($"?? Master received roll request from {requestingPlayer}");
 
-    // Kiểm tra xem có phải lượt của player này không
+    // Ki?m tra xem c� ph?i lu?t c?a player n�y kh�ng
     if (GameTurnManager.Instance.IsCurrentPlayer(requestingPlayer))
     {
         currentRollingPlayer = requestingPlayer;
@@ -486,7 +582,7 @@ private void RPC_RequestRollDice(PlayerColor requestingPlayer)
     }
     else
     {
-        Debug.LogWarning($"❌ Roll request denied: Not {requestingPlayer}'s turn");
+        Debug.LogWarning($"? Roll request denied: Not {requestingPlayer}'s turn");
     }
 }
 
@@ -513,7 +609,7 @@ private void StartDiceRollProcess()
     }
 }
 
-// THÊM phương thức để nhận kết quả xúc xắc từ GameStateManager
+// TH�M phuong th?c d? nh?n k?t qu? x�c x?c t? GameStateManager
 private void OnDiceResultChanged(int? value, PlayerColor playerColor)
 {
     if (playerColor != currentRollingPlayer)
@@ -530,16 +626,14 @@ private void OnDiceResultChanged(int? value, PlayerColor playerColor)
     LastDiceValue = value;
     if (diceResultText != null)
     {
-        diceResultText.text = $"{playerColor}: {FormatDiceValue(LastDiceValue)}";
+        diceResultText.text = FormatDiceWithModifiers(playerColor, LastDiceValue);
     }
     isDiceRolling = false;
     hasRolledThisTurn = value.HasValue;
 
     if (statusText != null)
     {
-        statusText.text = value.HasValue
-            ? $"{playerColor} scoop out numbers {FormatDiceValue(value)}"
-            : $"Turn of {playerColor}\nNo dice yet";
+        statusText.text = FormatStatusWithModifiers(playerColor, LastDiceValue);
     }
 
     if (GameTurnManager.Instance != null && !GameTurnManager.Instance.isDeterminingOrder)
@@ -614,7 +708,7 @@ private void HandleDiceTransformChanged(Vector3 position, Quaternion rotation)
             return false;
         }
 
-        // Trong chế độ Offline, cho phép điều khiển mọi lượt như pass-and-play
+        // Trong ch? d? Offline, cho ph�p di?u khi?n m?i lu?t nhu pass-and-play
         if (PhotonNetwork.OfflineMode)
         {
             return true;
@@ -684,7 +778,7 @@ private bool ShouldForceRollForInitialization()
         {
             diceResultText.text = currentRollingPlayer == PlayerColor.None
                 ? "-"
-                : $"{currentRollingPlayer}: {FormatDiceValue(LastDiceValue)}";
+                : FormatDiceWithModifiers(currentRollingPlayer, LastDiceValue);
         }
     }
 
@@ -711,7 +805,7 @@ private bool ShouldForceRollForInitialization()
 
 
 
-    // Thêm phương thức di chuyển xúc xắc đến vị trí người chơi hiện tại
+    // Th�m phuong th?c di chuy?n x�c x?c d?n v? tr� ngu?i choi hi?n t?i
     public void MoveDiceToCurrentPlayer(PlayerColor targetPlayer = PlayerColor.None)
     {
         if (diceFaceDetector == null) return;
@@ -756,23 +850,23 @@ private bool ShouldForceRollForInitialization()
 
     public void EnableDiceForCurrentPlayer()
     {
-        // CHỈ Master client mới được điều khiển dice
+        // CH? Master client m?i du?c di?u khi?n dice
         if (!PhotonNetwork.IsMasterClient) 
         {
-            Debug.Log("Chỉ Master client mới được điều khiển dice");
+            Debug.Log("Ch? Master client m?i du?c di?u khi?n dice");
             return;
         }
     
-        // KHÔNG cho phép kích hoạt nếu đang di chuyển
+        // KH�NG cho ph�p k�ch ho?t n?u dang di chuy?n
         if (isMovingToPlayer) 
         {
-            Debug.Log("Dice đang di chuyển, không thể kích hoạt ngay lúc này");
+            Debug.Log("Dice dang di chuy?n, kh�ng th? k�ch ho?t ngay l�c n�y");
             return;
         }
     
         currentRollingPlayer = GetCurrentPlayer();
     
-        // Kiểm tra player có trong game và online
+        // Ki?m tra player c� trong game v� online
         if (GameTurnManager.Instance != null && 
             (!GameTurnManager.Instance.IsColorInGame(currentRollingPlayer) ||
              !IsPlayerWithColorOnline(currentRollingPlayer)))
@@ -784,10 +878,10 @@ private bool ShouldForceRollForInitialization()
     
         hasRolledThisTurn = false;
 
-        // Di chuyển xúc xắc đến vị trí người chơi hiện tại
+        // Di chuy?n x�c x?c d?n v? tr� ngu?i choi hi?n t?i
         MoveDiceToCurrentPlayer(currentRollingPlayer);
 
-        // Cập nhật thông báo cho tất cả client
+        // C?p nh?t th�ng b�o cho t?t c? client
         photonView.RPC("RPC_UpdateDiceStatus", RpcTarget.All, $"Luot cua {currentRollingPlayer}\nChua xuc xac");
 
         if (diceResultText != null)
@@ -807,7 +901,7 @@ private bool ShouldForceRollForInitialization()
         }
     }
 
-// THÊM: Kiểm tra xem player với màu cụ thể có đang online không
+// TH�M: Ki?m tra xem player v?i m�u c? th? c� dang online kh�ng
     private bool IsPlayerWithColorOnline(PlayerColor color)
     {
         if (PhotonManager.Instance == null) return true; // Fallback cho offline
@@ -816,7 +910,7 @@ private bool ShouldForceRollForInitialization()
         return onlineColors.Contains(color);
     }
 
-// Thêm phương thức kiểm tra trạng thái
+// Th�m phuong th?c ki?m tra tr?ng th�i
     public bool IsDiceMoving()
     {
         return isMovingToPlayer;
@@ -832,7 +926,7 @@ private bool ShouldForceRollForInitialization()
     {
         if (stream.IsWriting)
         {
-            // Gửi dữ liệu đến các client khác
+            // G?i d? li?u d?n c�c client kh�c
             stream.SendNext(ToNetworkValue(LastDiceValue));
             stream.SendNext(isDiceRolling);
             stream.SendNext(currentRollingPlayer);
@@ -840,13 +934,13 @@ private bool ShouldForceRollForInitialization()
         }
         else
         {
-            // Nhận dữ liệu từ master client
+            // Nh?n d? li?u t? master client
             networkDiceValue = FromNetworkValue((int)stream.ReceiveNext());
             networkIsRolling = (bool)stream.ReceiveNext();
             networkCurrentPlayer = (PlayerColor)stream.ReceiveNext();
             bool networkHasRolled = (bool)stream.ReceiveNext();
 
-            // Cập nhật nếu không phải là master client
+            // C?p nh?t n?u kh�ng ph?i l� master client
             if (!photonView.IsMine)
             {
                 UpdateFromNetwork(networkHasRolled);
@@ -856,17 +950,17 @@ private bool ShouldForceRollForInitialization()
 
     private void UpdateFromNetwork(bool networkHasRolled)
     {
-        // Cập nhật giá trị xúc xắc
+        // C?p nh?t gi� tr? x�c x?c
         if (LastDiceValue != networkDiceValue)
         {
             LastDiceValue = networkDiceValue;
             if (diceResultText != null)
             {
-                diceResultText.text = $"{networkCurrentPlayer}: {FormatDiceValue(LastDiceValue)}";
+                diceResultText.text = FormatDiceWithModifiers(networkCurrentPlayer, LastDiceValue);
             }
         }
 
-        // Cập nhật trạng thái rolling
+        // C?p nh?t tr?ng th�i rolling
         if (isDiceRolling != networkIsRolling)
         {
             isDiceRolling = networkIsRolling;
@@ -876,31 +970,31 @@ private bool ShouldForceRollForInitialization()
             }
         }
 
-        // Cập nhật người chơi hiện tại
+        // C?p nh?t ngu?i choi hi?n t?i
         if (currentRollingPlayer != networkCurrentPlayer)
         {
             currentRollingPlayer = networkCurrentPlayer;
         }
 
-        // Cập nhật trạng thái đã xúc xắc
+        // C?p nh?t tr?ng th�i d� x�c x?c
         if (hasRolledThisTurn != networkHasRolled)
         {
             hasRolledThisTurn = networkHasRolled;
         }
 
-        // Đồng bộ UI cơ bản cho client mới/không phải chủ
+        // �?ng b? UI co b?n cho client m?i/kh�ng ph?i ch?
         if (statusText != null)
         {
             statusText.text = isDiceRolling
                 ? $"{currentRollingPlayer} rolling dice..."
                 : (hasRolledThisTurn
-                    ? $"{currentRollingPlayer} has been dice"
+                    ? FormatStatusWithModifiers(currentRollingPlayer, LastDiceValue)
                     : $"Turn of {currentRollingPlayer}\nNo dice yet");
         }
         
     }
 
-    // RPC để xúc xắc
+    // RPC d? x�c x?c
     [PunRPC]
     public void NetworkRollDice()
     {
@@ -912,27 +1006,22 @@ private bool ShouldForceRollForInitialization()
 
     private void RollDiceLocal()
     {
+        int rollValue;
+
         if (useCustomDiceValues && customDiceSequence.Count > 0)
         {
-            LastDiceValue = customDiceSequence[diceSequenceIndex % customDiceSequence.Count];
+            rollValue = customDiceSequence[diceSequenceIndex % customDiceSequence.Count];
             diceSequenceIndex++;
         }
         else
         {
-            LastDiceValue = Random.Range(1, 7);
+            rollValue = Random.Range(1, 7);
         }
 
-        // Cập nhật text hiển thị
-        diceResultText.text = $"{currentRollingPlayer}: {FormatDiceValue(LastDiceValue)}";
-        hasRolledThisTurn = LastDiceValue.HasValue;
-
-        if (!GameTurnManager.Instance.isDeterminingOrder)
-        {
-            GameTurnManager.Instance.CheckForPossibleMoves();
-        }
+        ApplyLocalRollResult(rollValue, currentRollingPlayer);
     }
 
-    // RPC để chuẩn bị xúc xắc
+    // RPC d? chu?n b? x�c x?c
     [PunRPC]
     public void NetworkPrepareToRoll()
     {
@@ -948,7 +1037,7 @@ private bool ShouldForceRollForInitialization()
         LastDiceValue = null;
     }
 
-    // RPC để hoàn thành xúc xắc
+    // RPC d? ho�n th�nh x�c x?c
 
     [PunRPC]
     private void RPC_ReportDiceResult(int reportedValue, PlayerColor reportingColor, PhotonMessageInfo info)
@@ -970,7 +1059,7 @@ private bool ShouldForceRollForInitialization()
             else
             {
                 Debug.LogWarning(
-                    $"DiceController: Ignoring dice result {reportedValue} from {reportingColor} – color not present in current turn order.");
+                    $"DiceController: Ignoring dice result {reportedValue} from {reportingColor} � color not present in current turn order.");
                 return;
             }
         }
@@ -990,9 +1079,9 @@ private bool ShouldForceRollForInitialization()
         }
     }
 
-    // Trong DiceController.cs, thêm các phương thức sau:
+    // Trong DiceController.cs, th�m c�c phuong th?c sau:
 
-    // Khi dùng PhotonTransformViewClassic, không cần sync thủ công
+    // Khi d�ng PhotonTransformViewClassic, kh�ng c?n sync th? c�ng
     public void ForceDiceSync() { }
     public void SyncDiceForNewTurn() { }
 
@@ -1163,7 +1252,7 @@ private bool ShouldForceRollForInitialization()
             }
         }
 
-        Debug.Log("Di chuyển xúc xắc hoàn tất - Vật lý đã được kích hoạt");
+        Debug.Log("Di chuy?n x�c x?c ho�n t?t - V?t l� d� du?c k�ch ho?t");
     }
 
     private void CancelPendingOwnershipReturn()
@@ -1248,7 +1337,7 @@ private bool ShouldForceRollForInitialization()
         StartDiceMove(targetPosition, targetRotation, false);
     }
 
-// THÊM: Phương thức đảm bảo vật lý được kích hoạt khi bắt đầu lượt mới
+// TH�M: Phuong th?c d?m b?o v?t l� du?c k�ch ho?t khi b?t d?u lu?t m?i
 public void EnsurePhysicsForNewTurn()
 {
     if (diceFaceDetector != null)
@@ -1269,7 +1358,7 @@ public void EnsurePhysicsForNewTurn()
     }
 }
 
-    // Late-join synchronization: gửi trạng thái xúc xắc cho người chơi mới
+    // Late-join synchronization: g?i tr?ng th�i x�c x?c cho ngu?i choi m?i
     public override void OnPlayerEnteredRoom(Player newPlayer)
     {
         if (!isNetworked) return;
@@ -1297,7 +1386,7 @@ public void EnsurePhysicsForNewTurn()
         {
             diceResultText.text = isDiceRolling
                 ? "Rolling the dice..."
-                : $"{currentRollingPlayer}: {FormatDiceValue(LastDiceValue)}";
+                : FormatDiceWithModifiers(currentRollingPlayer, LastDiceValue);
         }
 
         if (statusText != null)
@@ -1305,12 +1394,12 @@ public void EnsurePhysicsForNewTurn()
             statusText.text = isDiceRolling
                 ? $"{currentRollingPlayer} rolling the dice..."
                 : (hasRolledThisTurn
-                    ? $"{currentRollingPlayer} has been dice."
+                    ? FormatStatusWithModifiers(currentRollingPlayer, LastDiceValue)
                     : $"Turn of {currentRollingPlayer}\nNo dice yet");
         }
         
     }
-    // THÊM vào OnDestroy() để hủy đăng ký event
+    // TH�M v�o OnDestroy() d? h?y dang k� event
     private void OnDestroy()
     {
         if (gameStateManager != null)
@@ -1326,3 +1415,4 @@ public void EnsurePhysicsForNewTurn()
         }
     }
 }
+

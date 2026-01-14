@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using UnityEngine;
 using Photon.Pun;
 using Photon.Realtime;
@@ -19,18 +19,22 @@ public class PhotonManager : MonoBehaviourPunCallbacks
     public string roomName = "TestRoom";
     public int maxPlayers = 4;
 
+    [Header("Network Overrides")]
+    [Tooltip("Check this to keep Photon in OfflineMode so you can test without disabling your internet connection.")]
+    public bool forceOfflineMode = false;
+
     [Header("Room Lock Settings")] public int minPlayersToLock = 2;
     public int turnsToLock = 3;
-    public bool allowRejoiningLockedRoom = true; // THÊM: Cho phép rejoining
+    public bool allowRejoiningLockedRoom = true; // TH�M: Cho ph�p rejoining
 
     [Header("Debug")] public bool enableDetailedLogging = true;
 
-    // ID của người chơi hiện tại
+    // ID c?a ngu?i choi hi?n t?i
     private string playerID;
 
     private string lastAttemptedRoom = "";
 
-    // THÊM: Delegate để thông báo sự kiện join room thất bại
+    // TH�M: Delegate d? th�ng b�o s? ki?n join room th?t b?i
     public System.Action<short, string> OnJoinRoomFailedEvent;
 
     private void Awake()
@@ -64,13 +68,18 @@ public class PhotonManager : MonoBehaviourPunCallbacks
             Debug.Log($"Connection State: {PhotonNetwork.NetworkingClient.State}");
         }
 
+        if (forceOfflineMode)
+        {
+            OfflineBootstrap.EnsureOfflineMode("ForceOfflineMode toggle enabled. Starting in OfflineMode.");
+            return;
+        }
+
         if (autoConnectOnStart)
         {
-            // Nếu không có mạng, chạy ở chế độ Offline (không cần kết nối)
+            // N?u kh�ng c� m?ng, ch?y ? ch? d? Offline (kh�ng c?n k?t n?i)
             if (Application.internetReachability == NetworkReachability.NotReachable)
             {
-                Debug.Log("No internet detected. Starting in OfflineMode.");
-                PhotonNetwork.OfflineMode = true;
+                OfflineBootstrap.EnsureOfflineMode("No internet detected. Starting in OfflineMode.");
             }
             else
             {
@@ -102,17 +111,17 @@ public class PhotonManager : MonoBehaviourPunCallbacks
     {
         Debug.Log("=== CONNECTED TO MASTER SERVER ===");
 
-        // Đặt nickname với ID (rút ngắn để dễ nhìn)
+        // �?t nickname v?i ID (r�t ng?n d? d? nh�n)
         PhotonNetwork.NickName = $"Player_{playerID}";
 
         Debug.Log($"Player Nickname: {PhotonNetwork.NickName}");
 
-        // SỬA: KHÔNG tự động thử join room cũ nữa
-        // Chỉ kết nối và để người dùng chọn thủ công
-        Debug.Log("Đã kết nối thành công. Vui lòng chọn phòng thủ công từ menu.");
+        // S?A: KH�NG t? d?ng th? join room cu n?a
+        // Ch? k?t n?i v� d? ngu?i d�ng ch?n th? c�ng
+        Debug.Log("�� k?t n?i th�nh c�ng. Vui l�ng ch?n ph�ng th? c�ng t? menu.");
 
-        // Có thể thêm sự kiện để UI cập nhật trạng thái
-        // UI sẽ tự động cập nhật rejoin button thông qua UpdateRejoinButton()
+        // C� th? th�m s? ki?n d? UI c?p nh?t tr?ng th�i
+        // UI s? t? d?ng c?p nh?t rejoin button th�ng qua UpdateRejoinButton()
     }
 
     private bool TryJoinPreviousRoom()
@@ -123,8 +132,8 @@ public class PhotonManager : MonoBehaviourPunCallbacks
             Debug.Log($"Attempting to rejoin previous room: {lastRoom}");
             lastAttemptedRoom = lastRoom;
 
-            // THÊM: Kiểm tra xem room có tồn tại không trước khi join
-            // Sử dụng JoinRoom thay vì các phương thức khác để Photon tự xử lý
+            // TH�M: Ki?m tra xem room c� t?n t?i kh�ng tru?c khi join
+            // S? d?ng JoinRoom thay v� c�c phuong th?c kh�c d? Photon t? x? l�
             PhotonNetwork.JoinRoom(lastRoom);
             return true;
         }
@@ -137,21 +146,21 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         RoomOptions roomOptions = new RoomOptions();
         roomOptions.MaxPlayers = (byte)maxPlayers;
 
-        // SỬA QUAN TRỌNG: Luôn để room mở cho đến khi đủ điều kiện khóa
-        // Điều này cho phép rejoining hoạt động
+        // S?A QUAN TR?NG: Lu�n d? room m? cho d?n khi d? di?u ki?n kh�a
+        // �i?u n�y cho ph�p rejoining ho?t d?ng
         roomOptions.IsVisible = true;
-        roomOptions.IsOpen = true; // QUAN TRỌNG: Luôn mở khi tạo room
+        roomOptions.IsOpen = true; // QUAN TR?NG: Lu�n m? khi t?o room
 
         roomOptions.EmptyRoomTtl = 15000;
         roomOptions.PlayerTtl = 1000;
 
-        // Thêm custom properties
+        // Th�m custom properties
         roomOptions.CustomRoomProperties = new ExitGames.Client.Photon.Hashtable
         {
             { "PlayerIDs", "" },
             { "IsLocked", false },
             { "TurnCount", 0 },
-            { "AllowedPlayers", "" } // Danh sách player được phép vào khi room locked
+            { "AllowedPlayers", "" } // Danh s�ch player du?c ph�p v�o khi room locked
         };
         roomOptions.CustomRoomPropertiesForLobby =
             new string[] { "PlayerIDs", "IsLocked", "TurnCount", "AllowedPlayers" };
@@ -161,7 +170,7 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         PhotonNetwork.JoinOrCreateRoom(roomName, roomOptions, TypedLobby.Default);
     }
 
-    // THÊM: Lấy danh sách màu quân cờ được chọn ngẫu nhiên
+    // TH�M: L?y danh s�ch m�u qu�n c? du?c ch?n ng?u nhi�n
     public List<PlayerColor> GetRandomPlayerColors(int playerCount)
     {
         List<PlayerColor> allColors = new List<PlayerColor>
@@ -172,15 +181,15 @@ public class PhotonManager : MonoBehaviourPunCallbacks
             PlayerColor.Green
         };
 
-        // Xáo trộn danh sách màu
+        // X�o tr?n danh s�ch m�u
         System.Random rng = new System.Random();
         List<PlayerColor> shuffledColors = allColors.OrderBy(x => rng.Next()).ToList();
 
-        // Lấy số lượng màu tương ứng với số người chơi
+        // L?y s? lu?ng m�u tuong ?ng v?i s? ngu?i choi
         return shuffledColors.Take(playerCount).ToList();
     }
 
-// THÊM: Lấy màu của player hiện tại
+// TH�M: L?y m�u c?a player hi?n t?i
     public PlayerColor GetCurrentPlayerColor()
     {
         if (LocalPlayerColor != PlayerColor.None)
@@ -201,7 +210,7 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         return PlayerColor.None;
     }
 
-// THÊM: Lấy tất cả màu đang được sử dụng trong room
+// TH�M: L?y t?t c? m�u dang du?c s? d?ng trong room
     public List<PlayerColor> GetRoomPlayerColors()
     {
         if (cachedPlayerColors.Count > 0)
@@ -222,9 +231,47 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         return new List<PlayerColor>();
     }
 
-// THÊM: Phân phối màu cho người chơi khi tạo phòng
+    public bool TryGetPlayerColorByActorNumber(int actorNumber, out PlayerColor color)
+    {
+        color = PlayerColor.None;
 
-// THÊM: Lấy màu đã được gán trước đó cho player
+        if (PhotonNetwork.CurrentRoom == null || PhotonNetwork.CurrentRoom.Players == null)
+        {
+            return false;
+        }
+
+        if (!PhotonNetwork.CurrentRoom.Players.TryGetValue(actorNumber, out Player targetPlayer))
+        {
+            return false;
+        }
+
+        string playerId = GetPlayerIDFromNickname(targetPlayer.NickName);
+        if (string.IsNullOrEmpty(playerId))
+        {
+            return false;
+        }
+
+        if (cachedPlayerColors.TryGetValue(playerId, out color))
+        {
+            return true;
+        }
+
+        if (PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue("PlayerColors", out object rawValue) &&
+            rawValue is string playerColorsData)
+        {
+            UpdateColorCacheAndNotify(playerColorsData);
+            if (cachedPlayerColors.TryGetValue(playerId, out color))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+// TH�M: Ph�n ph?i m�u cho ngu?i choi khi t?o ph�ng
+
+// TH�M: L?y m�u d� du?c g�n tru?c d� cho player
     private PlayerColor GetPreviouslyAssignedColor(string playerId)
     {
         string key = $"AssignedColor_{playerId}";
@@ -236,7 +283,7 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         return PlayerColor.None;
     }
 
-// THÊM: Lưu màu đã gán cho player
+// TH�M: Luu m�u d� g�n cho player
     private void SaveAssignedColor(string playerId, PlayerColor color)
     {
         string key = $"AssignedColor_{playerId}";
@@ -251,7 +298,7 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         }
     }
 
-// THÊM: Xóa màu đã gán (khi player rời phòng hoàn toàn)
+// TH�M: X�a m�u d� g�n (khi player r?i ph�ng ho�n to�n)
     private void ClearAssignedColor(string playerId)
     {
         string key = $"AssignedColor_{playerId}";
@@ -307,9 +354,9 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         }
     }
 
-// Trong PhotonManager.cs, SỬA LẠI HOÀN TOÀN phương thức AssignPlayerColors:
+// Trong PhotonManager.cs, S?A L?I HO�N TO�N phuong th?c AssignPlayerColors:
 
-// SỬA: Phương thức AssignPlayerColors để xử lý màu trùng thông minh hơn
+// S?A: Phuong th?c AssignPlayerColors d? x? l� m�u tr�ng th�ng minh hon
     private void AssignPlayerColors()
     {
         if (!PhotonNetwork.IsMasterClient) return;
@@ -323,13 +370,13 @@ public class PhotonManager : MonoBehaviourPunCallbacks
 
         Debug.Log("=== ASSIGNING PLAYER COLORS ===");
 
-        // Tạo dictionary để theo dõi màu đã gán
+        // T?o dictionary d? theo d�i m�u d� g�n
         Dictionary<string, PlayerColor> assignedColors = new Dictionary<string, PlayerColor>();
         List<PlayerColor> usedColors = new List<PlayerColor>();
 
         Player[] players = PhotonNetwork.PlayerList;
 
-        // BƯỚC 1: Gán màu cũ CHO TỪNG PLAYER và kiểm tra trùng
+        // BU?C 1: G�n m�u cu CHO T?NG PLAYER v� ki?m tra tr�ng
         foreach (Player player in players)
         {
             string playerId = GetPlayerIDFromNickname(player.NickName);
@@ -337,11 +384,11 @@ public class PhotonManager : MonoBehaviourPunCallbacks
 
             if (previousColor != PlayerColor.None)
             {
-                // KIỂM TRA TRÙNG: Nếu màu cũ đã được player khác sử dụng
+                // KI?M TRA TR�NG: N?u m�u cu d� du?c player kh�c s? d?ng
                 if (usedColors.Contains(previousColor))
                 {
                     Debug.LogWarning($"Color conflict: {previousColor} is already used by another player");
-                    // KHÔNG gán màu cũ trong trường hợp này, sẽ gán màu mới ở bước sau
+                    // KH�NG g�n m�u cu trong tru?ng h?p n�y, s? g�n m�u m?i ? bu?c sau
                     continue;
                 }
 
@@ -351,7 +398,7 @@ public class PhotonManager : MonoBehaviourPunCallbacks
             }
         }
 
-        // BƯỚC 2: Gán màu mới cho player chưa có màu hoặc bị trùng màu
+        // BU?C 2: G�n m�u m?i cho player chua c� m�u ho?c b? tr�ng m�u
         List<PlayerColor> allAvailableColors = new List<PlayerColor>
         {
             PlayerColor.Red,
@@ -366,7 +413,7 @@ public class PhotonManager : MonoBehaviourPunCallbacks
 
             if (!assignedColors.ContainsKey(playerId))
             {
-                // Tìm màu chưa được sử dụng
+                // T�m m�u chua du?c s? d?ng
                 PlayerColor availableColor = allAvailableColors.FirstOrDefault(color => !usedColors.Contains(color));
 
                 if (availableColor != PlayerColor.None)
@@ -383,11 +430,11 @@ public class PhotonManager : MonoBehaviourPunCallbacks
             }
         }
 
-        // Cập nhật room properties
+        // C?p nh?t room properties
         UpdatePlayerColorsInRoom(assignedColors);
     }
 
-// THÊM: Phương thức cập nhật màu trong room
+// TH�M: Phuong th?c c?p nh?t m�u trong room
     private void UpdatePlayerColorsInRoom(Dictionary<string, PlayerColor> assignedColors)
     {
         List<string> playerColorAssignments = new List<string>();
@@ -408,7 +455,7 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         UpdateColorCacheAndNotify(playerColorsData);
     }
 
-// THÊM: Phương thức xử lý khi player rejoins
+// TH�M: Phuong th?c x? l� khi player rejoins
     private void HandlePlayerRejoining(Player rejoiningPlayer)
     {
         string playerId = GetPlayerIDFromNickname(rejoiningPlayer.NickName);
@@ -418,12 +465,12 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         {
             Debug.Log($"Player {playerId} rejoined with previous color: {previousColor}");
 
-            // Đảm bảo màu này được giữ nguyên trong room properties
-            AssignPlayerColors(); // Gọi lại để cập nhật
+            // �?m b?o m�u n�y du?c gi? nguy�n trong room properties
+            AssignPlayerColors(); // G?i l?i d? c?p nh?t
         }
     }
 
-// THÊM: Lấy PlayerID từ nickname
+// TH�M: L?y PlayerID t? nickname
     private string GetPlayerIDFromNickname(string nickname)
     {
         if (nickname.StartsWith("Player_") && nickname.Length > 7)
@@ -434,7 +481,7 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         return "";
     }
 
-// THÊM: Phương thức để kiểm tra và fix màu bị sai
+// TH�M: Phuong th?c d? ki?m tra v� fix m�u b? sai
     public void ValidateAndFixPlayerColors()
     {
         if (!PhotonNetwork.IsMasterClient) return;
@@ -444,7 +491,7 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         bool needsFix = false;
         Dictionary<string, PlayerColor> currentAssignments = new Dictionary<string, PlayerColor>();
 
-        // Lấy assignments hiện tại từ room properties
+        // L?y assignments hi?n t?i t? room properties
         if (PhotonNetwork.CurrentRoom.CustomProperties.ContainsKey("PlayerColors"))
         {
             string playerColorsData = (string)PhotonNetwork.CurrentRoom.CustomProperties["PlayerColors"];
@@ -462,7 +509,7 @@ public class PhotonManager : MonoBehaviourPunCallbacks
             }
         }
 
-        // Kiểm tra từng player hiện tại
+        // Ki?m tra t?ng player hi?n t?i
         foreach (Player player in PhotonNetwork.PlayerList)
         {
             string playerId = GetPlayerIDFromNickname(player.NickName);
@@ -470,7 +517,7 @@ public class PhotonManager : MonoBehaviourPunCallbacks
 
             if (savedColor != PlayerColor.None)
             {
-                // Kiểm tra xem màu saved có khớp với màu trong room không
+                // Ki?m tra xem m�u saved c� kh?p v?i m�u trong room kh�ng
                 if (!currentAssignments.ContainsKey(playerId) || currentAssignments[playerId] != savedColor)
                 {
                     Debug.LogWarning(
@@ -492,7 +539,7 @@ public class PhotonManager : MonoBehaviourPunCallbacks
     }
 
 
-// THÊM vào OnJoinedRoom()
+// TH�M v�o OnJoinedRoom()
     public override void OnJoinedRoom()
     {
         Debug.Log(
@@ -505,11 +552,11 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         bool isRejoining = (currentRoomName == lastRoom);
         Debug.Log($"Join type: {(isRejoining ? "REJOINING previous room" : "JOINING new room")}");
 
-        // LUÔN LƯU ROOM HIỆN TẠI
+        // LU�N LUU ROOM HI?N T?I
         PlayerPrefs.SetString($"LastRoom_{playerID}", currentRoomName);
         PlayerPrefs.Save();
 
-        // TẢI LẠI TRẠNG THÁI GAME NẾU CÓ
+        // T?I L?I TR?NG TH�I GAME N?U C�
         if (GameStateManager.Instance != null)
         {
             GameStateManager.Instance.LoadGameStateFromRoomProperties();
@@ -535,11 +582,11 @@ public class PhotonManager : MonoBehaviourPunCallbacks
             Debug.Log($"Player {playerID} is rejoining, should keep previous color");
         }
 
-        // Kích hoạt quân cờ sau khi join room
+        // K�ch ho?t qu�n c? sau khi join room
         StartCoroutine(ActivatePiecesAfterDelay());
     }
 
-// THÊM: Coroutine để kích hoạt quân cờ sau một khoảng delay
+// TH�M: Coroutine d? k�ch ho?t qu�n c? sau m?t kho?ng delay
 
 
     private void UpdateRoomPlayerIDs()
@@ -550,7 +597,7 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         PhotonNetwork.CurrentRoom.SetCustomProperties(new ExitGames.Client.Photon.Hashtable
         {
             { "PlayerIDs", allowedPlayers },
-            { "AllowedPlayers", allowedPlayers } // Cập nhật danh sách allowed players
+            { "AllowedPlayers", allowedPlayers } // C?p nh?t danh s�ch allowed players
         });
     }
 
@@ -569,14 +616,14 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         return playerIDs;
     }
 
-    // THÊM: Kiểm tra xem player hiện tại có trong danh sách allowed không
-    // SỬA: Kiểm tra xem player hiện tại có trong danh sách allowed không
+    // TH�M: Ki?m tra xem player hi?n t?i c� trong danh s�ch allowed kh�ng
+    // S?A: Ki?m tra xem player hi?n t?i c� trong danh s�ch allowed kh�ng
     public bool IsPlayerAllowedInRoom(string roomName)
     {
-        // Nếu chưa có thông tin room, mặc định cho phép
+        // N?u chua c� th�ng tin room, m?c d?nh cho ph�p
         if (string.IsNullOrEmpty(roomName)) return true;
 
-        // Kiểm tra nếu đây là room cũ của player - LUÔN CHO PHÉP VÀO LẠI PHÒNG CŨ
+        // Ki?m tra n?u d�y l� room cu c?a player - LU�N CHO PH�P V�O L?I PH�NG CU
         string lastRoom = PlayerPrefs.GetString($"LastRoom_{playerID}", "");
         if (roomName == lastRoom)
         {
@@ -584,30 +631,30 @@ public class PhotonManager : MonoBehaviourPunCallbacks
             return true;
         }
 
-        // Nếu không phải room cũ, kiểm tra thêm điều kiện khác
-        // (giữ nguyên logic kiểm tra khác nếu có)
-        return true; // Tạm thời luôn cho phép, có thể điều chỉnh sau
+        // N?u kh�ng ph?i room cu, ki?m tra th�m di?u ki?n kh�c
+        // (gi? nguy�n logic ki?m tra kh�c n?u c�)
+        return true; // T?m th?i lu�n cho ph�p, c� th? di?u ch?nh sau
     }
 
-    // Trong PhotonManager.cs, THÊM các phương thức sau:
+    // Trong PhotonManager.cs, TH�M c�c phuong th?c sau:
 
-// THÊM: Callback khi player properties thay đổi (để phát hiện rejoining)
+// TH�M: Callback khi player properties thay d?i (d? ph�t hi?n rejoining)
     public override void OnPlayerPropertiesUpdate(Player targetPlayer, ExitGames.Client.Photon.Hashtable changedProps)
     {
-        // Phát hiện khi player rejoining bằng cách theo dõi sự thay đổi trạng thái
+        // Ph�t hi?n khi player rejoining b?ng c�ch theo d�i s? thay d?i tr?ng th�i
         if (changedProps.ContainsKey("IsInactive"))
         {
             bool isInactive = (bool)changedProps["IsInactive"];
             if (!isInactive)
             {
-                // Player đã trở lại active -> rejoining
+                // Player d� tr? l?i active -> rejoining
                 Debug.Log($"Player {targetPlayer.NickName} became active (rejoining)");
                 HandlePlayerRejoining(targetPlayer);
             }
         }
     }
 
-// SỬA: OnPlayerEnteredRoom để xử lý rejoining
+// S?A: OnPlayerEnteredRoom d? x? l� rejoining
     public override void OnPlayerEnteredRoom(Player newPlayer)
     {
         Debug.Log(
@@ -620,7 +667,7 @@ public class PhotonManager : MonoBehaviourPunCallbacks
             return;
         }
 
-        // KIỂM TRA: Đây có phải là player rejoining không?
+        // KI?M TRA: ��y c� ph?i l� player rejoining kh�ng?
         string playerId = GetPlayerIDFromNickname(newPlayer.NickName);
         PlayerColor previousColor = GetPreviouslyAssignedColor(playerId);
 
@@ -634,22 +681,22 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         {
             CheckAndLockRoom();
             UpdateRoomPlayerIDs();
-            AssignPlayerColors(); // LUÔN gán màu khi có player mới
+            AssignPlayerColors(); // LU�N g�n m�u khi c� player m?i
 
-            // THÊM: Kiểm tra và bắt đầu game nếu phòng full
+            // TH�M: Ki?m tra v� b?t d?u game n?u ph�ng full
             CheckAndStartGame();
 
-            // Kích hoạt lại quân cờ khi có người mới
+            // K�ch ho?t l?i qu�n c? khi c� ngu?i m?i
             StartCoroutine(ActivatePiecesAfterDelay());
         }
         else
         {
-            // Client cũng cần cập nhật khi có player mới
+            // Client cung c?n c?p nh?t khi c� player m?i
             StartCoroutine(ActivatePiecesAfterDelay());
         }
     }
 
-// THÊM: Phương thức force reassign màu khi cần
+// TH�M: Phuong th?c force reassign m�u khi c?n
     public void ForceColorReassignment()
     {
         if (PhotonNetwork.IsMasterClient)
@@ -659,7 +706,7 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         }
     }
 
-    // SỬA: OnPlayerLeftRoom để không xóa màu ngay lập tức
+    // S?A: OnPlayerLeftRoom d? kh�ng x�a m�u ngay l?p t?c
     public override void OnPlayerLeftRoom(Player otherPlayer)
     {
         Debug.Log(
@@ -673,34 +720,34 @@ public class PhotonManager : MonoBehaviourPunCallbacks
 
         string leftPlayerId = GetPlayerIDFromNickname(otherPlayer.NickName);
 
-        // QUAN TRỌNG: KHÔNG xóa màu ngay lập tức khi player rời
-        // Chỉ đánh dấu player là inactive, giữ màu để cho phép rejoining
+        // QUAN TR?NG: KH�NG x�a m�u ngay l?p t?c khi player r?i
+        // Ch? d�nh d?u player l� inactive, gi? m�u d? cho ph�p rejoining
         Debug.Log($"Player {leftPlayerId} left, but keeping assigned color for potential rejoining");
 
         if (PhotonNetwork.IsMasterClient)
         {
             UpdateRoomPlayerIDs();
-            // KHÔNG gán lại màu ngay lập tức, chờ xem player có rejoining không
-            // Chỉ gán lại sau một khoảng thời gian nếu cần
-            StartCoroutine(DelayedColorCleanup(leftPlayerId, 180f)); // Chờ 10 giây
+            // KH�NG g�n l?i m�u ngay l?p t?c, ch? xem player c� rejoining kh�ng
+            // Ch? g�n l?i sau m?t kho?ng th?i gian n?u c?n
+            StartCoroutine(DelayedColorCleanup(leftPlayerId, 180f)); // Ch? 10 gi�y
         }
     }
 
-// THÊM: Coroutine để cleanup màu sau delay
+// TH�M: Coroutine d? cleanup m�u sau delay
     private IEnumerator DelayedColorCleanup(string playerId, float delaySeconds)
     {
         yield return new WaitForSeconds(delaySeconds);
 
-        // Kiểm tra xem player có rejoined chưa
+        // Ki?m tra xem player c� rejoined chua
         bool playerRejoined = PhotonNetwork.PlayerList.Any(p => GetPlayerIDFromNickname(p.NickName) == playerId);
 
         if (!playerRejoined)
         {
-            // Nếu sau delay mà player không rejoined, thì xóa màu
+            // N?u sau delay m� player kh�ng rejoined, th� x�a m�u
             ClearAssignedColor(playerId);
             Debug.Log($"Player {playerId} did not rejoin after {delaySeconds} seconds, cleared assigned color");
 
-            // Gán lại màu cho các player còn lại
+            // G�n l?i m�u cho c�c player c�n l?i
             AssignPlayerColors();
         }
         else
@@ -725,9 +772,9 @@ public class PhotonManager : MonoBehaviourPunCallbacks
     {
         if (PhotonNetwork.IsMasterClient)
         {
-            // SỬA QUAN TRỌNG: KHÔNG khóa room hoàn toàn, chỉ đánh dấu là locked
-            // Giữ room mở để cho phép rejoining, nhưng đánh dấu custom property
-            PhotonNetwork.CurrentRoom.IsOpen = true; // VẪN MỞ để cho phép rejoining
+            // S?A QUAN TR?NG: KH�NG kh�a room ho�n to�n, ch? d�nh d?u l� locked
+            // Gi? room m? d? cho ph�p rejoining, nhung d�nh d?u custom property
+            PhotonNetwork.CurrentRoom.IsOpen = true; // V?N M? d? cho ph�p rejoining
 
             PhotonNetwork.CurrentRoom.SetCustomProperties(new ExitGames.Client.Photon.Hashtable
             {
@@ -784,17 +831,17 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         }
     }
 
-    // SỬA: Xử lý lỗi join room tốt hơn
-    // SỬA: Xử lý lỗi join room tốt hơn
-    // SỬA: Xử lý lỗi join room - KHÔNG tự động tạo phòng
+    // S?A: X? l� l?i join room t?t hon
+    // S?A: X? l� l?i join room t?t hon
+    // S?A: X? l� l?i join room - KH�NG t? d?ng t?o ph�ng
     public override void OnJoinRoomFailed(short returnCode, string message)
     {
         Debug.LogError($"Failed to join room '{lastAttemptedRoom}': {returnCode} - {message}");
 
-        // THÊM: Gọi sự kiện để UI xử lý
+        // TH�M: G?i s? ki?n d? UI x? l�
         OnJoinRoomFailedEvent?.Invoke(returnCode, message);
 
-        // KHÔNG tự động tạo phòng nữa - để UI quyết định hành động tiếp theo
+        // KH�NG t? d?ng t?o ph�ng n?a - d? UI quy?t d?nh h�nh d?ng ti?p theo
         switch (returnCode)
         {
             case ErrorCode.GameDoesNotExist:
@@ -825,9 +872,16 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         Debug.LogWarning($"Disconnected from Photon: {cause}");
     }
 
-    // Method để connect manually
+    // Method d? connect manually
     public void ConnectToPhoton()
     {
+        if (forceOfflineMode)
+        {
+            Debug.Log("ForceOfflineMode is enabled; staying in OfflineMode instead of connecting.");
+            OfflineBootstrap.EnsureOfflineMode("ForceOfflineMode prevented an online connection attempt.");
+            return;
+        }
+
         if (PhotonNetwork.IsConnected || PhotonNetwork.OfflineMode)
         {
             Debug.Log("Already connected or in OfflineMode");
@@ -836,8 +890,7 @@ public class PhotonManager : MonoBehaviourPunCallbacks
 
         if (Application.internetReachability == NetworkReachability.NotReachable)
         {
-            Debug.Log("No internet. Switching to OfflineMode.");
-            PhotonNetwork.OfflineMode = true;
+            OfflineBootstrap.EnsureOfflineMode("No internet. Switching to OfflineMode.");
             return;
         }
 
@@ -845,10 +898,10 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         PhotonNetwork.ConnectUsingSettings();
     }
 
-    // SỬA: Method để join room cụ thể với kiểm tra
-    // SỬA: Method để join room cụ thể với kiểm tra
-    // SỬA: Method để join room cụ thể với kiểm tra
-    // SỬA: Method để join room cụ thể với kiểm tra màu cũ
+    // S?A: Method d? join room c? th? v?i ki?m tra
+    // S?A: Method d? join room c? th? v?i ki?m tra
+    // S?A: Method d? join room c? th? v?i ki?m tra
+    // S?A: Method d? join room c? th? v?i ki?m tra m�u cu
     public void JoinRoom(string roomName)
     {
         if (PhotonNetwork.IsConnectedAndReady)
@@ -856,12 +909,12 @@ public class PhotonManager : MonoBehaviourPunCallbacks
             this.roomName = roomName;
             lastAttemptedRoom = roomName;
 
-            // THÊM: Kiểm tra và xóa màu cũ nếu không phải rejoin
+            // TH�M: Ki?m tra v� x�a m�u cu n?u kh�ng ph?i rejoin
             CheckAndClearPreviousColorIfNotRejoining(roomName);
 
             Debug.Log($"Attempting to join room: {roomName}");
 
-            // Sử dụng JoinRoom thay vì CreateOrJoinRoom để chỉ join room có sẵn
+            // S? d?ng JoinRoom thay v� CreateOrJoinRoom d? ch? join room c� s?n
             PhotonNetwork.JoinRoom(roomName);
         }
         else
@@ -870,19 +923,19 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         }
     }
 
-    // Lấy Player ID hiện tại
+    // L?y Player ID hi?n t?i
     public string GetCurrentPlayerID()
     {
         return playerID;
     }
 
-    // THÊM: Lấy room name đã attempt cuối cùng
+    // TH�M: L?y room name d� attempt cu?i c�ng
     public string GetLastAttemptedRoom()
     {
         return lastAttemptedRoom;
     }
 
-    // THÊM: Reset room cũ của player (dùng khi player muốn join room mới)
+    // TH�M: Reset room cu c?a player (d�ng khi player mu?n join room m?i)
     public void ResetPreviousRoom()
     {
         PlayerPrefs.DeleteKey($"LastRoom_{playerID}");
@@ -890,16 +943,16 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         Debug.Log("Previous room record has been reset");
     }
 
-// THÊM: Lấy room cũ của player
+// TH�M: L?y room cu c?a player
     public string GetPreviousRoom()
     {
         return PlayerPrefs.GetString($"LastRoom_{playerID}", "");
     }
 
-    // THÊM: Kiểm tra xem player có nên được phép rejoining không
+    // TH�M: Ki?m tra xem player c� n�n du?c ph�p rejoining kh�ng
     public bool ShouldAllowRejoining(string roomName)
     {
-        // Luôn cho phép rejoining room cũ
+        // Lu�n cho ph�p rejoining room cu
         string lastRoom = PlayerPrefs.GetString($"LastRoom_{playerID}", "");
         if (roomName == lastRoom)
         {
@@ -907,17 +960,17 @@ public class PhotonManager : MonoBehaviourPunCallbacks
             return true;
         }
 
-        // Kiểm tra thêm điều kiện khác nếu cần
+        // Ki?m tra th�m di?u ki?n kh�c n?u c?n
         return allowRejoiningLockedRoom;
     }
 
 
-    // THÊM: Tạo room với ID ngẫu nhiên
+    // TH�M: T?o room v?i ID ng?u nhi�n
     public void CreateRandomRoom(int maxPlayers, int piecesPerPlayer)
     {
         if (PhotonNetwork.IsConnectedAndReady)
         {
-            // Tạo room ID ngẫu nhiên
+            // T?o room ID ng?u nhi�n
             string randomRoomId = System.Guid.NewGuid().ToString().Substring(0, 8).ToUpper();
             this.roomName = randomRoomId;
             lastAttemptedRoom = randomRoomId;
@@ -929,15 +982,15 @@ public class PhotonManager : MonoBehaviourPunCallbacks
             roomOptions.EmptyRoomTtl = 15000;
             roomOptions.PlayerTtl = 1000;
 
-            // THÊM: Lưu thông tin piecesPerPlayer vào room properties
+            // TH�M: Luu th�ng tin piecesPerPlayer v�o room properties
             roomOptions.CustomRoomProperties = new ExitGames.Client.Photon.Hashtable
             {
                 { "PlayerIDs", "" },
                 { "IsLocked", false },
                 { "TurnCount", 0 },
                 { "AllowedPlayers", "" },
-                { "PiecesPerPlayer", piecesPerPlayer }, // THÊM: Số quân cờ mỗi người
-                { "RoomCreator", playerID } // THÊM: Người tạo phòng
+                { "PiecesPerPlayer", piecesPerPlayer }, // TH�M: S? qu�n c? m?i ngu?i
+                { "RoomCreator", playerID } // TH�M: Ngu?i t?o ph�ng
             };
             roomOptions.CustomRoomPropertiesForLobby = new string[]
             {
@@ -954,7 +1007,7 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         }
     }
 
-// THÊM: Lấy thông tin pieces per player từ room
+// TH�M: L?y th�ng tin pieces per player t? room
     public int GetPiecesPerPlayer()
     {
         if (PhotonNetwork.InRoom && PhotonNetwork.CurrentRoom.CustomProperties.ContainsKey("PiecesPerPlayer"))
@@ -962,11 +1015,11 @@ public class PhotonManager : MonoBehaviourPunCallbacks
             return (int)PhotonNetwork.CurrentRoom.CustomProperties["PiecesPerPlayer"];
         }
 
-        return 4; // Mặc định 4 quân nếu không có thông tin
+        return 4; // M?c d?nh 4 qu�n n?u kh�ng c� th�ng tin
     }
 
-    // THÊM: Phương thức join room thuần túy - không tự động tạo phòng khi thất bại
-    // SỬA: Phương thức join room thuần túy - thêm kiểm tra màu cũ
+    // TH�M: Phuong th?c join room thu?n t�y - kh�ng t? d?ng t?o ph�ng khi th?t b?i
+    // S?A: Phuong th?c join room thu?n t�y - th�m ki?m tra m�u cu
     public void JoinRoomOnly(string roomName)
     {
         if (PhotonNetwork.IsConnectedAndReady)
@@ -974,12 +1027,12 @@ public class PhotonManager : MonoBehaviourPunCallbacks
             this.roomName = roomName;
             lastAttemptedRoom = roomName;
 
-            // THÊM: Kiểm tra và xóa màu cũ nếu không phải rejoin
+            // TH�M: Ki?m tra v� x�a m�u cu n?u kh�ng ph?i rejoin
             CheckAndClearPreviousColorIfNotRejoining(roomName);
 
             Debug.Log($"Attempting to join room ONLY: {roomName}");
 
-            // Chỉ join room, không tạo phòng khi thất bại
+            // Ch? join room, kh�ng t?o ph�ng khi th?t b?i
             PhotonNetwork.JoinRoom(roomName);
         }
         else
@@ -988,20 +1041,20 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         }
     }
 
-    // THÊM: Phương thức kích hoạt quân cờ dựa trên màu được phân phối
-    // THÊM: Phương thức kích hoạt quân cờ dựa trên màu được phân phối và số lượng quân mỗi người
+    // TH�M: Phuong th?c k�ch ho?t qu�n c? d?a tr�n m�u du?c ph�n ph?i
+    // TH�M: Phuong th?c k�ch ho?t qu�n c? d?a tr�n m�u du?c ph�n ph?i v� s? lu?ng qu�n m?i ngu?i
     public void ActivatePiecesForPlayers()
     {
         if (!PhotonNetwork.InRoom) return;
 
-        PieceController[] allPieces = FindObjectsOfType<PieceController>(true); // Tìm cả những cái đang tắt
+        PieceController[] allPieces = FindObjectsOfType<PieceController>(true); // T�m c? nh?ng c�i dang t?t
         List<PlayerColor> activeColors = GetRoomPlayerColors();
         int piecesPerPlayer = GetPiecesPerPlayer();
 
         Debug.Log(
             $"Activating {piecesPerPlayer} pieces per player for {activeColors.Count} colors: {string.Join(", ", activeColors)}");
 
-        // Tạo dictionary để đếm số quân đã kích hoạt cho mỗi màu
+        // T?o dictionary d? d?m s? qu�n d� k�ch ho?t cho m?i m�u
         Dictionary<PlayerColor, int> activatedCount = new Dictionary<PlayerColor, int>();
         foreach (var color in activeColors)
         {
@@ -1012,12 +1065,12 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         {
             if (activeColors.Contains(piece.playerColor))
             {
-                // Kiểm tra xem đã kích hoạt đủ số quân cho màu này chưa
+                // Ki?m tra xem d� k�ch ho?t d? s? qu�n cho m�u n�y chua
                 if (activatedCount[piece.playerColor] < piecesPerPlayer)
                 {
                     piece.gameObject.SetActive(true);
 
-                    // THÊM: Gọi phương thức activate nếu có
+                    // TH�M: G?i phuong th?c activate n?u c�
                     piece.ActivateForPlayer();
 
                     activatedCount[piece.playerColor]++;
@@ -1037,21 +1090,21 @@ public class PhotonManager : MonoBehaviourPunCallbacks
             }
         }
 
-        // Log tổng kết
+        // Log t?ng k?t
         foreach (var color in activeColors)
         {
             Debug.Log($"Final: {color} has {activatedCount[color]}/{piecesPerPlayer} pieces active");
         }
     }
 
-    // THÊM: Phương thức để các script khác kiểm tra số lượng quân tối đa
+    // TH�M: Phuong th?c d? c�c script kh�c ki?m tra s? lu?ng qu�n t?i da
     public int GetMaxPiecesPerPlayer()
     {
         return GetPiecesPerPlayer();
     }
 
-    // THÊM: Callback khi room properties thay đổi (để cập nhật số lượng quân)
-    // THÊM: Callback khi room properties thay đổi (để biết khi game bắt đầu)
+    // TH�M: Callback khi room properties thay d?i (d? c?p nh?t s? lu?ng qu�n)
+    // TH�M: Callback khi room properties thay d?i (d? bi?t khi game b?t d?u)
     public override void OnRoomPropertiesUpdate(ExitGames.Client.Photon.Hashtable propertiesThatChanged)
     {
         if (propertiesThatChanged.ContainsKey("GameStarted"))
@@ -1059,9 +1112,9 @@ public class PhotonManager : MonoBehaviourPunCallbacks
             bool gameStarted = (bool)propertiesThatChanged["GameStarted"];
             if (gameStarted)
             {
-                Debug.Log("Game đã được bắt đầu bởi Master Client");
+                Debug.Log("Game d� du?c b?t d?u b?i Master Client");
 
-                // Đảm bảo client cũng khởi tạo game
+                // �?m b?o client cung kh?i t?o game
                 GameTurnManager turnManager = FindObjectOfType<GameTurnManager>();
                 if (turnManager != null && !turnManager.isInitialized)
                 {
@@ -1070,7 +1123,7 @@ public class PhotonManager : MonoBehaviourPunCallbacks
             }
         }
 
-        // Giữ lại logic cũ cho PiecesPerPlayer
+        // Gi? l?i logic cu cho PiecesPerPlayer
         if (propertiesThatChanged.ContainsKey("PiecesPerPlayer"))
         {
             Debug.Log("PiecesPerPlayer changed, reactivating pieces...");
@@ -1091,95 +1144,95 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         }
     }
 
-    // THÊM: Coroutine để kích hoạt quân cờ sau một khoảng delay với số lượng chính xác
+    // TH�M: Coroutine d? k�ch ho?t qu�n c? sau m?t kho?ng delay v?i s? lu?ng ch�nh x�c
     private IEnumerator ActivatePiecesAfterDelay()
     {
-        // Đợi một frame để đảm bảo tất cả component đã khởi tạo
+        // �?i m?t frame d? d?m b?o t?t c? component d� kh?i t?o
         yield return new WaitForSeconds(0.5f);
-        ActivatePiecesForPlayers(); // SỬA: Gọi phương thức mới đã cập nhật
+        ActivatePiecesForPlayers(); // S?A: G?i phuong th?c m?i d� c?p nh?t
     }
 
-    // THÊM: Phương thức kiểm tra và xóa màu cũ khi join phòng không phải rejoin
+    // TH�M: Phuong th?c ki?m tra v� x�a m�u cu khi join ph�ng kh�ng ph?i rejoin
     private void CheckAndClearPreviousColorIfNotRejoining(string roomName)
     {
         string lastRoom = PlayerPrefs.GetString($"LastRoom_{playerID}", "");
 
-        // Nếu join phòng KHÔNG PHẢI là phòng cũ -> xóa màu đã gán trước đó
+        // N?u join ph�ng KH�NG PH?I l� ph�ng cu -> x�a m�u d� g�n tru?c d�
         if (!string.IsNullOrEmpty(lastRoom) && roomName != lastRoom)
         {
             Debug.Log($"Joining new room '{roomName}', clearing previous color assignment from old room '{lastRoom}'");
             ClearAssignedColor(playerID);
 
-            // Đồng thời reset room cũ
+            // �?ng th?i reset room cu
             ResetPreviousRoom();
         }
     }
 
-    // THÊM: Phương thức để ẩn tất cả quân cờ khi rời phòng
+    // TH�M: Phuong th?c d? ?n t?t c? qu�n c? khi r?i ph�ng
     public void HideAllPiecesOnLeave()
     {
-        PieceController[] allPieces = FindObjectsOfType<PieceController>(true); // Tìm cả những cái đang tắt
+        PieceController[] allPieces = FindObjectsOfType<PieceController>(true); // T�m c? nh?ng c�i dang t?t
         foreach (PieceController piece in allPieces)
         {
             piece.gameObject.SetActive(false);
-            Debug.Log($"Đã ẩn quân cờ {piece.playerColor} khi rời phòng");
+            Debug.Log($"�� ?n qu�n c? {piece.playerColor} khi r?i ph�ng");
         }
     }
 
-    // THÊM: Phương thức kiểm tra và bắt đầu game khi phòng full - CHỈ Master Client
+    // TH�M: Phuong th?c ki?m tra v� b?t d?u game khi ph�ng full - CH? Master Client
     private void CheckAndStartGame()
     {
         if (!PhotonNetwork.IsMasterClient)
         {
-            Debug.Log("Chỉ Master Client mới được bắt đầu game");
+            Debug.Log("Ch? Master Client m?i du?c b?t d?u game");
             return;
         }
 
-        // Kiểm tra nếu phòng đã full và game chưa được khởi tạo
+        // Ki?m tra n?u ph�ng d� full v� game chua du?c kh?i t?o
         if (PhotonNetwork.CurrentRoom.PlayerCount >= PhotonNetwork.CurrentRoom.MaxPlayers)
         {
             Debug.Log(
-                $"Phòng đã đầy ({PhotonNetwork.CurrentRoom.PlayerCount}/{PhotonNetwork.CurrentRoom.MaxPlayers}), Master Client bắt đầu khởi tạo game...");
+                $"Ph�ng d� d?y ({PhotonNetwork.CurrentRoom.PlayerCount}/{PhotonNetwork.CurrentRoom.MaxPlayers}), Master Client b?t d?u kh?i t?o game...");
 
-            // Đánh dấu room đã bắt đầu game
+            // ��nh d?u room d� b?t d?u game
             PhotonNetwork.CurrentRoom.SetCustomProperties(new ExitGames.Client.Photon.Hashtable
             {
                 { "GameStarted", true }
             });
 
-            // Bắt đầu game sau một khoảng delay ngắn
+            // B?t d?u game sau m?t kho?ng delay ng?n
             StartCoroutine(StartGameAfterDelay(2f));
         }
     }
 
-// THÊM: Coroutine để bắt đầu game - CHỈ chạy trên Master Client
-    // THÊM: Coroutine để bắt đầu game - CHỈ chạy trên Master Client
+// TH�M: Coroutine d? b?t d?u game - CH? ch?y tr�n Master Client
+    // TH�M: Coroutine d? b?t d?u game - CH? ch?y tr�n Master Client
     private IEnumerator StartGameAfterDelay(float delay)
     {
         yield return new WaitForSeconds(delay);
 
-        // Kiểm tra lại để chắc chắn chỉ Master Client thực hiện
+        // Ki?m tra l?i d? ch?c ch?n ch? Master Client th?c hi?n
         if (!PhotonNetwork.IsMasterClient)
         {
-            Debug.Log("Không phải Master Client, không khởi tạo game");
+            Debug.Log("Kh�ng ph?i Master Client, kh�ng kh?i t?o game");
             yield break;
         }
 
-        // Tìm và khởi tạo GameTurnManager
+        // T�m v� kh?i t?o GameTurnManager
         GameTurnManager turnManager = FindObjectOfType<GameTurnManager>();
         if (turnManager != null && !turnManager.isInitialized)
         {
-            Debug.Log("Master Client khởi tạo lượt chơi...");
+            Debug.Log("Master Client kh?i t?o lu?t choi...");
             turnManager.InitializePlayerOrder(DiceController.Instance);
         }
         else
         {
-            Debug.LogWarning("Không tìm thấy GameTurnManager hoặc đã được khởi tạo");
+            Debug.LogWarning("Kh�ng t�m th?y GameTurnManager ho?c d� du?c kh?i t?o");
         }
     }
 
 
-// THÊM: Kiểm tra xem game đã bắt đầu chưa
+// TH�M: Ki?m tra xem game d� b?t d?u chua
     public bool IsGameStarted()
     {
         if (PhotonNetwork.InRoom && PhotonNetwork.CurrentRoom.CustomProperties.ContainsKey("GameStarted"))

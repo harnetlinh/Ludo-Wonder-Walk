@@ -125,6 +125,8 @@ public class FactManager : MonoBehaviourPunCallbacks
     private Coroutine questionHideCoroutine;
     private bool isQuestionAnswered = false;
     private bool lastAnswerWasCorrect = false;
+    private int questionInstanceCounter = 0;
+    private int currentQuestionInstanceId = -1;
 
 
     public static FactManager Instance { get; private set; }
@@ -745,6 +747,70 @@ public class FactManager : MonoBehaviourPunCallbacks
         ApplyQuestion(questionIndex);
     }
 
+    [PunRPC]
+    private void RPC_SubmitQuestionAnswer(int actorNumber, int colorValue, int questionIndex, int answerIndex, int questionInstanceId, PhotonMessageInfo info)
+    {
+        if (!PhotonNetwork.IsMasterClient)
+        {
+            return;
+        }
+
+        PlayerColor responderColor = ResolvePlayerColorFromActor(actorNumber, (PlayerColor)colorValue);
+        if (responderColor == PlayerColor.None)
+        {
+            Debug.LogWarning("[DEBUG] Unable to resolve responder color for submitted answer.");
+            return;
+        }
+
+        bool evaluatedResult = EvaluateAnswer(questionIndex, answerIndex);
+        QuestionTurnEffectManager manager = QuestionTurnEffectManager.Instance;
+        QuestionAnswerResolution resolution = manager.RegisterAnswer(responderColor, evaluatedResult);
+
+        BroadcastQuestionAnswerResult(responderColor, evaluatedResult, resolution, questionInstanceId, questionIndex, answerIndex);
+    }
+
+    private void BroadcastQuestionAnswerResult(PlayerColor responderColor, bool isCorrect, QuestionAnswerResolution resolution, int questionInstanceId, int questionIndex, int answerIndex)
+    {
+        if (PhotonNetwork.IsConnected && photonView != null)
+        {
+            photonView.RPC(nameof(RPC_OnQuestionAnswerProcessed), RpcTarget.All,
+                questionInstanceId,
+                questionIndex,
+                answerIndex,
+                (int)responderColor,
+                isCorrect,
+                resolution.CorrectCount,
+                resolution.WrongCount,
+                resolution.PendingModifier,
+                resolution.AppliedModifier);
+        }
+        else
+        {
+            QuestionTurnEffectManager.Instance.ApplyResolutionSnapshot(responderColor, resolution);
+        }
+    }
+
+    [PunRPC]
+    private void RPC_OnQuestionAnswerProcessed(int questionInstanceId, int questionIndex, int answerIndex, int colorValue, bool isCorrect, int correctCount, int wrongCount, int pendingModifier, int appliedModifier)
+    {
+        PlayerColor responderColor = (PlayerColor)colorValue;
+        var snapshot = new QuestionAnswerResolution
+        {
+            WasCorrect = isCorrect,
+            AppliedModifier = appliedModifier,
+            PendingModifier = pendingModifier,
+            CorrectCount = correctCount,
+            WrongCount = wrongCount
+        };
+
+        QuestionTurnEffectManager.Instance.ApplyResolutionSnapshot(responderColor, snapshot);
+
+        if (appliedModifier != 0)
+        {
+            Debug.Log($"[DEBUG] {responderColor} question modifier {appliedModifier}, pending {pendingModifier}");
+        }
+    }
+
     private int GetRandomQuestionIndex()
     {
         if (questionEntries == null || questionEntries.Count == 0)
@@ -781,6 +847,7 @@ public class FactManager : MonoBehaviourPunCallbacks
 
         currentQuestionIndex = questionIndex;
         currentQuestion = questionEntries[questionIndex];
+        currentQuestionInstanceId = ++questionInstanceCounter;
         UpdateQuestionUI(currentQuestion);
     }
 
@@ -815,6 +882,70 @@ public class FactManager : MonoBehaviourPunCallbacks
         {
             questionHideCoroutine = StartCoroutine(HideQuestionPanelAfterDelay(questionAutoHideDelay));
         }
+
+        ReportAnswerOutcome(clampedIndex, isCorrect);
+    }
+
+    private void ReportAnswerOutcome(int answerIndex, bool isCorrect)
+    {
+        if (currentQuestionIndex < 0)
+        {
+            return;
+        }
+
+        PlayerColor responderColor = PhotonManager.Instance != null
+            ? PhotonManager.Instance.GetCurrentPlayerColor()
+            : PlayerColor.None;
+
+        if (!PhotonNetwork.IsConnected || photonView == null)
+        {
+            ProcessAnswerLocally(responderColor, currentQuestionIndex, answerIndex);
+            return;
+        }
+
+        int actorNumber = PhotonNetwork.LocalPlayer != null ? PhotonNetwork.LocalPlayer.ActorNumber : -1;
+        photonView.RPC(nameof(RPC_SubmitQuestionAnswer), RpcTarget.MasterClient,
+            actorNumber,
+            (int)responderColor,
+            currentQuestionIndex,
+            answerIndex,
+            currentQuestionInstanceId);
+    }
+
+    private void ProcessAnswerLocally(PlayerColor responderColor, int questionIndex, int answerIndex)
+    {
+        bool evaluatedResult = EvaluateAnswer(questionIndex, answerIndex);
+        QuestionTurnEffectManager manager = QuestionTurnEffectManager.Instance;
+        QuestionAnswerResolution resolution = manager.RegisterAnswer(responderColor, evaluatedResult);
+        manager.ApplyResolutionSnapshot(responderColor, resolution);
+    }
+
+    private bool EvaluateAnswer(int questionIndex, int answerIndex)
+    {
+        if (questionIndex < 0 || questionEntries == null || questionIndex >= questionEntries.Count)
+        {
+            return false;
+        }
+
+        QuestionEntry entry = questionEntries[questionIndex];
+        if (entry == null)
+        {
+            return false;
+        }
+
+        int clampedIndex = Mathf.Clamp(answerIndex, 0, 2);
+        return entry.correctAnswerIndex == clampedIndex;
+    }
+
+    private PlayerColor ResolvePlayerColorFromActor(int actorNumber, PlayerColor fallbackColor)
+    {
+        if (PhotonManager.Instance != null &&
+            PhotonManager.Instance.TryGetPlayerColorByActorNumber(actorNumber, out PlayerColor resolvedColor))
+        {
+            return resolvedColor;
+        }
+
+        return fallbackColor != PlayerColor.None ? fallbackColor : PlayerColor.None;
     }
 
     private void DisableAnswerButtons()
